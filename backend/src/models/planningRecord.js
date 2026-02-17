@@ -104,7 +104,7 @@ function initPlanningRecordModel(sequelize) {
         defaultValue: null,
         validate: {
           isIn: {
-            args: [[ ...LIFE_STAGE_VALUES, null ]],
+            args: [[...LIFE_STAGE_VALUES, null]],
             msg: '无效的人生阶段'
           }
         }

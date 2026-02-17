@@ -28,7 +28,7 @@ class User extends Model {
    * @returns {object}
    */
   toSafeJSON() {
-    const { passwordHash, ...safeData } = this.toJSON();
+    const { passwordHash: _passwordHash, ...safeData } = this.toJSON();
     return safeData;
   }
 }
@@ -129,7 +129,7 @@ function initUserModel(sequelize) {
          * 保存前自动哈希密码
          * 只在 passwordHash 字段变更时才重新哈希（防止重复哈希）
          */
-        beforeSave: async (user) => {
+        beforeSave: async(user) => {
           if (user.changed('passwordHash')) {
             const saltRounds = 12;
             user.passwordHash = await bcrypt.hash(user.passwordHash, saltRounds);

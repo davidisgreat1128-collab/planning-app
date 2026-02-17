@@ -1,7 +1,7 @@
 'use strict';
 
 const { User } = require('../models/index');
-const { NotFoundError, ConflictError } = require('../utils/errors');
+const { NotFoundError } = require('../utils/errors');
 
 /**
  * 用户业务服务

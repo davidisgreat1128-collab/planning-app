@@ -1,6 +1,5 @@
 'use strict';
 
-const { AppError } = require('../utils/errors');
 const { error } = require('../utils/response');
 
 /**

@@ -1,6 +1,5 @@
 'use strict';
 
-const { Op } = require('sequelize');
 const { PlanningRecord } = require('../models/index');
 const { NotFoundError, ForbiddenError } = require('../utils/errors');
 const { PAGINATION } = require('../config/constants');
