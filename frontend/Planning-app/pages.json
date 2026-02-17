@@ -1,0 +1,133 @@
+{
+	"pages": [
+		{
+			"path": "pages/index/index",
+			"style": {
+				"navigationBarTitleText": "规划助手"
+			}
+		},
+		{
+			"path": "pages/user/login",
+			"style": {
+				"navigationBarTitleText": "登录",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/user/register",
+			"style": {
+				"navigationBarTitleText": "注册"
+			}
+		},
+		{
+			"path": "pages/user/profile",
+			"style": {
+				"navigationBarTitleText": "个人中心"
+			}
+		},
+		{
+			"path": "pages/planning/life/index",
+			"style": {
+				"navigationBarTitleText": "人生规划"
+			}
+		},
+		{
+			"path": "pages/planning/life/detail",
+			"style": {
+				"navigationBarTitleText": "规划详情"
+			}
+		},
+		{
+			"path": "pages/planning/life/create",
+			"style": {
+				"navigationBarTitleText": "新建人生规划"
+			}
+		},
+		{
+			"path": "pages/planning/career/index",
+			"style": {
+				"navigationBarTitleText": "事业规划"
+			}
+		},
+		{
+			"path": "pages/planning/project/index",
+			"style": {
+				"navigationBarTitleText": "项目规划"
+			}
+		},
+		{
+			"path": "pages/planning/mood/index",
+			"style": {
+				"navigationBarTitleText": "情绪规划"
+			}
+		},
+		{
+			"path": "pages/planning/health/index",
+			"style": {
+				"navigationBarTitleText": "健康规划"
+			}
+		},
+		{
+			"path": "pages/planning/time/index",
+			"style": {
+				"navigationBarTitleText": "时间规划"
+			}
+		},
+		{
+			"path": "pages/planning/habit/index",
+			"style": {
+				"navigationBarTitleText": "习惯规划"
+			}
+		},
+		{
+			"path": "pages/iching/divination/index",
+			"style": {
+				"navigationBarTitleText": "起卦"
+			}
+		},
+		{
+			"path": "pages/iching/hexagram/index",
+			"style": {
+				"navigationBarTitleText": "卦象库"
+			}
+		},
+		{
+			"path": "pages/iching/stage/index",
+			"style": {
+				"navigationBarTitleText": "人生阶段"
+			}
+		},
+		{
+			"path": "pages/settings/index",
+			"style": {
+				"navigationBarTitleText": "设置"
+			}
+		}
+	],
+	"tabBar": {
+		"color": "#999",
+		"selectedColor": "#07c160",
+		"backgroundColor": "#fff",
+		"list": [
+			{
+				"pagePath": "pages/index/index",
+				"text": "首页"
+			},
+			{
+				"pagePath": "pages/iching/divination/index",
+				"text": "起卦"
+			},
+			{
+				"pagePath": "pages/user/profile",
+				"text": "我的"
+			}
+		]
+	},
+	"globalStyle": {
+		"navigationBarTextStyle": "black",
+		"navigationBarTitleText": "规划助手",
+		"navigationBarBackgroundColor": "#FFFFFF",
+		"backgroundColor": "#F5F5F5"
+	},
+	"uniIdRouter": {}
+}

@@ -1,0 +1,60 @@
+name: CI - 持续集成
+
+on:
+  push:
+    branches: [develop, feature/**]
+  pull_request:
+    branches: [master, develop]
+
+jobs:
+  backend-test:
+    name: 后端测试
+    runs-on: ubuntu-latest
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: test_password
+          MYSQL_DATABASE: planning_app_test
+        ports:
+          - 3306:3306
+        options: --health-cmd="mysqladmin ping" --health-interval=10s --health-timeout=5s --health-retries=3
+
+    steps:
+      - name: Checkout代码
+        uses: actions/checkout@v4
+
+      - name: 设置Node.js环境
+        uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: 'npm'
+          cache-dependency-path: backend/package-lock.json
+
+      - name: 安装后端依赖
+        working-directory: backend
+        run: npm ci
+
+      - name: 运行ESLint
+        working-directory: backend
+        run: npm run lint
+
+      - name: 运行单元测试
+        working-directory: backend
+        env:
+          NODE_ENV: test
+          DB_HOST: localhost
+          DB_PORT: 3306
+          DB_USERNAME: root
+          DB_PASSWORD: test_password
+          DB_DATABASE: planning_app_test
+          JWT_SECRET: test_jwt_secret_for_ci_only
+        run: npm test -- --coverage
+
+      - name: 上传测试覆盖率报告
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: coverage-report
+          path: backend/coverage/
