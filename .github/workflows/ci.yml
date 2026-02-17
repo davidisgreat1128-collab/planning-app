@@ -40,6 +40,20 @@ jobs:
         working-directory: backend
         run: npm run lint
 
+      - name: 创建测试环境变量文件
+        working-directory: backend
+        run: |
+          echo "NODE_ENV=test" > .env.test
+          echo "PORT=3001" >> .env.test
+          echo "DB_HOST=localhost" >> .env.test
+          echo "DB_PORT=3306" >> .env.test
+          echo "DB_USERNAME=root" >> .env.test
+          echo "DB_PASSWORD=test_password" >> .env.test
+          echo "DB_DATABASE=planning_app_test" >> .env.test
+          echo "JWT_SECRET=test_jwt_secret_for_ci_only" >> .env.test
+          echo "JWT_EXPIRES_IN=1h" >> .env.test
+          echo "LOG_LEVEL=error" >> .env.test
+
       - name: 运行单元测试
         working-directory: backend
         env:
