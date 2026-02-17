@@ -528,6 +528,88 @@ const { success, error } = require('../utils/response');
 res.json(success(data, '操作成功'));
 ```
 
+### 7.5 中文优先规范 ⭐ (重要)
+
+**以下所有内容必须使用中文，无例外：**
+
+#### 代码注释必须写中文
+
+```javascript
+// ✅ 正确 - 中文注释
+/**
+ * 根据用户ID获取用户信息
+ * @param {number} userId - 用户ID
+ * @returns {Promise<object>} 用户对象（不含密码哈希）
+ * @throws {NotFoundError} 用户不存在时抛出
+ */
+async function getUserById(userId) {
+  // 查询数据库，软删除的用户不会被查到
+  const user = await User.findByPk(userId);
+  if (!user) {
+    throw new NotFoundError('用户'); // 抛出标准404错误
+  }
+  return user.toSafeJSON(); // 移除敏感字段后返回
+}
+
+// ❌ 错误 - 英文注释
+// Get user by ID from database
+async function getUserById(userId) { ... }
+```
+
+#### 错误信息必须写中文
+
+```javascript
+// ✅ 正确
+throw new ValidationError('邮箱格式不正确', 'email');
+throw new NotFoundError('用户不存在');
+return error(res, '服务器内部错误', 500);
+
+// ❌ 错误
+throw new ValidationError('Invalid email format');
+```
+
+#### 文档文件（.md）必须用中文，文件名也要用中文
+
+```
+✅ 正确文件名:
+  用户认证接口.md
+  数据库表设计.md
+  每日工作日志-2026-02-17.md
+
+❌ 错误文件名:
+  user-auth-api.md
+  database-design.md
+  daily-log-2026-02-17.md
+```
+
+#### 唯一例外（以下保持英文）
+- 代码变量名、函数名、类名（遵循 camelCase/PascalCase 命名规范）
+- 数据库表名、字段名（遵循 snake_case）
+- 第三方库、框架的专有名词（如 Express、Sequelize、JWT）
+- Git commit 中的 type/scope 部分（如 `feat(auth):` 中的 `feat` 和 `auth`）
+
+### 7.6 文档（.md 文件）管理规范
+
+**所有 .md 文件统一归口：** `.claude/文档导航.md` 是全项目 .md 文件的索引入口。
+
+#### 创建新 .md 文件的规则
+
+1. **文件名用中文**，格式：`功能描述.md`（如 `用户认证接口.md`）
+2. **创建后必须在 `.claude/文档导航.md` 登记**，否则会成为"孤儿文档"
+3. **存放位置规则**：
+
+| 文档类型 | 存放位置 | 示例 |
+|---------|---------|------|
+| 每日工作日志 | `docs/06-AI协作日志/01-每日工作日志/YYYY/MM-月份/` | `2026-02-17-项目初始化.md` |
+| 架构决策(ADR) | `docs/06-AI协作日志/02-架构决策记录/` | `ADR-001-技术栈选型.md` |
+| Bug记录 | `docs/06-AI协作日志/03-Bug分析记录/` | `BUG-001-登录超时.md` |
+| API接口文档 | `docs/03-API文档/` | `用户认证接口.md` |
+| 技术设计文档 | `docs/02-技术设计/` | `数据库表设计.md` |
+| Claude协作相关 | `.claude/` 对应子目录 | — |
+| GitHub模板 | `.github/` | 保持英文（GitHub平台要求） |
+
+4. **禁止在根目录随意创建 .md 文件**（CHANGELOG.md / README.md 除外）
+
 ---
 
 ## 8. 🚨 关键注意事项
@@ -544,6 +626,9 @@ res.json(success(data, '操作成功'));
 | 直接修改master分支 | 违反Git Flow |
 | 提交.env文件 | 泄露MySQL密码等敏感信息 |
 | 使用var声明变量 | 违反ES6规范 |
+| 代码注释用英文 | 违反中文优先规范（第7.5节） |
+| 新建.md文件用英文命名 | 违反中文优先规范（第7.5节） |
+| 创建.md文件不登记导航 | 导致文档成为"孤儿"，无法找到 |
 
 ### 必须执行 ✅
 
