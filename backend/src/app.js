@@ -42,17 +42,16 @@ app.get('/health', (req, res) => {
 });
 
 // ============================================================
-// API路由（后续按模块逐步注册）
+// API路由
 // ============================================================
 const apiV1 = express.Router();
 
-// TODO: 随业务模块开发逐步取消注释并添加路由
-// const authRoutes = require('./routes/auth');
+const authRoutes = require('./routes/auth');
 // const userRoutes = require('./routes/user');
 // const planningRoutes = require('./routes/planning');
 // const ichingRoutes = require('./routes/iching');
 
-// apiV1.use('/auth', authRoutes);
+apiV1.use('/auth', authRoutes);
 // apiV1.use('/users', userRoutes);
 // apiV1.use('/planning', planningRoutes);
 // apiV1.use('/iching', ichingRoutes);
