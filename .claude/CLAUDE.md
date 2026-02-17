@@ -707,8 +707,6 @@ plus.device.getInfo(...)
 | 直接修改master分支 | 违反Git Flow |
 | 提交.env文件 | 泄露MySQL密码等敏感信息 |
 | 使用var声明变量 | 违反ES6规范 |
-| 代码注释用英文 | 违反中文优先规范（第7.5节） |
-| 新建.md文件用英文命名 | 违反中文优先规范（第7.5节） |
 | 创建.md文件不登记导航 | 导致文档成为"孤儿"，无法找到 |
 | 输入框仅用 `v-model` | App 端行为不一致，必须用 `:value` + `@input`（第7.7节） |
 | 直接用 `localStorage` | App 端不支持，必须用 `uni.setStorageSync`（第7.7节） |
