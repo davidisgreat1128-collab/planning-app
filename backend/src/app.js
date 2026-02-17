@@ -47,13 +47,13 @@ app.get('/health', (req, res) => {
 const apiV1 = express.Router();
 
 const authRoutes = require('./routes/auth');
-// const userRoutes = require('./routes/user');
-// const planningRoutes = require('./routes/planning');
+const userRoutes = require('./routes/user');
+const planningRoutes = require('./routes/planning');
 // const ichingRoutes = require('./routes/iching');
 
 apiV1.use('/auth', authRoutes);
-// apiV1.use('/users', userRoutes);
-// apiV1.use('/planning', planningRoutes);
+apiV1.use('/users', userRoutes);
+apiV1.use('/planning', planningRoutes);
 // apiV1.use('/iching', ichingRoutes);
 
 app.use('/api/v1', apiV1);
