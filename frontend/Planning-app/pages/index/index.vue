@@ -60,8 +60,12 @@ export default {
   onLoad() {
     // 进入首页时检查登录状态，未登录则跳转
     const userStore = useUserStore();
+    console.log('[Home] onLoad, isLoggedIn:', userStore.isLoggedIn, 'token:', !!userStore.token);
     if (!userStore.isLoggedIn) {
+      console.warn('[Home] 未登录，跳转登录页');
       uni.reLaunch({ url: '/pages/user/login' });
+    } else {
+      console.log('[Home] 已登录，用户:', userStore.userInfo);
     }
   },
 

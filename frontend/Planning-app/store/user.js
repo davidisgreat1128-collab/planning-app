@@ -9,9 +9,9 @@ import { login, register, logout, getProfile } from '@/api/user.js';
 export const useUserStore = defineStore('user', {
   state: () => ({
     /** @type {string|null} */
-    token: getToken(),
+    token: null,
     /** @type {object|null} */
-    userInfo: getUserInfo(),
+    userInfo: null,
     /** 是否正在加载 */
     loading: false
   }),

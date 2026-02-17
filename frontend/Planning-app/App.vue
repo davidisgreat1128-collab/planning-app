@@ -1,15 +1,25 @@
 <script>
-import { getToken } from '@/utils/storage.js';
+import { getToken, getUserInfo } from '@/utils/storage.js';
+import { useUserStore } from '@/store/user.js';
 
 export default {
   onLaunch() {
-    // 启动时检查登录状态
+    // 启动时从本地存储恢复登录状态到 store
     const token = getToken();
-    if (!token) {
-      // 未登录：跳转登录页（reLaunch 清空页面栈）
-      uni.reLaunch({ url: '/pages/user/login' });
+    const userInfo = getUserInfo();
+    console.log('[App] onLaunch, token:', !!token);
+
+    if (token) {
+      // 有 Token：恢复登录状态
+      const userStore = useUserStore();
+      userStore.token = token;
+      userStore.userInfo = userInfo;
+    } else {
+      // 无 Token：延迟跳转登录页（等待首页组件加载完再跳转）
+      setTimeout(() => {
+        uni.reLaunch({ url: '/pages/user/login' });
+      }, 100);
     }
-    // 已登录：pages.json 第一个页面（index/index）正常加载
   },
 
   onShow() {},

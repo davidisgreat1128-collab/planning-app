@@ -28,32 +28,41 @@ function request({ url, method = 'GET', data = {}, auth = true } = {}) {
       }
     }
 
+    const fullUrl = `${config.BASE_URL}${url}`;
+    console.log(`[Request] ${method} ${fullUrl}`, data);
+
     uni.request({
-      url: `${config.BASE_URL}${url}`,
+      url: fullUrl,
       method,
       data,
       header,
       timeout: config.REQUEST_TIMEOUT,
       success: (res) => {
+        console.log(`[Response] ${method} ${fullUrl} → ${res.statusCode}`, res.data);
         if (res.statusCode === 200 || res.statusCode === 201) {
           if (res.data && res.data.success) {
             resolve(res.data.data);
           } else {
             reject(new Error(res.data?.message || '请求失败'));
           }
+        } else if (res.statusCode === 204) {
+          resolve(null);
         } else if (res.statusCode === 401) {
           // Token失效，清除本地登录状态并跳转登录页
           uni.removeStorageSync(config.TOKEN_KEY);
           uni.removeStorageSync(config.USER_INFO_KEY);
           uni.reLaunch({ url: '/pages/user/login' });
           reject(new Error('登录已过期，请重新登录'));
+        } else if (res.statusCode === 404) {
+          console.error(`[404] 接口不存在: ${method} ${fullUrl}`);
+          reject(new Error(`接口不存在: ${url}`));
         } else {
           const msg = res.data?.message || `请求失败(${res.statusCode})`;
           reject(new Error(msg));
         }
       },
       fail: (err) => {
-        console.error('网络请求失败:', err);
+        console.error(`[RequestFail] ${method} ${fullUrl}`, err);
         reject(new Error('网络连接失败，请检查网络'));
       }
     });

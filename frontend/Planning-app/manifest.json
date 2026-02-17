@@ -65,6 +65,22 @@
     "mp-toutiao" : {
         "usingComponents" : true
     },
+    /* H5特有相关 */
+    "h5" : {
+        "devServer" : {
+            "port" : 8080,
+            "disableHostCheck" : true,
+            "proxy" : {
+                "/api" : {
+                    "target" : "http://localhost:3000",
+                    "changeOrigin" : true
+                }
+            }
+        },
+        "router" : {
+            "mode" : "hash"
+        }
+    },
     "uniStatistics" : {
         "enable" : false
     },

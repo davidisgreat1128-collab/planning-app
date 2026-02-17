@@ -92,13 +92,16 @@ export default {
       this.loading = true;
       try {
         const userStore = useUserStore();
-        await userStore.login({
+        console.log('[Login] 开始登录, email:', this.form.email);
+        const result = await userStore.login({
           email: this.form.email,
           password: this.form.password
         });
-        // 登录成功，跳转首页（清空页面栈）
+        console.log('[Login] 登录成功, token已获取:', !!result?.token, 'user:', result?.user);
+        console.log('[Login] 准备跳转首页 /pages/index/index');
         uni.reLaunch({ url: '/pages/index/index' });
       } catch (err) {
+        console.error('[Login] 登录失败:', err.message, err);
         uni.showToast({ title: err.message || '登录失败，请重试', icon: 'none' });
       } finally {
         this.loading = false;
