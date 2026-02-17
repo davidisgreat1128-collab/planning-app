@@ -28,7 +28,6 @@ beforeAll(async () => {
 
 afterAll(async () => {
   await User.destroy({ where: {}, force: true });
-  await sequelize.close();
 });
 
 // 每个测试套件前注册并登录，获取Token

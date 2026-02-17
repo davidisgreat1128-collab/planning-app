@@ -64,7 +64,7 @@ jobs:
           DB_PASSWORD: test_password
           DB_DATABASE: planning_app_test
           JWT_SECRET: test_jwt_secret_for_ci_only
-        run: npm test -- --coverage
+        run: npm test -- --coverage --runInBand --forceExit
 
       - name: 上传测试覆盖率报告
         uses: actions/upload-artifact@v4

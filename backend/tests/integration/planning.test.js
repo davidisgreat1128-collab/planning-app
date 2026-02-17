@@ -46,10 +46,9 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // 清理测试数据
+  // 清理测试数据（不在此处关闭连接，避免影响其他测试套件）
   await PlanningRecord.destroy({ where: {}, force: true });
   await User.destroy({ where: {}, force: true });
-  await sequelize.close();
 });
 
 // ============================================================

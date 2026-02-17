@@ -34,9 +34,8 @@ beforeAll(async () => {
 });
 
 afterAll(async () => {
-  // 清理测试数据，关闭数据库连接
+  // 清理测试数据（不在此处关闭连接，避免影响其他测试套件）
   await User.destroy({ where: {}, force: true });
-  await sequelize.close();
 });
 
 beforeEach(async () => {
