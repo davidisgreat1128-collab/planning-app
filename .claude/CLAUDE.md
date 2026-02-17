@@ -610,6 +610,87 @@ throw new ValidationError('Invalid email format');
 
 4. **禁止在根目录随意创建 .md 文件**（CHANGELOG.md / README.md 除外）
 
+### 7.7 UniApp 条件编译规范 ⭐ (重要)
+
+**本项目必须兼容三端：Android App / iOS App / H5 浏览器端。**
+
+#### 条件编译写法
+
+```vue
+<!-- 模板中 -->
+<!-- #ifdef H5 -->
+<view>仅 H5 显示的内容</view>
+<!-- #endif -->
+
+<!-- #ifdef APP-PLUS -->
+<view>仅 App（安卓+苹果）显示的内容</view>
+<!-- #endif -->
+
+<!-- #ifdef MP-WEIXIN -->
+<view>仅微信小程序显示的内容</view>
+<!-- #endif -->
+```
+
+```javascript
+// JS 中
+// #ifdef H5
+console.log('H5 环境');
+// #endif
+
+// #ifdef APP-PLUS
+plus.device.getInfo(...)
+// #endif
+```
+
+```css
+/* 样式中 */
+/* #ifdef H5 */
+.container { max-width: 750px; margin: 0 auto; }
+/* #endif */
+```
+
+#### 常用平台标识
+
+| 标识 | 平台 |
+|------|------|
+| `H5` | 网页浏览器端 |
+| `APP-PLUS` | Android + iOS App（统一） |
+| `APP-ANDROID` | 仅 Android |
+| `APP-IOS` | 仅 iOS |
+| `MP-WEIXIN` | 微信小程序（暂不支持） |
+
+#### 强制规范
+
+1. **状态栏高度**：App 端需额外处理状态栏，H5 不需要
+   ```vue
+   <!-- #ifdef APP-PLUS -->
+   <view :style="{ height: statusBarHeight + 'px' }"></view>
+   <!-- #endif -->
+   ```
+
+2. **输入框**：统一用 `:value` + `@input` 写法，**禁止只用 `v-model`**（H5 和 App 行为不一致）
+   ```vue
+   <!-- ✅ 三端兼容写法 -->
+   <input :value="form.email" @input="form.email = $event.detail.value" />
+
+   <!-- ❌ 禁止仅 v-model（App 端某些场景失效） -->
+   <input v-model="form.email" />
+   ```
+
+3. **本地存储**：统一用 `uni.setStorageSync` / `uni.getStorageSync`，**禁止直接用 `localStorage`**（App 端不支持）
+   ```javascript
+   // ✅ 三端兼容
+   uni.setStorageSync('key', value);
+   // ❌ 仅 H5 生效
+   localStorage.setItem('key', value);
+   ```
+
+4. **网络请求**：统一用 `uni.request` 封装或项目 `utils/request.js`，**禁止直接用 `axios`**（App 端需特殊处理）
+
+5. **跳转路由**：统一用 `uni.navigateTo` / `uni.reLaunch` 等 uni API，**禁止用 `router.push`**
+
+6. **样式单位**：统一用 `rpx`（自动适配不同屏幕），避免直接写 `px`（不同设备差异大）
+
 ---
 
 ## 8. 🚨 关键注意事项
@@ -629,6 +710,10 @@ throw new ValidationError('Invalid email format');
 | 代码注释用英文 | 违反中文优先规范（第7.5节） |
 | 新建.md文件用英文命名 | 违反中文优先规范（第7.5节） |
 | 创建.md文件不登记导航 | 导致文档成为"孤儿"，无法找到 |
+| 输入框仅用 `v-model` | App 端行为不一致，必须用 `:value` + `@input`（第7.7节） |
+| 直接用 `localStorage` | App 端不支持，必须用 `uni.setStorageSync`（第7.7节） |
+| 直接用 `axios` 发请求 | App 端需特殊处理，必须用项目封装的 `utils/request.js`（第7.7节） |
+| 用 `router.push` 跳转 | 必须用 `uni.navigateTo` / `uni.reLaunch` 等 uni API（第7.7节） |
 
 ### 必须执行 ✅
 
