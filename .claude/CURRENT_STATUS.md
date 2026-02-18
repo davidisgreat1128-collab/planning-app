@@ -3,7 +3,7 @@
 > **最后更新**: 2026-02-18（第6次会话，联调修复：holiday API路由对齐、登录/注册跳转修正）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 待推送（联调修复）
+> **最新commit**: 4aef906 fix(frontend): 联调修复 - holiday API路由对齐、登录注册跳转修正
 
 ---
 
