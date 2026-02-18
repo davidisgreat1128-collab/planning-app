@@ -1,7 +1,7 @@
 'use strict';
 
 const alarmService = require('../services/alarmService');
-const { success, successCreated } = require('../utils/response');
+const { success, created } = require('../utils/response');
 
 /**
  * POST /api/v1/alarms - 创建闹铃
@@ -9,7 +9,7 @@ const { success, successCreated } = require('../utils/response');
 async function createAlarm(req, res, next) {
   try {
     const alarm = await alarmService.createAlarm(req.user.id, req.body);
-    res.status(201).json(successCreated(alarm, '闹铃创建成功'));
+    return created(res, alarm, '闹铃创建成功');
   } catch (err) {
     next(err);
   }
@@ -83,7 +83,7 @@ async function getAlarmSounds(req, res, next) {
 async function createAlarmSound(req, res, next) {
   try {
     const sound = await alarmService.createAlarmSound(req.user.id, req.body);
-    res.status(201).json(successCreated(sound, '录音已保存'));
+    return created(res, sound, '录音已保存');
   } catch (err) {
     next(err);
   }

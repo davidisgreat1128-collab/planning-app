@@ -1,7 +1,7 @@
 'use strict';
 
 const taskService = require('../services/taskService');
-const { success, successCreated } = require('../utils/response');
+const { success, created } = require('../utils/response');
 const { ValidationError } = require('../utils/errors');
 
 /**
@@ -11,7 +11,7 @@ const { ValidationError } = require('../utils/errors');
 async function createTask(req, res, next) {
   try {
     const task = await taskService.createTask(req.user.id, req.body);
-    res.status(201).json(successCreated(task, '任务创建成功'));
+    return created(res, task, '任务创建成功');
   } catch (err) {
     next(err);
   }

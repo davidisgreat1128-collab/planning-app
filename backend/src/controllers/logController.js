@@ -1,7 +1,7 @@
 'use strict';
 
 const logService = require('../services/logService');
-const { success, successCreated } = require('../utils/response');
+const { success, created } = require('../utils/response');
 const { ValidationError } = require('../utils/errors');
 
 /**
@@ -10,7 +10,7 @@ const { ValidationError } = require('../utils/errors');
 async function createLog(req, res, next) {
   try {
     const log = await logService.createLog(req.user.id, req.body);
-    res.status(201).json(successCreated(log, '日志创建成功'));
+    return created(res, log, '日志创建成功');
   } catch (err) {
     next(err);
   }
@@ -69,7 +69,7 @@ async function convertToTask(req, res, next) {
       req.user.id,
       req.body
     );
-    res.status(201).json(successCreated(result, '日志已转化为任务'));
+    return created(res, result, '日志已转化为任务');
   } catch (err) {
     next(err);
   }

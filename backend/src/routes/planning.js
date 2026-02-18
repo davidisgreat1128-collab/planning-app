@@ -131,43 +131,21 @@ router.patch('/:id/status', authenticate, validate(updateStatusSchema), planning
 router.delete('/:id', authenticate, planningController.remove);
 
 // ============================================================
-// 规划进度接口
+// 规划进度接口（由 planProgressController 统一管理）
 // ============================================================
-const planProgressService = require('../services/planProgressService');
-const { success, successCreated } = require('../utils/response');
+const planProgressController = require('../controllers/planProgressController');
 
 /**
  * POST /api/v1/planning/:id/progress
  * 记录规划进度（0-100）
  * Body: { progressPct, note?, logId? }
  */
-router.post('/:id/progress', authenticate, async (req, res, next) => {
-  try {
-    const progressLog = await planProgressService.recordProgress(
-      parseInt(req.params.id),
-      req.user.id,
-      req.body
-    );
-    res.status(201).json(successCreated(progressLog, '进度记录成功'));
-  } catch (err) {
-    next(err);
-  }
-});
+router.post('/:id/progress', authenticate, planProgressController.recordProgress);
 
 /**
  * GET /api/v1/planning/:id/progress
  * 获取规划进度历史
  */
-router.get('/:id/progress', authenticate, async (req, res, next) => {
-  try {
-    const result = await planProgressService.getProgressHistory(
-      parseInt(req.params.id),
-      req.user.id
-    );
-    res.json(success(result));
-  } catch (err) {
-    next(err);
-  }
-});
+router.get('/:id/progress', authenticate, planProgressController.getProgressHistory);
 
 module.exports = router;
