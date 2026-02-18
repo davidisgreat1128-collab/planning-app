@@ -530,20 +530,23 @@ function onCalTouchStart(e) {
 }
 
 function onCalTouchMove(e) {
-  if (calTouchMoved) return; // 方向已判断，不重复
+  if (calTouchMoved) return; // 方向已锁定，不重复判断
   const dx = e.touches[0].clientX - calTouchStartX;
   const dy = e.touches[0].clientY - calTouchStartY;
-  if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
-
+  const adx = Math.abs(dx);
+  const ady = Math.abs(dy);
+  // 阈值 12px，且水平/垂直比例差距足够大才锁定方向，避免斜向误判
+  if (adx < 12 && ady < 12) return;
   calTouchMoved = true;
-  calTouchDir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
+  calTouchDir = adx > ady * 1.2 ? 'h' : (ady > adx * 1.2 ? 'v' : '');
 }
 
 function onCalTouchEnd(e) {
+  if (!calTouchMoved || calTouchDir === '') return; // 未达到方向判断阈值，视为点击，不触发滑动
   const dx = e.changedTouches[0].clientX - calTouchStartX;
   const dy = e.changedTouches[0].clientY - calTouchStartY;
 
-  if (calTouchDir === 'h' && Math.abs(dx) > 50) {
+  if (calTouchDir === 'h' && Math.abs(dx) > 40) {
     // 水平滑动：切周/月
     if (calendarMode.value === 'week') {
       dx < 0 ? nextWeek() : prevWeek();
@@ -551,10 +554,10 @@ function onCalTouchEnd(e) {
       dx < 0 ? nextMonth() : prevMonth();
     }
   } else if (calTouchDir === 'v') {
-    if (calendarMode.value === 'week' && dy > 60) {
+    if (calendarMode.value === 'week' && dy > 50) {
       // 周模式下向下拉 → 展开月视图
       expandToMonth();
-    } else if (calendarMode.value === 'month' && dy < -60) {
+    } else if (calendarMode.value === 'month' && dy < -50) {
       // 月模式下向上滑 → 折叠回周视图
       collapseToWeek();
     }
@@ -577,8 +580,8 @@ function onContentTouchMove() {
 function onContentTouchEnd(e) {
   if (!contentTouchMoved) return;
   const dy = e.changedTouches[0].clientY - contentTouchStartY;
-  // 月模式下，内容区在顶部往上滑 → 折叠
-  if (calendarMode.value === 'month' && dy < -60 && contentScrollTop.value <= 0) {
+  // 月模式下，内容区在顶部往上滑 → 折叠（阈值 50px，与日历条保持一致）
+  if (calendarMode.value === 'month' && dy < -50 && contentScrollTop.value <= 0) {
     collapseToWeek();
   }
 }
@@ -802,6 +805,9 @@ function updateCurrentTime() {
 
 let _h5MouseTarget = null; // 'cal' | 'content' | null
 let _h5Dragging = false;
+let _h5RafPending = false;     // rAF 节流标志
+let _h5LastMoveX = 0;
+let _h5LastMoveY = 0;
 
 function _fakeTouch(clientX, clientY) {
   return { touches: [{ clientX, clientY }], changedTouches: [{ clientX, clientY }] };
@@ -812,28 +818,41 @@ function _onMouseDown(e) {
   const calEl = calBarRef.value?.$el ?? calBarRef.value;
   const contentEl = contentAreaRef.value?.$el ?? contentAreaRef.value;
   if (calEl && calEl.contains(e.target)) {
+    e.preventDefault(); // 阻止文字选中、浏览器默认拖拽
     _h5MouseTarget = 'cal';
     _h5Dragging = true;
+    _h5RafPending = false;
     onCalTouchStart(_fakeTouch(e.clientX, e.clientY));
   } else if (contentEl && contentEl.contains(e.target)) {
     _h5MouseTarget = 'content';
     _h5Dragging = true;
+    _h5RafPending = false;
     onContentTouchStart(_fakeTouch(e.clientX, e.clientY));
   }
 }
 
 function _onMouseMove(e) {
   if (!_h5Dragging) return;
-  if (_h5MouseTarget === 'cal') {
-    onCalTouchMove(_fakeTouch(e.clientX, e.clientY));
-  } else if (_h5MouseTarget === 'content') {
-    onContentTouchMove();
-  }
+  // 记录最新坐标，用 rAF 节流，避免高频 mousemove 阻塞主线程
+  _h5LastMoveX = e.clientX;
+  _h5LastMoveY = e.clientY;
+  if (_h5RafPending) return;
+  _h5RafPending = true;
+  requestAnimationFrame(() => {
+    _h5RafPending = false;
+    if (!_h5Dragging) return;
+    if (_h5MouseTarget === 'cal') {
+      onCalTouchMove(_fakeTouch(_h5LastMoveX, _h5LastMoveY));
+    } else if (_h5MouseTarget === 'content') {
+      onContentTouchMove();
+    }
+  });
 }
 
 function _onMouseUp(e) {
   if (!_h5Dragging) return;
   _h5Dragging = false;
+  _h5RafPending = false;
   if (_h5MouseTarget === 'cal') {
     onCalTouchEnd(_fakeTouch(e.clientX, e.clientY));
   } else if (_h5MouseTarget === 'content') {
@@ -843,7 +862,8 @@ function _onMouseUp(e) {
 }
 
 function h5BindMouseEvents() {
-  document.addEventListener('mousedown', _onMouseDown);
+  // passive: false 允许 preventDefault 在 mousedown 中生效
+  document.addEventListener('mousedown', _onMouseDown, { passive: false });
   document.addEventListener('mousemove', _onMouseMove);
   document.addEventListener('mouseup', _onMouseUp);
   document.addEventListener('mouseleave', _onMouseUp);
@@ -978,6 +998,10 @@ onUnmounted(() => {
   /* 默认周模式高度不限制，由内容撑开 */
   overflow: hidden;
   transition: height 0.3s ease;
+  /* 禁止浏览器接管触摸/鼠标滚动，保证手势完整传递给自定义处理器 */
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 /* ============================================================
