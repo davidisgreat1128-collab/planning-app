@@ -43,77 +43,66 @@
         class="btn-primary"
         :loading="loading"
         :disabled="loading"
-        @click="handleLogin"
+        @tap="handleLogin"
       >
         登录
       </button>
 
-      <button class="btn-text" @click="goRegister">
+      <button class="btn-text" @tap="goRegister">
         没有账号？立即注册
       </button>
     </view>
   </view>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue';
 import { useUserStore } from '@/store/user.js';
 
-export default {
-  name: 'LoginPage',
+// App 端状态栏高度
+const statusBarHeight = ref(0);
+const userStore = useUserStore();
 
-  data() {
-    return {
-      form: {
-        email: '',
-        password: ''
-      },
-      loading: false,
-      // App 端状态栏高度
-      statusBarHeight: 0
-    };
-  },
+const form = ref({
+  email: '',
+  password: ''
+});
+const loading = ref(false);
 
-  onLoad() {
-    // #ifdef APP-PLUS
-    // 获取 App 端状态栏高度
-    this.statusBarHeight = plus.navigator.getStatusbarHeight();
-    // #endif
-  },
+// #ifdef APP-PLUS
+// 获取 App 端状态栏高度
+onLoad(() => {
+  statusBarHeight.value = plus.navigator.getStatusbarHeight();
+});
+// #endif
 
-  methods: {
-    async handleLogin() {
-      if (!this.form.email) {
-        return uni.showToast({ title: '请输入邮箱', icon: 'none' });
-      }
-      if (!this.form.password) {
-        return uni.showToast({ title: '请输入密码', icon: 'none' });
-      }
-
-      this.loading = true;
-      try {
-        const userStore = useUserStore();
-        console.log('[Login] 开始登录, email:', this.form.email);
-        const result = await userStore.login({
-          email: this.form.email,
-          password: this.form.password
-        });
-        console.log('[Login] 登录成功, token已获取:', !!result?.token, 'user:', result?.user);
-        console.log('[Login] 准备跳转日历主页 /pages/calendar/index');
-        // 登录成功后跳转到日历主页（TabBar 第一个）
-        uni.reLaunch({ url: '/pages/calendar/index' });
-      } catch (err) {
-        console.error('[Login] 登录失败:', err.message, err);
-        uni.showToast({ title: err.message || '登录失败，请重试', icon: 'none' });
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    goRegister() {
-      uni.navigateTo({ url: '/pages/user/register' });
-    }
+async function handleLogin() {
+  if (!form.value.email) {
+    return uni.showToast({ title: '请输入邮箱', icon: 'none' });
   }
-};
+  if (!form.value.password) {
+    return uni.showToast({ title: '请输入密码', icon: 'none' });
+  }
+
+  loading.value = true;
+  try {
+    const result = await userStore.login({
+      email: form.value.email,
+      password: form.value.password
+    });
+    console.log('[Login] 登录成功, user:', result?.user?.nickname);
+    // 登录成功后跳转到日历主页（TabBar 第一个）
+    uni.reLaunch({ url: '/pages/calendar/index' });
+  } catch (err) {
+    uni.showToast({ title: err.message || '登录失败，请重试', icon: 'none' });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function goRegister() {
+  uni.navigateTo({ url: '/pages/user/register' });
+}
 </script>
 
 <style scoped>
