@@ -22,6 +22,7 @@
 
     <!-- 日历条（周模式 or 月模式） -->
     <view
+      ref="calBarRef"
       class="calendar-bar"
       :class="{ 'month-mode': calendarMode === 'month' }"
       @touchstart="onCalTouchStart"
@@ -90,6 +91,7 @@
 
     <!-- 内容区（可滚动） -->
     <scroll-view
+      ref="contentAreaRef"
       class="content-area"
       scroll-y
       :scroll-top="scrollTop"
@@ -377,6 +379,10 @@ let timeTimer = null;
 const contentScrollTop = ref(0);
 // 用于重置 scroll-view scrollTop（先设大值再设0达到重置效果时避免触发）
 const scrollTop = ref(0);
+
+// H5 鼠标模拟触摸用 DOM ref
+const calBarRef = ref(null);
+const contentAreaRef = ref(null);
 
 // 触摸追踪
 let calTouchStartX = 0;
@@ -781,6 +787,77 @@ function updateCurrentTime() {
 }
 
 // ============================================================
+// H5 鼠标模拟触摸（条件编译，仅 H5 端构建时包含）
+// ============================================================
+// #ifdef H5
+/**
+ * 把鼠标事件转换为与 touch 事件相同的结构，
+ * 复用 onCalTouchStart/Move/End 和 onContentTouchStart/Move/End。
+ *
+ * 策略：
+ * - mousedown 在 calBarEl / contentAreaEl 上时，记录目标并触发对应 TouchStart
+ * - mousemove / mouseup 绑定在 document 上，保证鼠标移出元素后仍能触发 End
+ * - mouseleave document 视同 mouseup
+ */
+
+let _h5MouseTarget = null; // 'cal' | 'content' | null
+let _h5Dragging = false;
+
+function _fakeTouch(clientX, clientY) {
+  return { touches: [{ clientX, clientY }], changedTouches: [{ clientX, clientY }] };
+}
+
+function _onMouseDown(e) {
+  if (e.button !== 0) return; // 只处理左键
+  const calEl = calBarRef.value?.$el ?? calBarRef.value;
+  const contentEl = contentAreaRef.value?.$el ?? contentAreaRef.value;
+  if (calEl && calEl.contains(e.target)) {
+    _h5MouseTarget = 'cal';
+    _h5Dragging = true;
+    onCalTouchStart(_fakeTouch(e.clientX, e.clientY));
+  } else if (contentEl && contentEl.contains(e.target)) {
+    _h5MouseTarget = 'content';
+    _h5Dragging = true;
+    onContentTouchStart(_fakeTouch(e.clientX, e.clientY));
+  }
+}
+
+function _onMouseMove(e) {
+  if (!_h5Dragging) return;
+  if (_h5MouseTarget === 'cal') {
+    onCalTouchMove(_fakeTouch(e.clientX, e.clientY));
+  } else if (_h5MouseTarget === 'content') {
+    onContentTouchMove();
+  }
+}
+
+function _onMouseUp(e) {
+  if (!_h5Dragging) return;
+  _h5Dragging = false;
+  if (_h5MouseTarget === 'cal') {
+    onCalTouchEnd(_fakeTouch(e.clientX, e.clientY));
+  } else if (_h5MouseTarget === 'content') {
+    onContentTouchEnd(_fakeTouch(e.clientX, e.clientY));
+  }
+  _h5MouseTarget = null;
+}
+
+function h5BindMouseEvents() {
+  document.addEventListener('mousedown', _onMouseDown);
+  document.addEventListener('mousemove', _onMouseMove);
+  document.addEventListener('mouseup', _onMouseUp);
+  document.addEventListener('mouseleave', _onMouseUp);
+}
+
+function h5UnbindMouseEvents() {
+  document.removeEventListener('mousedown', _onMouseDown);
+  document.removeEventListener('mousemove', _onMouseMove);
+  document.removeEventListener('mouseup', _onMouseUp);
+  document.removeEventListener('mouseleave', _onMouseUp);
+}
+// #endif
+
+// ============================================================
 // 生命周期
 // ============================================================
 onMounted(async () => {
@@ -803,10 +880,17 @@ onMounted(async () => {
   ]);
 
   timeTimer = setInterval(updateCurrentTime, 60000);
+
+  // #ifdef H5
+  h5BindMouseEvents();
+  // #endif
 });
 
 onUnmounted(() => {
   if (timeTimer) clearInterval(timeTimer);
+  // #ifdef H5
+  h5UnbindMouseEvents();
+  // #endif
 });
 </script>
 
