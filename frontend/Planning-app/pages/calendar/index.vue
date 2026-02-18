@@ -392,7 +392,7 @@ const currentWeekDates = computed(() => {
     d.setDate(d.getDate() + i);
     const dateStr = formatDate(d);
     const hasTask = taskStore.tasks.some(t =>
-      (t.dueDate || '').startsWith(dateStr)
+      (t.taskDate || '').startsWith(dateStr)
     );
     return {
       dateStr,
@@ -418,16 +418,16 @@ const currentTimeTop = computed(() => {
   return Math.round((mins / 60) * 120);
 });
 
-/** 全天任务（无 dueTime 的任务） */
+/** 全天任务（isAllDay 为 true 的任务） */
 const allDayTasks = computed(() =>
-  taskStore.tasks.filter(t => !t.dueTime && t.status !== 'done')
+  taskStore.tasks.filter(t => t.isAllDay && t.status !== 'completed')
 );
 
 /** 获取某小时的任务 */
 function getTasksAtHour(hour) {
   return taskStore.timelineTasks.filter(t => {
-    if (!t.dueTime) return false;
-    const h = parseInt(t.dueTime.split(':')[0]);
+    if (!t.startTime) return false;
+    const h = parseInt(t.startTime.split(':')[0]);
     return h === hour;
   });
 }
