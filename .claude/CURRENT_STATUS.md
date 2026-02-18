@@ -189,4 +189,37 @@
 4. **重点**：在 `frontend/` 目录进行前端联调，验证日历主页能正常展示
 5. 完善 `task-edit.vue` 的日期时间选择器
 
+---
+
+## 🚀 即开即用：接手指令（直接复制给新Claude）
+
+> 请先读 `D:\MyProject\Planning-app\.claude\CLAUDE.md` 和 `CURRENT_STATUS.md`。
+>
+> **当前状态**：最新commit `add73bb`，前端日历框架已建好，后端时间体系已全部完成（commit `16691a5`，84测试全过）。
+>
+> **下一步任务**（按优先级）：
+> 1. 检查后端 `holidayController` 返回的字段名，确认是否有 `shortLabel`，与前端 `api/holiday.js` 对齐
+> 2. 完善 `frontend/Planning-app/pages/calendar/task-edit.vue` 的日期/时间选择器（目前 `pickDate()` 和 `pickTime()` 函数只弹出 showModal 占位）
+> 3. 联调前端登录页 `pages/user/login.vue`（骨架已在，需对接后端 `/api/v1/auth/login`）
+>
+> **已知问题**：
+> - `holiday.js` 用了 `h.shortLabel` 字段，需确认后端是否返回该字段（看 `backend/src/controllers/holidayController.js`）
+> - `task-edit.vue` 的 `pickDate()` / `pickTime()` 是占位实现，需替换为 UniApp picker
+> - pages.json TabBar 没有配置图标文件（`iconPath`），视觉上只显示文字
+
+---
+
+## 📋 本文档更新规范
+
+每次会话结束前，Claude必须更新以下字段：
+
+| 字段 | 位置 | 说明 |
+|------|------|------|
+| 最后更新日期 | 文档顶部 | 格式：YYYY-MM-DD（第X次会话，简述） |
+| 最新commit | 文档顶部 | `git log --oneline -1` 的输出 |
+| 当前阶段进度 | 🎯当前阶段 | 百分比+已完成模块列表 |
+| 本次完成内容 | ✅已完成 | 新增小节，列出本次创建/修改的文件 |
+| 下一步待做 | 🔄待完成 | 精确到文件名/函数名 |
+| 接手指令 | 🚀即开即用 | **每次必须刷新**，写清楚从哪里继续 |
+
 **文档性质**: 动态文档，每次会话结束前必须更新
