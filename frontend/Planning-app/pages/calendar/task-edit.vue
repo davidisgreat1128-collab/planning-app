@@ -42,21 +42,64 @@
 
       <!-- 日期时间 -->
       <view class="form-section">
-        <text class="section-label">截止日期时间</text>
-        <view class="form-item" @tap="pickDate">
-          <text class="form-label">日期</text>
-          <text class="form-value" :class="{ placeholder: !form.dueDate }">
-            {{ form.dueDate || '选择日期' }}
-          </text>
-          <text class="form-arrow">›</text>
+        <text class="section-label">日期时间</text>
+
+        <!-- 全天开关 -->
+        <view class="form-item">
+          <text class="form-label">全天</text>
+          <switch
+            :checked="form.isAllDay"
+            @change="onAllDayChange"
+            color="#5B8CFF"
+          />
         </view>
-        <view class="form-item" @tap="pickTime">
-          <text class="form-label">时间</text>
-          <text class="form-value" :class="{ placeholder: !form.dueTime }">
-            {{ form.dueTime || '选择时间（可选）' }}
-          </text>
-          <text class="form-arrow">›</text>
-        </view>
+
+        <!-- 日期选择器（UniApp picker 原生组件） -->
+        <picker
+          mode="date"
+          :value="form.taskDate"
+          :start="minDate"
+          @change="onDateChange"
+        >
+          <view class="form-item">
+            <text class="form-label">日期</text>
+            <text class="form-value" :class="{ placeholder: !form.taskDate }">
+              {{ form.taskDate || '选择日期' }}
+            </text>
+            <text class="form-arrow">›</text>
+          </view>
+        </picker>
+
+        <!-- 时间选择器（仅非全天显示） -->
+        <template v-if="!form.isAllDay">
+          <picker
+            mode="time"
+            :value="form.startTime"
+            @change="onStartTimeChange"
+          >
+            <view class="form-item">
+              <text class="form-label">开始时间</text>
+              <text class="form-value" :class="{ placeholder: !form.startTime }">
+                {{ form.startTime || '选择开始时间' }}
+              </text>
+              <text class="form-arrow">›</text>
+            </view>
+          </picker>
+
+          <picker
+            mode="time"
+            :value="form.endTime"
+            @change="onEndTimeChange"
+          >
+            <view class="form-item">
+              <text class="form-label">结束时间</text>
+              <text class="form-value" :class="{ placeholder: !form.endTime }">
+                {{ form.endTime || '选择结束时间（可选）' }}
+              </text>
+              <text class="form-arrow">›</text>
+            </view>
+          </picker>
+        </template>
       </view>
 
       <!-- 重复规则 -->
@@ -123,7 +166,7 @@ import { ref, computed, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
 
 // ============================================================
-// Props（通过页面参数传入）
+// Store
 // ============================================================
 const taskStore = useTaskStore();
 
@@ -136,18 +179,23 @@ const presetDate = ref('');
 const isEdit = computed(() => !!taskId.value);
 
 // ============================================================
-// 表单数据
+// 表单数据（字段名与后端对齐）
 // ============================================================
 const form = ref({
   title: '',
   description: '',
   isUrgent: false,
   isImportant: false,
-  dueDate: '',
-  dueTime: '',
-  rrule: '',
+  isAllDay: true,        // 全天任务
+  taskDate: '',          // 单日任务日期 YYYY-MM-DD
+  startTime: '',         // 开始时间 HH:mm（非全天时使用）
+  endTime: '',           // 结束时间 HH:mm（可选）
+  rrule: '',             // 重复规则 RRULE 字符串
   planId: null
 });
+
+/** 日期选择最小值（今天） */
+const minDate = computed(() => formatDate(new Date()));
 
 /** 当前四象限 key */
 const currentQuadrant = computed(() => {
@@ -226,33 +274,29 @@ function selectQuadrant(q) {
   form.value.isImportant = q.isImportant;
 }
 
-/** 选择日期 */
-function pickDate() {
-  uni.showDatePickerView({
-    // 降级处理：使用 uni picker
-  });
-  // 使用 picker 组件替代（兼容小程序/App）
-  uni.chooseDate({
-    // 不同平台 API 差异，使用通用方案
-  }).catch(() => {});
-
-  // 通用方案：showActionSheet 或 showPicker
-  // 这里用 uni-ui picker 的通用写法
-  const today = form.value.dueDate || formatDate(new Date());
-  uni.showModal({
-    title: '请选择日期',
-    content: '功能完善中，请直接在输入框填写 YYYY-MM-DD 格式',
-    showCancel: false
-  });
+/** 全天开关切换 */
+function onAllDayChange(e) {
+  form.value.isAllDay = e.detail.value;
+  if (form.value.isAllDay) {
+    // 切换为全天时清空时间
+    form.value.startTime = '';
+    form.value.endTime = '';
+  }
 }
 
-/** 选择时间 */
-function pickTime() {
-  uni.showModal({
-    title: '请选择时间',
-    content: '功能完善中，请直接在输入框填写 HH:mm 格式',
-    showCancel: false
-  });
+/** 日期选择回调 */
+function onDateChange(e) {
+  form.value.taskDate = e.detail.value;  // 格式：YYYY-MM-DD
+}
+
+/** 开始时间选择回调 */
+function onStartTimeChange(e) {
+  form.value.startTime = e.detail.value;  // 格式：HH:mm
+}
+
+/** 结束时间选择回调 */
+function onEndTimeChange(e) {
+  form.value.endTime = e.detail.value;  // 格式：HH:mm
 }
 
 /** 选择重复规则 */
@@ -267,7 +311,7 @@ function pickPlan() {
   uni.showToast({ title: '规划关联功能开发中', icon: 'none' });
 }
 
-/** 格式化日期 */
+/** 格式化日期 YYYY-MM-DD */
 function formatDate(date) {
   const d = new Date(date);
   const y = d.getFullYear();
@@ -282,19 +326,32 @@ async function save() {
     uni.showToast({ title: '请填写任务标题', icon: 'none' });
     return;
   }
+  if (!form.value.taskDate) {
+    uni.showToast({ title: '请选择任务日期', icon: 'none' });
+    return;
+  }
+  if (!form.value.isAllDay && !form.value.startTime) {
+    uni.showToast({ title: '请选择开始时间', icon: 'none' });
+    return;
+  }
 
   try {
     uni.showLoading({ title: '保存中...' });
 
+    // 构建与后端字段对齐的 payload
     const payload = {
-      title: form.value.title.trim(),
+      title:       form.value.title.trim(),
       description: form.value.description || null,
-      isUrgent: form.value.isUrgent,
+      isUrgent:    form.value.isUrgent,
       isImportant: form.value.isImportant,
-      dueDate: form.value.dueDate || presetDate.value || null,
-      dueTime: form.value.dueTime || null,
-      rrule: form.value.rrule || null,
-      planId: form.value.planId || null
+      isAllDay:    form.value.isAllDay,
+      dateType:    'single',
+      taskDate:    form.value.taskDate,
+      startTime:   form.value.isAllDay ? null : (form.value.startTime || null),
+      endTime:     form.value.isAllDay ? null : (form.value.endTime || null),
+      isRecurring: !!form.value.rrule,
+      rrule:       form.value.rrule || null,
+      planId:      form.value.planId || null
     };
 
     if (isEdit.value) {
@@ -353,14 +410,16 @@ onMounted(() => {
     // 编辑模式：从 store 加载任务数据
     const task = taskStore.tasks.find(t => t.id === taskId.value);
     if (task) {
-      form.value.title = task.title || '';
+      form.value.title       = task.title       || '';
       form.value.description = task.description || '';
-      form.value.isUrgent = task.isUrgent || false;
+      form.value.isUrgent    = task.isUrgent    || false;
       form.value.isImportant = task.isImportant || false;
-      form.value.dueDate = task.dueDate || '';
-      form.value.dueTime = task.dueTime || '';
-      form.value.rrule = task.rrule || '';
-      form.value.planId = task.planId || null;
+      form.value.isAllDay    = task.isAllDay    !== false;   // 默认全天
+      form.value.taskDate    = task.taskDate    || '';
+      form.value.startTime   = task.startTime   || '';
+      form.value.endTime     = task.endTime     || '';
+      form.value.rrule       = task.rrule       || '';
+      form.value.planId      = task.planId      || null;
       // 同步重复选项下标
       const idx = repeatOptions.findIndex(r => r.value === task.rrule);
       repeatIndex.value = idx >= 0 ? idx : 0;
@@ -369,8 +428,8 @@ onMounted(() => {
 
   if (options.date) {
     presetDate.value = options.date;
-    if (!form.value.dueDate) {
-      form.value.dueDate = options.date;
+    if (!form.value.taskDate) {
+      form.value.taskDate = options.date;
     }
   }
 });
@@ -468,7 +527,7 @@ onMounted(() => {
 .form-label {
   font-size: 30rpx;
   color: #555;
-  width: 120rpx;
+  width: 160rpx;
   flex-shrink: 0;
 }
 
