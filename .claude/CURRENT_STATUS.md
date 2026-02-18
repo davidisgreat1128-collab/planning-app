@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-02-18（第7次会话，企业级后端改造：Joi校验统一、分层修复、日志统一）
+> **最后更新**: 2026-02-18（第8次会话，前端字段对齐：store/task.js + calendar/index.vue）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 3305790 refactor(backend): 企业级后端改造 - 分层修复、Joi校验、日志统一
+> **最新commit**: 982300f fix(frontend): 对齐前端字段名与后端响应结构
 
 ---
 
@@ -49,6 +49,21 @@
 - ✅ **节日种子数据**：55条（中国公历节日9条 + 农历节日12条 + 24节气 + 西方节日8条 + 国际节日4条）
 - ✅ **constants.js**：新增7个常量枚举组
 - ✅ **所有84个原有测试继续通过**（无回归）
+
+### Phase 3d - 前端字段对齐完整（第8次会话，commit: 982300f）
+- ✅ **store/task.js 字段对齐**：
+  - import 移除不存在的 `updateTaskStatus`
+  - 四象限计算属性状态枚举 `'done'` → `'completed'`（urgentImportant / notUrgentImportant / urgentNotImportant / notUrgentNotImportant / doneTasks 共5处）
+  - `timelineTasks` 改用 `t.startTime` 和 `!t.isAllDay`
+  - `fetchTasksByDate` 正确解析后端 `{ single, range, recurring }` 三分结构
+  - `addTask` 用 `data.taskDate` 替代 `data.dueDate`
+  - `toggleDone` 用 `updateTask(id, { status })` 替代不存在的 `updateTaskStatus`
+- ✅ **calendar/index.vue 字段对齐**：
+  - `currentWeekDates` hasTask 判断：`t.dueDate` → `t.taskDate`
+  - `allDayTasks`：`!t.dueTime` → `t.isAllDay`，状态判断 `'done'` → `'completed'`
+  - `getTasksAtHour`：`t.dueTime` → `t.startTime`
+- ✅ **task-edit.vue 完善**（第8次会话，commit: b1e959a）：picker 替换、isAllDay switch、字段名对齐
+- ✅ **profile.vue 完善**（第8次会话，commit: b4d360c）：`<script setup>`、蓝色渐变头部、账号信息展示
 
 ### Phase 3c - 企业级后端改造（第7次会话，commit: 3305790）
 - ✅ **Bug修复：successCreated → created**（5处，分布于 task/log/alarm Controller 和 planning 路由）
@@ -106,37 +121,33 @@
 
 1. **前端联调**（最关键）：
    - 启动后端服务，验证各 API 接口是否能正常请求
-   - 修复 `holiday.js` API 的响应格式对接（后端返回格式需确认）
-   - task/log 的创建/列表接口联调测试
+   - `pages/calendar/index.vue` 的 `loadTasks()` → `fetchTasksByDate(date)` 链路端到端测试
+   - task/log 创建/列表联调，确认字段完全对齐
 
-2. **日期时间选择器完善**：
-   - `task-edit.vue` 中的日期/时间选择（目前为 showModal 占位）
-   - 可考虑使用 `uni-datetime-picker` 组件
-
-3. **前端登录/注册页联调**：
+2. **前端登录/注册页联调**：
    - `pages/user/login.vue`（骨架已存在，需联调后端）
    - `pages/user/register.vue`（需新建）
 
-4. **闹铃功能**（Phase 4）：
+3. **闹铃功能**（Phase 4）：
    - 前端闹铃设置页面
    - 调用后端 `/api/v1/alarms` 接口
 
-5. **易经（IChingHexagram）模块**（可选）：
+4. **易经（IChingHexagram）模块**（可选）：
    - 64卦数据表 + 占卦算法
 
-6. **TabBar 图标配置**：
+5. **TabBar 图标配置**：
    - `pages.json` 中 TabBar 的 `iconPath` 和 `selectedIconPath` 需配置真实图标文件
 
 ---
 
 ## ⚠️ 已知问题和注意事项
 
-- ⚠️ `task-edit.vue` 日期/时间 Picker 目前是 showModal 占位，需完善为真实 picker
 - ⚠️ `holiday API` 已对齐（返回 `holidayMap` / `lunarMap` 对象，`calendar/index.vue` 已适配）
 - ⚠️ `relatedStage` 字段的校验用的是中文 name
 - ⚠️ .env.development 含 MySQL 密码，绝对不能提交
 - ⚠️ bcrypt@6.0.0 在 dependencies（生产必须），supertest@7.2.2 在 devDependencies
 - ⚠️ `routes/log.js` 的 `getLogsQuerySchema` 用 `.or('date', 'start')` 约束，前端调用必须传其中之一
+- ⚠️ `pages.json` TabBar 没有配置图标文件（`iconPath`），视觉上只显示文字
 
 ---
 
@@ -210,17 +221,21 @@
 
 > 请先读 `D:\MyProject\Planning-app\.claude\CLAUDE.md` 和 `CURRENT_STATUS.md`。
 >
-> **当前状态**：最新commit `3305790`，后端企业级改造完成（Joi校验、分层修复、日志统一）。
+> **当前状态**：最新commit `982300f`，前后端字段名已全面对齐（store/task.js + calendar/index.vue + api/task.js + api/log.js + task-edit.vue + profile.vue）。
 >
 > **下一步任务**（按优先级）：
-> 1. **完善 `task-edit.vue` 日期/时间选择器**：`pickDate()` / `pickTime()` 目前是 showModal 占位，需换成 UniApp `<picker>` 组件（mode="date" / mode="time"），并正确写入 `form.taskDate`、`form.startTime`、`form.endTime`
-> 2. **完善 `pages/user/profile.vue`**：展示用户信息（调用 `GET /api/v1/users/me`），对接退出登录（清空 token/pinia store → 跳转登录页）
-> 3. **日历主页任务加载联调**：`pages/calendar/index.vue` 中 `loadTasks()` 调用 `getTasks({ date })` 后，响应结构为 `{ single: [], range: [], recurring: [] }`，需确保渲染逻辑对应
+> 1. **前端联调**：启动后端服务（`cd backend && npm run dev`），在 UniApp 中调通日历主页任务加载（`fetchTasksByDate` → 后端 `/api/v1/tasks?date=YYYY-MM-DD` → 前端渲染）
+> 2. **login.vue 联调**：`pages/user/login.vue` 已有骨架，需联调后端 `POST /api/v1/auth/login`，登录成功后保存 token 并跳转日历主页
+> 3. **register.vue 新建**：注册页，调用 `POST /api/v1/auth/register`，注意后端 Joi 要求密码含字母+数字
+> 4. **闹铃功能**（Phase 4）
+>
+> **字段对齐已完成，无需再改**：
+> - 后端任务字段：`taskDate` / `startTime` / `endTime` / `isAllDay` / `dateType`
+> - 任务状态枚举：`'pending'` / `'completed'` / `'skipped'`（不是 `'done'`）
+> - 响应结构：`GET /api/v1/tasks?date=` 返回 `{ date, single: [], range: [], recurring: [] }`
 >
 > **已知问题**：
-> - `task-edit.vue` 的 `pickDate()` / `pickTime()` 是占位实现（showModal），需替换为真实 picker
 > - `pages.json` TabBar 没有配置图标文件（`iconPath`），视觉上只显示文字
-> - `register.vue` 密码校验要求含字母+数字（后端 Joi schema 也有此要求），注意提示一致
 > - `routes/log.js` GET 接口要求 `date` 或 `start` 参数必填，前端不能裸调 `getLogs({})`
 
 ---
