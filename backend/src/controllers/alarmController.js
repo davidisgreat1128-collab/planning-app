@@ -23,7 +23,7 @@ async function getAlarms(req, res, next) {
     const alarms = await alarmService.getAlarms(req.user.id, {
       activeOnly: req.query.activeOnly === 'true'
     });
-    res.json(success({ alarms }));
+    return success(res, { alarms });
   } catch (err) {
     next(err);
   }
@@ -35,7 +35,7 @@ async function getAlarms(req, res, next) {
 async function updateAlarm(req, res, next) {
   try {
     const alarm = await alarmService.updateAlarm(parseInt(req.params.id), req.user.id, req.body);
-    res.json(success(alarm, '闹铃更新成功'));
+    return success(res, alarm, '闹铃更新成功');
   } catch (err) {
     next(err);
   }
@@ -47,7 +47,7 @@ async function updateAlarm(req, res, next) {
 async function toggleAlarm(req, res, next) {
   try {
     const alarm = await alarmService.toggleAlarm(parseInt(req.params.id), req.user.id);
-    res.json(success(alarm, alarm.isActive ? '闹铃已启用' : '闹铃已禁用'));
+    return success(res, alarm, alarm.isActive ? '闹铃已启用' : '闹铃已禁用');
   } catch (err) {
     next(err);
   }
@@ -59,7 +59,7 @@ async function toggleAlarm(req, res, next) {
 async function deleteAlarm(req, res, next) {
   try {
     await alarmService.deleteAlarm(parseInt(req.params.id), req.user.id);
-    res.json(success(null, '闹铃已删除'));
+    return success(res, null, '闹铃已删除');
   } catch (err) {
     next(err);
   }
@@ -71,7 +71,7 @@ async function deleteAlarm(req, res, next) {
 async function getAlarmSounds(req, res, next) {
   try {
     const sounds = await alarmService.getAlarmSounds(req.user.id);
-    res.json(success(sounds));
+    return success(res, sounds);
   } catch (err) {
     next(err);
   }
@@ -97,7 +97,7 @@ async function updateAlarmSoundTrim(req, res, next) {
     const sound = await alarmService.updateAlarmSoundTrim(
       parseInt(req.params.id), req.user.id, req.body
     );
-    res.json(success(sound, '剪辑信息已更新'));
+    return success(res, sound, '剪辑信息已更新');
   } catch (err) {
     next(err);
   }

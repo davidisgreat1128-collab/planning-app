@@ -35,14 +35,14 @@ async function getTasks(req, res, next) {
       const tasks = await taskService.getTasksByDate(userId, date, {
         includeCompleted: includeCompleted !== 'false'
       });
-      res.json(success({ date, ...tasks }));
+      return success(res, { date, ...tasks });
     } else if (start && end) {
       // 范围查询
       if (start > end) {
         throw new ValidationError('start 不能晚于 end');
       }
       const taskMap = await taskService.getTasksByRange(userId, start, end);
-      res.json(success({ start, end, taskMap }));
+      return success(res, { start, end, taskMap });
     } else {
       throw new ValidationError('请提供 date 或 start/end 参数');
     }
@@ -62,7 +62,7 @@ async function updateTask(req, res, next) {
       req.user.id,
       req.body
     );
-    res.json(success(task, '任务更新成功'));
+    return success(res, task, '任务更新成功');
   } catch (err) {
     next(err);
   }
@@ -83,7 +83,7 @@ async function updateOccurrence(req, res, next) {
       req.user.id,
       status
     );
-    res.json(success(occurrence, '任务实例已更新'));
+    return success(res, occurrence, '任务实例已更新');
   } catch (err) {
     next(err);
   }
@@ -96,7 +96,7 @@ async function updateOccurrence(req, res, next) {
 async function deleteTask(req, res, next) {
   try {
     await taskService.deleteTask(parseInt(req.params.id), req.user.id);
-    res.json(success(null, '任务已删除'));
+    return success(res, null, '任务已删除');
   } catch (err) {
     next(err);
   }
@@ -112,7 +112,7 @@ async function getSubtasksByPlan(req, res, next) {
       parseInt(req.params.planId),
       req.user.id
     );
-    res.json(success({ planId: parseInt(req.params.planId), tasks }));
+    return success(res, { planId: parseInt(req.params.planId), tasks });
   } catch (err) {
     next(err);
   }

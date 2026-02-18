@@ -30,7 +30,7 @@ async function getLogs(req, res, next) {
         throw new ValidationError('日期格式需为 YYYY-MM-DD');
       }
       const logs = await logService.getLogsByDate(userId, date);
-      res.json(success({ date, logs, total: logs.length }));
+      return success(res, { date, logs, total: logs.length });
     } else if (start && end) {
       if (start > end) throw new ValidationError('start 不能晚于 end');
       const result = await logService.getLogsByRange(userId, start, end, {
@@ -38,7 +38,7 @@ async function getLogs(req, res, next) {
         page: parseInt(page) || 1,
         pageSize: parseInt(pageSize) || 20
       });
-      res.json(success({ start, end, logs: result.rows, total: result.count }));
+      return success(res, { start, end, logs: result.rows, total: result.count });
     } else {
       throw new ValidationError('请提供 date 或 start/end 参数');
     }
@@ -53,7 +53,7 @@ async function getLogs(req, res, next) {
 async function updateLog(req, res, next) {
   try {
     const log = await logService.updateLog(parseInt(req.params.id), req.user.id, req.body);
-    res.json(success(log, '日志更新成功'));
+    return success(res, log, '日志更新成功');
   } catch (err) {
     next(err);
   }
@@ -81,7 +81,7 @@ async function convertToTask(req, res, next) {
 async function deleteLog(req, res, next) {
   try {
     await logService.deleteLog(parseInt(req.params.id), req.user.id);
-    res.json(success(null, '日志已删除'));
+    return success(res, null, '日志已删除');
   } catch (err) {
     next(err);
   }

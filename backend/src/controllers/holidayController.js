@@ -15,7 +15,7 @@ async function getByYear(req, res, next) {
       throw new ValidationError('年份需在2000-2100之间');
     }
     const holidays = await holidayService.getHolidaysByYear(year);
-    res.json(success({ year, holidays }));
+    return success(res, { year, holidays });
   } catch (err) {
     next(err);
   }
@@ -33,7 +33,7 @@ async function getByMonth(req, res, next) {
       throw new ValidationError('请提供有效的year和month参数（month: 1-12）');
     }
     const holidayMap = await holidayService.getHolidaysByMonth(year, month);
-    res.json(success({ year, month, holidayMap }));
+    return success(res, { year, month, holidayMap });
   } catch (err) {
     next(err);
   }
@@ -50,7 +50,7 @@ async function getByRange(req, res, next) {
       throw new ValidationError('请提供有效的start和end日期参数（YYYY-MM-DD）');
     }
     const holidayMap = await holidayService.getHolidaysByRange(start, end);
-    res.json(success({ start, end, holidayMap }));
+    return success(res, { start, end, holidayMap });
   } catch (err) {
     next(err);
   }
@@ -67,7 +67,7 @@ async function getLunarInfo(req, res, next) {
       throw new ValidationError('请提供有效的date参数（YYYY-MM-DD）');
     }
     const lunarInfo = holidayService.getLunarInfo(date);
-    res.json(success({ date, lunarInfo }));
+    return success(res, { date, lunarInfo });
   } catch (err) {
     next(err);
   }
@@ -91,7 +91,7 @@ async function getLunarInfoRange(req, res, next) {
       throw new ValidationError('日期范围最大不能超过3个月');
     }
     const lunarMap = holidayService.getLunarInfoRange(start, end);
-    res.json(success({ start, end, lunarMap }));
+    return success(res, { start, end, lunarMap });
   } catch (err) {
     next(err);
   }

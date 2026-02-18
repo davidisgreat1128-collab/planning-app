@@ -114,13 +114,17 @@ function getLunarInfo(date) {
   const solar = Solar.fromYmd(year, month, day);
   const lunar = solar.getLunar();
 
+  // lunar-javascript 约定：闰月的 getMonth() 返回负数（如闰二月返回 -2）
+  const rawMonth = lunar.getMonth();
+  const isLeapMonth = rawMonth < 0;
+
   return {
     lunarYear: lunar.getYear(),
-    lunarMonth: lunar.getMonth(),
+    lunarMonth: Math.abs(rawMonth),
     lunarDay: lunar.getDay(),
-    lunarDayName: lunar.getDayInChinese(),    // 如"初一"、"十五"
+    lunarDayName: lunar.getDayInChinese(),     // 如"初一"、"十五"
     lunarMonthName: lunar.getMonthInChinese(), // 如"正月"、"腊月"
-    isLeapMonth: lunar.isLeap(),
+    isLeapMonth,
     yearInGanZhi: lunar.getYearInGanZhi(),     // 如"丙午"
     zodiac: lunar.getYearShengXiao()            // 生肖
   };
