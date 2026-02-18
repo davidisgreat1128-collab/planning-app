@@ -7,9 +7,7 @@
     <view class="top-bar">
       <text class="top-title">做计划</text>
       <view class="top-actions">
-        <!-- 今日按钮 -->
         <text class="btn-today" @tap="goToday">今</text>
-        <!-- 视图切换按钮 -->
         <view class="view-switch">
           <text
             v-for="v in viewModes"
@@ -22,18 +20,25 @@
       </view>
     </view>
 
-    <!-- 周历条 -->
-    <view class="week-bar" @touchstart="onWeekTouchStart" @touchend="onWeekTouchEnd">
-      <!-- 星期标题行 -->
+    <!-- 日历条（周模式 or 月模式） -->
+    <view
+      class="calendar-bar"
+      :class="{ 'month-mode': calendarMode === 'month' }"
+      @touchstart="onCalTouchStart"
+      @touchmove="onCalTouchMove"
+      @touchend="onCalTouchEnd"
+    >
+      <!-- 星期头 -->
       <view class="week-header">
         <text v-for="d in weekDays" :key="d" class="week-day-name">{{ d }}</text>
       </view>
-      <!-- 7天日期行 -->
-      <view class="week-dates">
+
+      <!-- 周模式：只显示1行7天 -->
+      <view v-if="calendarMode === 'week'" class="week-dates">
         <view
           v-for="item in currentWeekDates"
           :key="item.dateStr"
-          class="week-date-item"
+          class="date-cell"
           :class="{
             selected: item.dateStr === selectedDate,
             today: item.dateStr === todayStr,
@@ -41,18 +46,44 @@
           }"
           @tap="selectDate(item.dateStr)"
         >
-          <!-- 农历/节日 -->
           <text class="lunar-label">{{ item.lunarLabel }}</text>
-          <!-- 公历日期数字 -->
           <view class="date-circle">
             <text class="date-num">{{ item.day }}</text>
           </view>
-          <!-- 有任务圆点 -->
           <view v-if="item.hasTask" class="task-dot"></view>
         </view>
       </view>
-      <!-- 月份/年份显示 -->
-      <view class="week-month-label">
+
+      <!-- 月模式：6行×7列 = 42天 -->
+      <view v-else class="month-grid">
+        <view
+          v-for="(row, ri) in monthRows"
+          :key="ri"
+          class="month-row"
+        >
+          <view
+            v-for="item in row"
+            :key="item.dateStr"
+            class="date-cell month-cell"
+            :class="{
+              selected: item.dateStr === selectedDate,
+              today: item.dateStr === todayStr,
+              'has-task': item.hasTask,
+              'other-month': item.otherMonth
+            }"
+            @tap="selectDate(item.dateStr)"
+          >
+            <text class="lunar-label">{{ item.lunarLabel }}</text>
+            <view class="date-circle">
+              <text class="date-num">{{ item.day }}</text>
+            </view>
+            <view v-if="item.hasTask" class="task-dot"></view>
+          </view>
+        </view>
+      </view>
+
+      <!-- 月份/年份标签 -->
+      <view class="cal-month-label">
         <text>{{ currentMonthLabel }}</text>
       </view>
     </view>
@@ -61,7 +92,11 @@
     <scroll-view
       class="content-area"
       scroll-y
-      @scrolltoupper="onScrollTop"
+      :scroll-top="scrollTop"
+      @scroll="onContentScroll"
+      @touchstart="onContentTouchStart"
+      @touchmove="onContentTouchMove"
+      @touchend="onContentTouchEnd"
     >
       <!-- 空状态 -->
       <view v-if="!taskStore.loading && taskStore.tasks.length === 0 && logStore.logs.length === 0" class="empty-state">
@@ -79,11 +114,11 @@
             v-for="task in allDayTasks"
             :key="task.id"
             class="task-item"
-            :class="['quad-' + getQuadrant(task), { done: task.status === 'done' }]"
+            :class="['quad-' + getQuadrant(task), { done: task.status === 'completed' }]"
             @tap="openTask(task)"
           >
             <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-              <text class="check-icon">{{ task.status === 'done' ? '✓' : '' }}</text>
+              <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
             </view>
             <text class="task-title">{{ task.title }}</text>
             <view class="task-quad-tag" :class="'tag-' + getQuadrant(task)">
@@ -94,7 +129,7 @@
 
         <!-- 时间轴 -->
         <view class="timeline-slots">
-          <!-- 时间红线（当前时间，仅今天显示） -->
+          <!-- 当前时间红线（仅今天显示） -->
           <view
             v-if="selectedDate === todayStr"
             class="time-indicator"
@@ -104,31 +139,29 @@
             <view class="time-line"></view>
           </view>
 
-          <!-- 每小时格子 -->
           <view v-for="hour in hours" :key="hour" class="hour-slot">
             <text class="hour-label">{{ hour < 10 ? '0' + hour : hour }}:00</text>
             <view class="hour-content">
-              <!-- 该小时的任务 -->
               <view
                 v-for="task in getTasksAtHour(hour)"
                 :key="task.id"
                 class="timeline-task"
-                :class="['quad-' + getQuadrant(task), { done: task.status === 'done' }]"
+                :class="['quad-' + getQuadrant(task), { done: task.status === 'completed' }]"
                 @tap="openTask(task)"
               >
                 <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'done' ? '✓' : '' }}</text>
+                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
                 </view>
                 <view class="timeline-task-info">
                   <text class="task-title">{{ task.title }}</text>
-                  <text class="task-time-label">{{ task.dueTime }}</text>
+                  <text class="task-time-label">{{ task.startTime }}</text>
                 </view>
               </view>
             </view>
           </view>
         </view>
 
-        <!-- 日志列表（时间轴底部） -->
+        <!-- 日志列表 -->
         <view v-if="logStore.logs.length > 0" class="log-section">
           <text class="section-title">日志记录</text>
           <view
@@ -137,7 +170,7 @@
             class="log-item"
             @tap="openLog(log)"
           >
-            <text class="log-time">{{ formatLogTime(log.loggedAt) }}</text>
+            <text class="log-time">{{ formatLogTime(log.logTime) }}</text>
             <text class="log-content">{{ log.content }}</text>
             <text class="log-convert" @tap.stop="convertLog(log.id)">→任务</text>
           </view>
@@ -146,7 +179,6 @@
 
       <!-- 四象限视图 -->
       <view v-if="currentView === 'quadrant'" class="quadrant-view">
-        <!-- Q1：紧急+重要（红色） -->
         <view class="quadrant-row">
           <view class="quadrant-cell q1">
             <view class="quad-header">
@@ -162,14 +194,13 @@
                 @tap="openTask(task)"
               >
                 <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'done' ? '✓' : '' }}</text>
+                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
                 </view>
                 <text class="task-title">{{ task.title }}</text>
               </view>
               <text v-if="taskStore.urgentImportant.length === 0" class="quad-empty">暂无</text>
             </view>
           </view>
-          <!-- Q2：重要不紧急（蓝色） -->
           <view class="quadrant-cell q2">
             <view class="quad-header">
               <text class="quad-icon">🔵</text>
@@ -184,7 +215,7 @@
                 @tap="openTask(task)"
               >
                 <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'done' ? '✓' : '' }}</text>
+                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
                 </view>
                 <text class="task-title">{{ task.title }}</text>
               </view>
@@ -192,7 +223,6 @@
             </view>
           </view>
         </view>
-        <!-- Q3：紧急不重要（黄色）/ Q4：不紧急不重要（绿色） -->
         <view class="quadrant-row">
           <view class="quadrant-cell q3">
             <view class="quad-header">
@@ -208,7 +238,7 @@
                 @tap="openTask(task)"
               >
                 <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'done' ? '✓' : '' }}</text>
+                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
                 </view>
                 <text class="task-title">{{ task.title }}</text>
               </view>
@@ -229,7 +259,7 @@
                 @tap="openTask(task)"
               >
                 <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'done' ? '✓' : '' }}</text>
+                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
                 </view>
                 <text class="task-title">{{ task.title }}</text>
               </view>
@@ -237,8 +267,6 @@
             </view>
           </view>
         </view>
-
-        <!-- 已完成任务 -->
         <view v-if="taskStore.doneTasks.length > 0" class="done-section">
           <text class="section-title done-title">已完成 ({{ taskStore.doneTasks.length }})</text>
           <view
@@ -255,22 +283,22 @@
         </view>
       </view>
 
-      <!-- 列表视图（简单列表，按类型分组） -->
+      <!-- 列表视图 -->
       <view v-if="currentView === 'list'" class="list-view">
         <view class="task-list">
           <view
             v-for="task in taskStore.tasks"
             :key="task.id"
             class="task-item"
-            :class="['quad-' + getQuadrant(task), { done: task.status === 'done' }]"
+            :class="['quad-' + getQuadrant(task), { done: task.status === 'completed' }]"
             @tap="openTask(task)"
           >
             <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-              <text class="check-icon">{{ task.status === 'done' ? '✓' : '' }}</text>
+              <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
             </view>
             <view class="task-info">
               <text class="task-title">{{ task.title }}</text>
-              <text v-if="task.dueTime" class="task-time-label">{{ task.dueTime }}</text>
+              <text v-if="task.startTime" class="task-time-label">{{ task.startTime }}</text>
             </view>
             <view class="task-quad-tag" :class="'tag-' + getQuadrant(task)">
               <text>{{ quadrantLabel(task) }}</text>
@@ -282,29 +310,25 @@
         </view>
       </view>
 
-      <!-- 加载中 -->
       <view v-if="taskStore.loading" class="loading-state">
         <text class="loading-text">加载中...</text>
       </view>
 
-      <!-- 底部安全区占位 -->
       <view class="bottom-safe" :style="{ height: (tabBarHeight + 20) + 'px' }"></view>
     </scroll-view>
 
-    <!-- 浮动 + 按钮（新建任务/日志） -->
+    <!-- 浮动 + 按钮 -->
     <view class="fab-area" :style="{ bottom: (tabBarHeight + 20) + 'px' }">
-      <!-- 展开菜单 -->
       <view v-if="fabOpen" class="fab-menu">
         <view class="fab-menu-item" @tap="openCreateLog">
-          <view class="fab-menu-icon log-icon">📝</view>
+          <view class="fab-menu-icon">📝</view>
           <text class="fab-menu-label">记日志</text>
         </view>
         <view class="fab-menu-item" @tap="openCreateTask">
-          <view class="fab-menu-icon task-icon">✅</view>
+          <view class="fab-menu-icon">✅</view>
           <text class="fab-menu-label">加任务</text>
         </view>
       </view>
-      <!-- 主按钮 -->
       <view class="fab-btn" :class="{ open: fabOpen }" @tap="fabOpen = !fabOpen">
         <text class="fab-icon">{{ fabOpen ? '×' : '+' }}</text>
       </view>
@@ -327,32 +351,48 @@ const logStore = useLogStore();
 // ============================================================
 // 状态变量
 // ============================================================
-/** 状态栏高度 */
 const statusBarHeight = ref(20);
-/** TabBar 高度（rpx转px用于底部计算） */
 const tabBarHeight = ref(50);
-/** 当前视图模式 */
 const currentView = ref('timeline');
-/** fab 展开状态 */
 const fabOpen = ref(false);
-/** 当前选中日期 */
 const selectedDate = ref('');
-/** 当前周的起始日（周一） */
+
+// 日历模式：'week' | 'month'
+const calendarMode = ref('week');
+
+// 周模式：当前周的周一
 const currentWeekStart = ref(null);
-/** 节日节气缓存 key=YYYY-MM-DD value=label */
+
+// 月模式：当前月的1号（Date对象）
+const currentMonthFirst = ref(null);
+
+// 节日农历缓存 key=YYYY-MM-DD
 const holidayMap = ref({});
-/** 当前时间分钟数（用于红线位置） */
+
+// 当前时间分钟数（红线）
 const currentMinutes = ref(0);
-/** 计时器 */
 let timeTimer = null;
-/** 触摸开始位置（周历左右滑动切换周） */
-let touchStartX = 0;
+
+// scroll-view 当前滚动位置
+const contentScrollTop = ref(0);
+// 用于重置 scroll-view scrollTop（先设大值再设0达到重置效果时避免触发）
+const scrollTop = ref(0);
+
+// 触摸追踪
+let calTouchStartX = 0;
+let calTouchStartY = 0;
+let calTouchMoved = false; // 是否已触发方向判断
+let calTouchDir = ''; // 'h' | 'v' | ''
+
+let contentTouchStartY = 0;
+let contentTouchMoved = false;
 
 // ============================================================
 // 常量
 // ============================================================
-const weekDays = ['日', '一', '二', '三', '四', '五', '六'];
-const hours = Array.from({ length: 24 }, (_, i) => i); // 0-23
+// 周一到周日
+const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
+const hours = Array.from({ length: 24 }, (_, i) => i);
 const viewModes = [
   { key: 'timeline', label: '时间轴' },
   { key: 'quadrant', label: '四象限' },
@@ -372,28 +412,42 @@ function formatDate(date) {
   return `${y}-${m}-${day}`;
 }
 
-/** 今日日期字符串 */
 const todayStr = formatDate(new Date());
 
-/** 获取本周（或给定日期所在周）的周日作为起点 */
-function getWeekStart(date) {
+/**
+ * 获取给定日期所在周的周一
+ * JS: getDay() 0=周日 1=周一 ... 6=周六
+ */
+function getWeekMonday(date) {
   const d = new Date(date);
-  // 以周日为一周开始
-  d.setDate(d.getDate() - d.getDay());
+  const dow = d.getDay(); // 0=周日
+  // 距周一的偏移：周日=-6，周一=0，周二=-1...
+  const diff = dow === 0 ? -6 : 1 - dow;
+  d.setDate(d.getDate() + diff);
   d.setHours(0, 0, 0, 0);
   return d;
 }
 
-/** 当前周7天数组 */
+/** 获取某月1号 */
+function getMonthFirst(date) {
+  const d = new Date(date);
+  d.setDate(1);
+  d.setHours(0, 0, 0, 0);
+  return d;
+}
+
+// ============================================================
+// 计算属性
+// ============================================================
+
+/** 当前周7天（周一~周日） */
 const currentWeekDates = computed(() => {
   if (!currentWeekStart.value) return [];
   return Array.from({ length: 7 }, (_, i) => {
     const d = new Date(currentWeekStart.value);
     d.setDate(d.getDate() + i);
     const dateStr = formatDate(d);
-    const hasTask = taskStore.tasks.some(t =>
-      (t.taskDate || '').startsWith(dateStr)
-    );
+    const hasTask = taskStore.tasks.some(t => (t.taskDate || '').startsWith(dateStr));
     return {
       dateStr,
       day: d.getDate(),
@@ -403,68 +457,195 @@ const currentWeekDates = computed(() => {
   });
 });
 
-/** 当前月份标签（如 2026年2月） */
+/**
+ * 月模式：42格（6行×7列），以当月1号所在周的周一为起点
+ * 返回二维数组 monthRows[6][7]
+ */
+const monthRows = computed(() => {
+  if (!currentMonthFirst.value) return [];
+
+  // 找到本月1号所在周的周一
+  const gridStart = getWeekMonday(currentMonthFirst.value);
+  const curMonth = currentMonthFirst.value.getMonth();
+
+  const rows = [];
+  for (let r = 0; r < 6; r++) {
+    const row = [];
+    for (let c = 0; c < 7; c++) {
+      const d = new Date(gridStart);
+      d.setDate(gridStart.getDate() + r * 7 + c);
+      const dateStr = formatDate(d);
+      const hasTask = taskStore.tasks.some(t => (t.taskDate || '').startsWith(dateStr));
+      row.push({
+        dateStr,
+        day: d.getDate(),
+        lunarLabel: holidayMap.value[dateStr] || '',
+        hasTask,
+        otherMonth: d.getMonth() !== curMonth
+      });
+    }
+    rows.push(row);
+  }
+  return rows;
+});
+
+/** 月份标签（如 2026年2月） */
 const currentMonthLabel = computed(() => {
+  if (calendarMode.value === 'month' && currentMonthFirst.value) {
+    const d = currentMonthFirst.value;
+    return `${d.getFullYear()}年${d.getMonth() + 1}月`;
+  }
   if (!currentWeekStart.value) return '';
+  // 取周中间日（周四）所在月
   const d = new Date(currentWeekStart.value);
-  d.setDate(d.getDate() + 3); // 取周中间日期
+  d.setDate(d.getDate() + 3);
   return `${d.getFullYear()}年${d.getMonth() + 1}月`;
 });
 
-/** 当前时间红线的位置（rpx，基于1小时=120rpx） */
+/** 当前时间红线位置（rpx，每小时120rpx） */
 const currentTimeTop = computed(() => {
-  // 每小时 120rpx，从 0:00 开始
-  const mins = currentMinutes.value;
-  return Math.round((mins / 60) * 120);
+  return Math.round((currentMinutes.value / 60) * 120);
 });
 
-/** 全天任务（isAllDay 为 true 的任务） */
+/** 全天任务 */
 const allDayTasks = computed(() =>
   taskStore.tasks.filter(t => t.isAllDay && t.status !== 'completed')
 );
 
-/** 获取某小时的任务 */
-function getTasksAtHour(hour) {
-  return taskStore.timelineTasks.filter(t => {
-    if (!t.startTime) return false;
-    const h = parseInt(t.startTime.split(':')[0]);
-    return h === hour;
-  });
+// ============================================================
+// 日历条触摸处理
+// ============================================================
+
+function onCalTouchStart(e) {
+  calTouchStartX = e.touches[0].clientX;
+  calTouchStartY = e.touches[0].clientY;
+  calTouchMoved = false;
+  calTouchDir = '';
 }
 
-/** 获取任务所属象限 key */
-function getQuadrant(task) {
-  if (task.isUrgent && task.isImportant) return 'q1';
-  if (!task.isUrgent && task.isImportant) return 'q2';
-  if (task.isUrgent && !task.isImportant) return 'q3';
-  return 'q4';
+function onCalTouchMove(e) {
+  if (calTouchMoved) return; // 方向已判断，不重复
+  const dx = e.touches[0].clientX - calTouchStartX;
+  const dy = e.touches[0].clientY - calTouchStartY;
+  if (Math.abs(dx) < 8 && Math.abs(dy) < 8) return;
+
+  calTouchMoved = true;
+  calTouchDir = Math.abs(dx) > Math.abs(dy) ? 'h' : 'v';
 }
 
-/** 象限文字标签 */
-function quadrantLabel(task) {
-  if (task.isUrgent && task.isImportant) return '紧急';
-  if (!task.isUrgent && task.isImportant) return '重要';
-  if (task.isUrgent && !task.isImportant) return '琐事';
-  return '待排';
-}
+function onCalTouchEnd(e) {
+  const dx = e.changedTouches[0].clientX - calTouchStartX;
+  const dy = e.changedTouches[0].clientY - calTouchStartY;
 
-/** 格式化日志时间显示（HH:mm） */
-function formatLogTime(isoStr) {
-  if (!isoStr) return '';
-  const d = new Date(isoStr);
-  const h = String(d.getHours()).padStart(2, '0');
-  const m = String(d.getMinutes()).padStart(2, '0');
-  return `${h}:${m}`;
+  if (calTouchDir === 'h' && Math.abs(dx) > 50) {
+    // 水平滑动：切周/月
+    if (calendarMode.value === 'week') {
+      dx < 0 ? nextWeek() : prevWeek();
+    } else {
+      dx < 0 ? nextMonth() : prevMonth();
+    }
+  } else if (calTouchDir === 'v') {
+    if (calendarMode.value === 'week' && dy > 60) {
+      // 周模式下向下拉 → 展开月视图
+      expandToMonth();
+    } else if (calendarMode.value === 'month' && dy < -60) {
+      // 月模式下向上滑 → 折叠回周视图
+      collapseToWeek();
+    }
+  }
 }
 
 // ============================================================
-// 操作方法
+// 内容区触摸处理（月模式下在顶部上滑 → 折叠）
+// ============================================================
+
+function onContentTouchStart(e) {
+  contentTouchStartY = e.touches[0].clientY;
+  contentTouchMoved = false;
+}
+
+function onContentTouchMove() {
+  contentTouchMoved = true;
+}
+
+function onContentTouchEnd(e) {
+  if (!contentTouchMoved) return;
+  const dy = e.changedTouches[0].clientY - contentTouchStartY;
+  // 月模式下，内容区在顶部往上滑 → 折叠
+  if (calendarMode.value === 'month' && dy < -60 && contentScrollTop.value <= 0) {
+    collapseToWeek();
+  }
+}
+
+function onContentScroll(e) {
+  contentScrollTop.value = e.detail.scrollTop;
+}
+
+// ============================================================
+// 展开 / 折叠
+// ============================================================
+
+function expandToMonth() {
+  // 以当前选中日期所在月展开
+  currentMonthFirst.value = getMonthFirst(selectedDate.value || new Date());
+  calendarMode.value = 'month';
+  // 加载月视图范围的农历
+  loadHolidaysForMonth();
+}
+
+function collapseToWeek() {
+  calendarMode.value = 'week';
+  // 周起始对齐当前选中日期
+  currentWeekStart.value = getWeekMonday(selectedDate.value || new Date());
+  loadHolidays();
+}
+
+// ============================================================
+// 切周 / 切月
+// ============================================================
+
+function prevWeek() {
+  const d = new Date(currentWeekStart.value);
+  d.setDate(d.getDate() - 7);
+  currentWeekStart.value = d;
+  loadHolidays();
+}
+
+function nextWeek() {
+  const d = new Date(currentWeekStart.value);
+  d.setDate(d.getDate() + 7);
+  currentWeekStart.value = d;
+  loadHolidays();
+}
+
+function prevMonth() {
+  const d = new Date(currentMonthFirst.value);
+  d.setMonth(d.getMonth() - 1);
+  currentMonthFirst.value = getMonthFirst(d);
+  loadHolidaysForMonth();
+}
+
+function nextMonth() {
+  const d = new Date(currentMonthFirst.value);
+  d.setMonth(d.getMonth() + 1);
+  currentMonthFirst.value = getMonthFirst(d);
+  loadHolidaysForMonth();
+}
+
+// ============================================================
+// 业务方法
 // ============================================================
 
 /** 选中某天 */
 async function selectDate(dateStr) {
   selectedDate.value = dateStr;
   taskStore.selectedDate = dateStr;
+  // 月模式下点击日期后折叠回周，并对齐到该日期所在周
+  if (calendarMode.value === 'month') {
+    currentWeekStart.value = getWeekMonday(dateStr);
+    calendarMode.value = 'week';
+    loadHolidays();
+  }
   await Promise.all([
     taskStore.fetchTasksByDate(dateStr),
     logStore.fetchLogsByDate(dateStr)
@@ -473,79 +654,58 @@ async function selectDate(dateStr) {
 
 /** 回到今天 */
 function goToday() {
-  currentWeekStart.value = getWeekStart(new Date());
+  calendarMode.value = 'week';
+  currentWeekStart.value = getWeekMonday(new Date());
   selectDate(todayStr);
 }
 
-/** 切换到上一周 */
-function prevWeek() {
-  const d = new Date(currentWeekStart.value);
-  d.setDate(d.getDate() - 7);
-  currentWeekStart.value = d;
-  // 切换周后重新加载节日农历
-  loadHolidays();
+/** 获取任务所属象限 */
+function getQuadrant(task) {
+  if (task.isUrgent && task.isImportant) return 'q1';
+  if (!task.isUrgent && task.isImportant) return 'q2';
+  if (task.isUrgent && !task.isImportant) return 'q3';
+  return 'q4';
 }
 
-/** 切换到下一周 */
-function nextWeek() {
-  const d = new Date(currentWeekStart.value);
-  d.setDate(d.getDate() + 7);
-  currentWeekStart.value = d;
-  // 切换周后重新加载节日农历
-  loadHolidays();
+function quadrantLabel(task) {
+  if (task.isUrgent && task.isImportant) return '紧急';
+  if (!task.isUrgent && task.isImportant) return '重要';
+  if (task.isUrgent && !task.isImportant) return '琐事';
+  return '待排';
 }
 
-/** 周历触摸开始 */
-function onWeekTouchStart(e) {
-  touchStartX = e.touches[0].clientX;
+function getTasksAtHour(hour) {
+  return taskStore.timelineTasks.filter(t => {
+    if (!t.startTime) return false;
+    return parseInt(t.startTime.split(':')[0]) === hour;
+  });
 }
 
-/** 周历触摸结束（左右滑动切换周） */
-function onWeekTouchEnd(e) {
-  const dx = e.changedTouches[0].clientX - touchStartX;
-  if (Math.abs(dx) > 50) {
-    if (dx < 0) nextWeek();
-    else prevWeek();
-  }
+function formatLogTime(isoStr) {
+  if (!isoStr) return '';
+  const d = new Date(isoStr);
+  return `${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
 }
 
-/** 滚动到顶部触发事件（预留：展开月历） */
-function onScrollTop() {
-  // TODO: 上滑展开月历
-}
-
-/** 打开任务详情/编辑 */
 function openTask(task) {
   fabOpen.value = false;
-  uni.navigateTo({
-    url: `/pages/calendar/task-edit?id=${task.id}&date=${selectedDate.value}`
-  });
+  uni.navigateTo({ url: `/pages/calendar/task-edit?id=${task.id}&date=${selectedDate.value}` });
 }
 
-/** 打开新建任务 */
 function openCreateTask() {
   fabOpen.value = false;
-  uni.navigateTo({
-    url: `/pages/calendar/task-edit?date=${selectedDate.value}`
-  });
+  uni.navigateTo({ url: `/pages/calendar/task-edit?date=${selectedDate.value}` });
 }
 
-/** 打开新建日志 */
 function openCreateLog() {
   fabOpen.value = false;
-  uni.navigateTo({
-    url: `/pages/calendar/log-edit?date=${selectedDate.value}`
-  });
+  uni.navigateTo({ url: `/pages/calendar/log-edit?date=${selectedDate.value}` });
 }
 
-/** 打开日志详情 */
 function openLog(log) {
-  uni.navigateTo({
-    url: `/pages/calendar/log-edit?id=${log.id}&date=${selectedDate.value}`
-  });
+  uni.navigateTo({ url: `/pages/calendar/log-edit?id=${log.id}&date=${selectedDate.value}` });
 }
 
-/** 日志转任务 */
 async function convertLog(logId) {
   try {
     await logStore.toTask(logId);
@@ -556,49 +716,65 @@ async function convertLog(logId) {
   }
 }
 
-/** 加载当前周的节日节气 + 农历信息 */
+// ============================================================
+// 节日农历加载
+// ============================================================
+
+/** 加载当前周的节日 + 农历 */
 async function loadHolidays() {
   try {
     if (!currentWeekStart.value) return;
-    // 计算当前周的起止日期（周日到周六）
     const weekEnd = new Date(currentWeekStart.value);
     weekEnd.setDate(weekEnd.getDate() + 6);
     const start = formatDate(currentWeekStart.value);
     const end = formatDate(weekEnd);
-
-    // 并行请求节日 + 农历
-    const [holidayRes, lunarRes] = await Promise.all([
-      getHolidaysByRange(start, end),
-      getLunarInfoRange(start, end)
-    ]);
-
-    // 解析节日：holidayMap 结构为 { "YYYY-MM-DD": [{ name, type, ... }] }
-    const hMap = holidayRes?.holidayMap || {};
-    Object.entries(hMap).forEach(([date, list]) => {
-      if (Array.isArray(list) && list.length > 0) {
-        // 优先展示法定节假日，其次节气，其次其他
-        const sorted = [...list].sort((a, b) => {
-          const order = { public_holiday: 0, solar_term: 1 };
-          return (order[a.type] ?? 2) - (order[b.type] ?? 2);
-        });
-        holidayMap.value[date] = sorted[0].shortName || sorted[0].name;
-      }
-    });
-
-    // 解析农历：lunarMap 结构为 { "YYYY-MM-DD": { lunarDay, lunarMonth, ... } }
-    const lMap = lunarRes?.lunarMap || {};
-    Object.entries(lMap).forEach(([date, info]) => {
-      // 只有没有节日标注的日期才显示农历
-      if (!holidayMap.value[date] && info) {
-        holidayMap.value[date] = info.lunarDay || '';
-      }
-    });
+    await _loadHolidayRange(start, end);
   } catch (err) {
     console.warn('[Calendar] 节日农历加载失败:', err);
   }
 }
 
-/** 更新当前时间分钟数（用于红线） */
+/** 加载当前月（+上下各补位行）的节日 + 农历 */
+async function loadHolidaysForMonth() {
+  try {
+    if (!currentMonthFirst.value) return;
+    // 42格的起止范围
+    const gridStart = getWeekMonday(currentMonthFirst.value);
+    const gridEnd = new Date(gridStart);
+    gridEnd.setDate(gridStart.getDate() + 41);
+    await _loadHolidayRange(formatDate(gridStart), formatDate(gridEnd));
+  } catch (err) {
+    console.warn('[Calendar] 月历农历加载失败:', err);
+  }
+}
+
+async function _loadHolidayRange(start, end) {
+  const [holidayRes, lunarRes] = await Promise.all([
+    getHolidaysByRange(start, end),
+    getLunarInfoRange(start, end)
+  ]);
+
+  // 节日：优先展示法定节假日/节气
+  const hMap = holidayRes?.holidayMap || {};
+  Object.entries(hMap).forEach(([date, list]) => {
+    if (Array.isArray(list) && list.length > 0) {
+      const sorted = [...list].sort((a, b) => {
+        const order = { public_holiday: 0, solar_term: 1 };
+        return (order[a.type] ?? 2) - (order[b.type] ?? 2);
+      });
+      holidayMap.value[date] = sorted[0].shortName || sorted[0].name;
+    }
+  });
+
+  // 农历（仅无节日标注时）
+  const lMap = lunarRes?.lunarMap || {};
+  Object.entries(lMap).forEach(([date, info]) => {
+    if (!holidayMap.value[date] && info) {
+      holidayMap.value[date] = info.lunarDayName || '';
+    }
+  });
+}
+
 function updateCurrentTime() {
   const now = new Date();
   currentMinutes.value = now.getHours() * 60 + now.getMinutes();
@@ -608,21 +784,17 @@ function updateCurrentTime() {
 // 生命周期
 // ============================================================
 onMounted(async () => {
-  // 获取设备信息
   try {
     const info = uni.getSystemInfoSync();
     statusBarHeight.value = info.statusBarHeight || 20;
-    tabBarHeight.value = 50; // TabBar 固定高度 50px
-  } catch (e) {
-    // 降级处理
-  }
+    tabBarHeight.value = 50;
+  } catch (e) {}
 
-  // 初始化周历（以本周开始）
-  currentWeekStart.value = getWeekStart(new Date());
+  currentWeekStart.value = getWeekMonday(new Date());
+  currentMonthFirst.value = getMonthFirst(new Date());
   selectedDate.value = todayStr;
   taskStore.selectedDate = todayStr;
 
-  // 加载数据
   updateCurrentTime();
   await Promise.all([
     taskStore.fetchTasksByDate(todayStr),
@@ -630,7 +802,6 @@ onMounted(async () => {
     loadHolidays()
   ]);
 
-  // 每分钟更新一次当前时间红线
   timeTimer = setInterval(updateCurrentTime, 60000);
 });
 
@@ -666,6 +837,7 @@ onUnmounted(() => {
   justify-content: space-between;
   background-color: #FFFFFF;
   padding: 0 32rpx 16rpx;
+  flex-shrink: 0;
 }
 
 .top-title {
@@ -702,7 +874,6 @@ onUnmounted(() => {
   color: #888;
   padding: 6rpx 16rpx;
   border-radius: 16rpx;
-  transition: all 0.2s;
 }
 
 .view-btn.active {
@@ -713,103 +884,152 @@ onUnmounted(() => {
 }
 
 /* ============================================================
-   周历条
+   日历条（周/月通用外壳）
    ============================================================ */
-.week-bar {
+.calendar-bar {
   background-color: #FFFFFF;
-  padding: 0 16rpx 16rpx;
+  padding: 0 16rpx 12rpx;
   box-shadow: 0 4rpx 16rpx rgba(0, 0, 0, 0.06);
   flex-shrink: 0;
+  /* 默认周模式高度不限制，由内容撑开 */
+  overflow: hidden;
+  transition: height 0.3s ease;
 }
 
+/* ============================================================
+   星期头（周一到周日）
+   ============================================================ */
 .week-header {
   display: flex;
   flex-direction: row;
-  justify-content: space-around;
-  padding: 8rpx 0;
+  padding: 8rpx 0 4rpx;
 }
 
 .week-day-name {
-  font-size: 24rpx;
+  flex: 1;
+  font-size: 22rpx;
   color: #999;
-  width: 80rpx;
   text-align: center;
 }
 
+/* ============================================================
+   周模式：单行7格
+   ============================================================ */
 .week-dates {
   display: flex;
   flex-direction: row;
-  justify-content: space-around;
 }
 
-.week-date-item {
+/* ============================================================
+   月模式：6行×7列
+   ============================================================ */
+.month-grid {
+  display: flex;
+  flex-direction: column;
+}
+
+.month-row {
+  display: flex;
+  flex-direction: row;
+}
+
+/* ============================================================
+   日期格（周/月复用）
+   ============================================================ */
+.date-cell {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  width: 80rpx;
-  padding: 8rpx 0;
+  padding: 4rpx 0;
   position: relative;
+  min-width: 0;
+}
+
+/* 月模式格子稍矮 */
+.month-cell {
+  padding: 2rpx 0;
 }
 
 .lunar-label {
   font-size: 18rpx;
   color: #aaa;
-  height: 26rpx;
-  line-height: 26rpx;
-  white-space: nowrap;
+  height: 24rpx;
+  line-height: 24rpx;
+  text-align: center;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 76rpx;
-  text-align: center;
+  white-space: nowrap;
+  max-width: 100%;
+  padding: 0 2rpx;
 }
 
 .date-circle {
-  width: 64rpx;
-  height: 64rpx;
+  width: 56rpx;
+  height: 56rpx;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin: 4rpx 0;
+  margin: 2rpx 0;
 }
 
-.week-date-item.selected .date-circle {
-  background-color: #5B8CFF;
-}
-
-.week-date-item.today:not(.selected) .date-circle {
-  background-color: #E8F0FF;
+/* 月模式稍小 */
+.month-cell .date-circle {
+  width: 52rpx;
+  height: 52rpx;
 }
 
 .date-num {
-  font-size: 32rpx;
+  font-size: 30rpx;
   color: #333;
   font-weight: 500;
 }
 
-.week-date-item.selected .date-num {
+.month-cell .date-num {
+  font-size: 28rpx;
+}
+
+/* 选中 */
+.date-cell.selected .date-circle {
+  background-color: #5B8CFF;
+}
+.date-cell.selected .date-num {
   color: #FFFFFF;
   font-weight: bold;
 }
 
-.week-date-item.today:not(.selected) .date-num {
+/* 今天（未选中） */
+.date-cell.today:not(.selected) .date-circle {
+  border: 2rpx dashed #5B8CFF;
+}
+.date-cell.today:not(.selected) .date-num {
   color: #5B8CFF;
 }
 
+/* 非本月（月模式补位日期） */
+.date-cell.other-month .date-num {
+  color: #CCC;
+}
+.date-cell.other-month .lunar-label {
+  color: #DDD;
+}
+
+/* 有任务圆点 */
 .task-dot {
-  width: 10rpx;
-  height: 10rpx;
+  width: 8rpx;
+  height: 8rpx;
   border-radius: 50%;
   background-color: #5B8CFF;
-  margin-top: 4rpx;
+  margin-top: 2rpx;
 }
 
-.week-month-label {
+/* 月份标签 */
+.cal-month-label {
   text-align: center;
-  margin-top: 8rpx;
+  padding: 6rpx 0 2rpx;
 }
-
-.week-month-label text {
+.cal-month-label text {
   font-size: 22rpx;
   color: #bbb;
 }
@@ -831,22 +1051,9 @@ onUnmounted(() => {
   align-items: center;
   padding: 120rpx 0;
 }
-
-.empty-icon {
-  font-size: 100rpx;
-  margin-bottom: 24rpx;
-}
-
-.empty-text {
-  font-size: 32rpx;
-  color: #999;
-  margin-bottom: 12rpx;
-}
-
-.empty-hint {
-  font-size: 26rpx;
-  color: #bbb;
-}
+.empty-icon { font-size: 100rpx; margin-bottom: 24rpx; }
+.empty-text { font-size: 32rpx; color: #999; margin-bottom: 12rpx; }
+.empty-hint { font-size: 26rpx; color: #bbb; }
 
 /* ============================================================
    任务项基础样式
@@ -857,18 +1064,16 @@ onUnmounted(() => {
   align-items: center;
   background-color: #FFFFFF;
   border-radius: 16rpx;
-  padding: 24rpx 24rpx;
+  padding: 24rpx;
   margin: 0 24rpx 16rpx;
   box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.05);
   border-left: 8rpx solid #5B8CFF;
 }
-
-/* 四象限左边颜色 */
 .task-item.quad-q1 { border-left-color: #FF4444; }
 .task-item.quad-q2 { border-left-color: #5B8CFF; }
 .task-item.quad-q3 { border-left-color: #FFB300; }
 .task-item.quad-q4 { border-left-color: #4CAF50; }
-.task-item.done { border-left-color: #CCC; opacity: 0.7; }
+.task-item.done    { border-left-color: #CCC; opacity: 0.7; }
 
 .task-check {
   width: 44rpx;
@@ -881,11 +1086,7 @@ onUnmounted(() => {
   margin-right: 20rpx;
   flex-shrink: 0;
 }
-
-.check-icon {
-  font-size: 24rpx;
-  color: #4CAF50;
-}
+.check-icon { font-size: 24rpx; color: #4CAF50; }
 
 .task-title {
   flex: 1;
@@ -893,53 +1094,27 @@ onUnmounted(() => {
   color: #333;
   line-height: 1.4;
 }
-
-.task-item.done .task-title {
-  text-decoration: line-through;
-  color: #BBB;
-}
+.task-item.done .task-title { text-decoration: line-through; color: #BBB; }
 
 .task-quad-tag {
   border-radius: 12rpx;
   padding: 4rpx 12rpx;
   margin-left: 16rpx;
 }
+.task-quad-tag text { font-size: 22rpx; }
+.tag-q1 { background-color: #FFE5E5; } .tag-q1 text { color: #FF4444; }
+.tag-q2 { background-color: #E8F0FF; } .tag-q2 text { color: #5B8CFF; }
+.tag-q3 { background-color: #FFF8E1; } .tag-q3 text { color: #FFB300; }
+.tag-q4 { background-color: #E8F5E9; } .tag-q4 text { color: #4CAF50; }
 
-.task-quad-tag text {
-  font-size: 22rpx;
-}
-
-.tag-q1 { background-color: #FFE5E5; }
-.tag-q1 text { color: #FF4444; }
-.tag-q2 { background-color: #E8F0FF; }
-.tag-q2 text { color: #5B8CFF; }
-.tag-q3 { background-color: #FFF8E1; }
-.tag-q3 text { color: #FFB300; }
-.tag-q4 { background-color: #E8F5E9; }
-.tag-q4 text { color: #4CAF50; }
-
-.task-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-}
-
-.task-time-label {
-  font-size: 24rpx;
-  color: #999;
-  margin-top: 4rpx;
-}
+.task-info { flex: 1; display: flex; flex-direction: column; }
+.task-time-label { font-size: 24rpx; color: #999; margin-top: 4rpx; }
 
 /* ============================================================
    时间轴视图
    ============================================================ */
-.timeline-view {
-  padding-top: 16rpx;
-}
-
-.allday-section {
-  padding: 0 24rpx 8rpx;
-}
+.timeline-view { padding-top: 16rpx; }
+.allday-section { padding: 0 24rpx 8rpx; }
 
 .section-title {
   font-size: 26rpx;
@@ -948,10 +1123,7 @@ onUnmounted(() => {
   display: block;
 }
 
-.timeline-slots {
-  position: relative;
-  padding: 0 24rpx;
-}
+.timeline-slots { position: relative; padding: 0 24rpx; }
 
 .time-indicator {
   position: absolute;
@@ -962,7 +1134,6 @@ onUnmounted(() => {
   z-index: 10;
   pointer-events: none;
 }
-
 .time-dot {
   width: 16rpx;
   height: 16rpx;
@@ -971,12 +1142,7 @@ onUnmounted(() => {
   margin-left: 80rpx;
   flex-shrink: 0;
 }
-
-.time-line {
-  flex: 1;
-  height: 2rpx;
-  background-color: #FF4444;
-}
+.time-line { flex: 1; height: 2rpx; background-color: #FF4444; }
 
 .hour-slot {
   display: flex;
@@ -984,7 +1150,6 @@ onUnmounted(() => {
   min-height: 120rpx;
   border-top: 1rpx solid #F0F0F0;
 }
-
 .hour-label {
   width: 80rpx;
   font-size: 22rpx;
@@ -992,11 +1157,7 @@ onUnmounted(() => {
   padding-top: 8rpx;
   flex-shrink: 0;
 }
-
-.hour-content {
-  flex: 1;
-  padding: 8rpx 0;
-}
+.hour-content { flex: 1; padding: 8rpx 0; }
 
 .timeline-task {
   display: flex;
@@ -1004,12 +1165,11 @@ onUnmounted(() => {
   align-items: center;
   background-color: #FFFFFF;
   border-radius: 12rpx;
-  padding: 16rpx 16rpx;
+  padding: 16rpx;
   margin-bottom: 8rpx;
   border-left: 6rpx solid #5B8CFF;
   box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
 }
-
 .timeline-task.quad-q1 { border-left-color: #FF4444; background-color: #FFF5F5; }
 .timeline-task.quad-q2 { border-left-color: #5B8CFF; background-color: #F5F8FF; }
 .timeline-task.quad-q3 { border-left-color: #FFB300; background-color: #FFFBF0; }
@@ -1026,10 +1186,7 @@ onUnmounted(() => {
 /* ============================================================
    日志区域
    ============================================================ */
-.log-section {
-  padding: 0 0 24rpx;
-}
-
+.log-section { padding: 0 0 24rpx; }
 .log-item {
   display: flex;
   flex-direction: row;
@@ -1040,22 +1197,8 @@ onUnmounted(() => {
   margin: 0 24rpx 12rpx;
   border-left: 6rpx solid #9E9E9E;
 }
-
-.log-time {
-  font-size: 24rpx;
-  color: #5B8CFF;
-  width: 80rpx;
-  flex-shrink: 0;
-  margin-top: 4rpx;
-}
-
-.log-content {
-  flex: 1;
-  font-size: 28rpx;
-  color: #555;
-  line-height: 1.5;
-}
-
+.log-time { font-size: 24rpx; color: #5B8CFF; width: 80rpx; flex-shrink: 0; margin-top: 4rpx; }
+.log-content { flex: 1; font-size: 28rpx; color: #555; line-height: 1.5; }
 .log-convert {
   font-size: 22rpx;
   color: #5B8CFF;
@@ -1069,48 +1212,17 @@ onUnmounted(() => {
 /* ============================================================
    四象限视图
    ============================================================ */
-.quadrant-view {
-  padding: 16rpx 24rpx;
-}
-
-.quadrant-row {
-  display: flex;
-  flex-direction: row;
-  gap: 16rpx;
-  margin-bottom: 16rpx;
-}
-
-.quadrant-cell {
-  flex: 1;
-  border-radius: 16rpx;
-  padding: 20rpx;
-  min-height: 240rpx;
-}
-
+.quadrant-view { padding: 16rpx 24rpx; }
+.quadrant-row { display: flex; flex-direction: row; gap: 16rpx; margin-bottom: 16rpx; }
+.quadrant-cell { flex: 1; border-radius: 16rpx; padding: 20rpx; min-height: 240rpx; }
 .q1 { background-color: #FFF5F5; border: 1rpx solid #FFCDD2; }
 .q2 { background-color: #F5F8FF; border: 1rpx solid #BBDEFB; }
 .q3 { background-color: #FFFBF0; border: 1rpx solid #FFE082; }
 .q4 { background-color: #F5FBF5; border: 1rpx solid #C8E6C9; }
 
-.quad-header {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  margin-bottom: 16rpx;
-}
-
-.quad-icon {
-  font-size: 28rpx;
-  margin-right: 8rpx;
-}
-
-.quad-title {
-  font-size: 24rpx;
-  color: #555;
-  font-weight: bold;
-  flex: 1;
-}
-
+.quad-header { display: flex; flex-direction: row; align-items: center; margin-bottom: 16rpx; }
+.quad-icon { font-size: 28rpx; margin-right: 8rpx; }
+.quad-title { font-size: 24rpx; color: #555; font-weight: bold; flex: 1; }
 .quad-count {
   font-size: 24rpx;
   color: #999;
@@ -1118,13 +1230,7 @@ onUnmounted(() => {
   border-radius: 12rpx;
   padding: 2rpx 12rpx;
 }
-
-.quad-tasks {
-  display: flex;
-  flex-direction: column;
-  gap: 12rpx;
-}
-
+.quad-tasks { display: flex; flex-direction: column; gap: 12rpx; }
 .quad-task-item {
   display: flex;
   flex-direction: row;
@@ -1133,62 +1239,25 @@ onUnmounted(() => {
   border-radius: 10rpx;
   padding: 12rpx 14rpx;
 }
+.quad-task-item .task-check { width: 36rpx; height: 36rpx; margin-right: 12rpx; }
+.quad-task-item .task-title { font-size: 26rpx; }
+.quad-empty { font-size: 24rpx; color: #CCC; text-align: center; padding: 20rpx 0; }
 
-.quad-task-item .task-check {
-  width: 36rpx;
-  height: 36rpx;
-  margin-right: 12rpx;
-}
-
-.quad-task-item .task-title {
-  font-size: 26rpx;
-}
-
-.quad-empty {
-  font-size: 24rpx;
-  color: #CCC;
-  text-align: center;
-  padding: 20rpx 0;
-}
-
-.done-section {
-  margin-top: 8rpx;
-}
-
-.done-title {
-  padding: 8rpx 0 12rpx;
-}
-
-.done-text {
-  text-decoration: line-through;
-  color: #CCC !important;
-}
+.done-section { margin-top: 8rpx; }
+.done-title { padding: 8rpx 0 12rpx; }
+.done-text { text-decoration: line-through; color: #CCC !important; }
 
 /* ============================================================
    列表视图
    ============================================================ */
-.list-view {
-  padding: 16rpx 0;
-}
-
-.list-empty {
-  text-align: center;
-  padding: 80rpx 0;
-}
+.list-view { padding: 16rpx 0; }
+.list-empty { text-align: center; padding: 80rpx 0; }
 
 /* ============================================================
    加载状态
    ============================================================ */
-.loading-state {
-  display: flex;
-  justify-content: center;
-  padding: 80rpx 0;
-}
-
-.loading-text {
-  font-size: 28rpx;
-  color: #BBB;
-}
+.loading-state { display: flex; justify-content: center; padding: 80rpx 0; }
+.loading-text { font-size: 28rpx; color: #BBB; }
 
 /* ============================================================
    浮动按钮
@@ -1201,7 +1270,6 @@ onUnmounted(() => {
   align-items: flex-end;
   z-index: 100;
 }
-
 .fab-menu {
   display: flex;
   flex-direction: column;
@@ -1209,7 +1277,6 @@ onUnmounted(() => {
   gap: 16rpx;
   margin-bottom: 20rpx;
 }
-
 .fab-menu-item {
   display: flex;
   flex-direction: row;
@@ -1219,17 +1286,8 @@ onUnmounted(() => {
   padding: 16rpx 28rpx;
   box-shadow: 0 4rpx 20rpx rgba(0, 0, 0, 0.15);
 }
-
-.fab-menu-icon {
-  font-size: 36rpx;
-  margin-right: 12rpx;
-}
-
-.fab-menu-label {
-  font-size: 28rpx;
-  color: #333;
-}
-
+.fab-menu-icon { font-size: 36rpx; margin-right: 12rpx; }
+.fab-menu-label { font-size: 28rpx; color: #333; }
 .fab-btn {
   width: 100rpx;
   height: 100rpx;
@@ -1239,25 +1297,14 @@ onUnmounted(() => {
   align-items: center;
   justify-content: center;
   box-shadow: 0 8rpx 24rpx rgba(91, 140, 255, 0.4);
-  transition: transform 0.2s;
 }
-
 .fab-btn.open {
-  transform: rotate(45deg);
   background: linear-gradient(135deg, #FF6B6B, #FF4444);
 }
-
-.fab-icon {
-  font-size: 60rpx;
-  color: #FFFFFF;
-  line-height: 1;
-  font-weight: 300;
-}
+.fab-icon { font-size: 60rpx; color: #FFFFFF; line-height: 1; font-weight: 300; }
 
 /* ============================================================
    底部安全区
    ============================================================ */
-.bottom-safe {
-  flex-shrink: 0;
-}
+.bottom-safe { flex-shrink: 0; }
 </style>
