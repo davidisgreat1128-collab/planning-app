@@ -1,0 +1,55 @@
+{
+  "project": {
+    "name": "Planning App",
+    "version": "0.1.0-alpha",
+    "description": "基于《易经》的人生规划系统",
+    "owner": "唐伯虎",
+    "started": "2026-02-17"
+  },
+  "ai": {
+    "model": "Claude Sonnet 4.5",
+    "role": "全程代码编写者",
+    "human_role": "规范把控和方向审查"
+  },
+  "logging": {
+    "enabled": true,
+    "log_directory": "docs/06-AI协作日志",
+    "formats": {
+      "daily": "YYYY-MM-DD-{title}.md",
+      "adr": "ADR-{number:3}-{title}.md",
+      "bug": "BUG-{number:3}-{title}.md",
+      "code_review": "CR-YYYY-MM-DD-{module}.md",
+      "performance": "PERF-{number:3}-{title}.md"
+    },
+    "index_file": "docs/06-AI协作日志/索引目录.md"
+  },
+  "code_standards": {
+    "language": "JavaScript (ES6+)",
+    "no_typescript": true,
+    "indentation": 2,
+    "quotes": "single",
+    "semicolons": true,
+    "test_coverage_min": 85,
+    "require_jsdoc": true
+  },
+  "database": {
+    "orm": "Sequelize v6",
+    "field_mapping": "underscored: true (snake_case <-> camelCase)",
+    "soft_delete": "paranoid: true",
+    "charset": "utf8mb4",
+    "timezone": "+08:00"
+  },
+  "git": {
+    "main_branch": "master",
+    "dev_branch": "develop",
+    "feature_prefix": "feature/",
+    "hotfix_prefix": "hotfix/",
+    "commit_convention": "Conventional Commits",
+    "require_log_before_commit": true
+  },
+  "workflow": {
+    "update_status_on_session_end": true,
+    "create_daily_log": true,
+    "create_adr_for_decisions": true
+  }
+}
