@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-02-18（第9次会话，前端联调准备：login/register script setup化 + @tap统一）
+> **最后更新**: 2026-02-18（第10次会话，联调 Bug 修复：Controller response调用方式 + lunar API修复）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 6b1f031 refactor(frontend): login/register 升级为 script setup，@click 改 @tap
+> **最新commit**: 680a131 fix(backend): 修复联调发现的3个运行时错误
 
 ---
 
@@ -49,6 +49,14 @@
 - ✅ **节日种子数据**：55条（中国公历节日9条 + 农历节日12条 + 24节气 + 西方节日8条 + 国际节日4条）
 - ✅ **constants.js**：新增7个常量枚举组
 - ✅ **所有84个原有测试继续通过**（无回归）
+
+### Phase 3f - 联调 Bug 修复（第10次会话，commit: 680a131）
+- ✅ **根因分析**：task/log/holiday/alarm 四个 Controller 误用 `res.json(success(data))` 写法
+  - `response.js` 的 `success(res, data, msg)` 第一参数是 Express `res` 对象
+  - 新建 Controller 写成了 `res.json(success(data, msg))`，导致 `success()` 收到 data 当 res，触发 `res.status is not a function`
+  - 修复：全部改为 `return success(res, data, msg)` / `return created(res, data, msg)`
+- ✅ **holidayService.getLunarInfo()**：`lunar.isLeap()` → `lunar.getMonth() < 0`
+  - lunar-javascript 无 `isLeap()` 方法，闰月通过 `getMonth()` 返回负数标识
 
 ### Phase 3e - 前端登录/注册页完善（第9次会话，commit: 6b1f031）
 - ✅ **login.vue 重构**：Options API → `<script setup>`，`@click` → `@tap`
