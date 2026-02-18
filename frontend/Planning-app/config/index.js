@@ -3,15 +3,9 @@
  * UniApp环境下通过条件编译区分环境
  */
 
-// #ifdef H5
-const BASE_URL = process.env.NODE_ENV === 'development'
-  ? 'http://127.0.0.1:3000/api/v1'
-  : 'https://api.planning-app.com/api/v1';
-// #endif
-
-// #ifndef H5
-const BASE_URL = 'http://127.0.0.1:3000/api/v1';
-// #endif
+const BASE_URL = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production')
+  ? 'https://api.planning-app.com/api/v1'
+  : 'http://127.0.0.1:3000/api/v1';
 
 export default {
   /** API基础地址 */
