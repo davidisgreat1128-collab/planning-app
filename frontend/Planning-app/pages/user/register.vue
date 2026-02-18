@@ -139,9 +139,9 @@ export default {
           nickname: this.form.nickname.trim()
         });
         uni.showToast({ title: '注册成功', icon: 'success' });
-        // 注册成功后跳转首页（清空页面栈）
+        // 注册成功后跳转日历主页（清空页面栈）
         setTimeout(() => {
-          uni.reLaunch({ url: '/pages/index/index' });
+          uni.reLaunch({ url: '/pages/calendar/index' });
         }, 1000);
       } catch (err) {
         uni.showToast({ title: err.message || '注册失败，请重试', icon: 'none' });

@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-02-18（第5次会话，时间体系后端+前端日历框架完成）
+> **最后更新**: 2026-02-18（第6次会话，联调修复：holiday API路由对齐、登录/注册跳转修正）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 待推送（前端日历系统框架）
+> **最新commit**: 待推送（联调修复）
 
 ---
 
@@ -195,17 +195,17 @@
 
 > 请先读 `D:\MyProject\Planning-app\.claude\CLAUDE.md` 和 `CURRENT_STATUS.md`。
 >
-> **当前状态**：最新commit `add73bb`，前端日历框架已建好，后端时间体系已全部完成（commit `16691a5`，84测试全过）。
+> **当前状态**：最新commit 见文档顶部，前端日历框架 + 联调修复已完成。
 >
 > **下一步任务**（按优先级）：
-> 1. 检查后端 `holidayController` 返回的字段名，确认是否有 `shortLabel`，与前端 `api/holiday.js` 对齐
-> 2. 完善 `frontend/Planning-app/pages/calendar/task-edit.vue` 的日期/时间选择器（目前 `pickDate()` 和 `pickTime()` 函数只弹出 showModal 占位）
-> 3. 联调前端登录页 `pages/user/login.vue`（骨架已在，需对接后端 `/api/v1/auth/login`）
+> 1. 完善 `frontend/Planning-app/pages/calendar/task-edit.vue` 的日期/时间选择器：`pickDate()` 和 `pickTime()` 函数目前是 showModal 占位，需换成 UniApp 的 `<picker>` 组件（mode="date" / mode="time"）
+> 2. 完善 `pages/user/profile.vue`：目前是骨架，需展示用户信息并对接退出登录
+> 3. 验证前后端联调：确保后端已启动（`node backend/src/app.js`），用模拟器访问日历页，确认任务/节日数据能正常加载
 >
 > **已知问题**：
-> - `holiday.js` 用了 `h.shortLabel` 字段，需确认后端是否返回该字段（看 `backend/src/controllers/holidayController.js`）
-> - `task-edit.vue` 的 `pickDate()` / `pickTime()` 是占位实现，需替换为 UniApp picker
-> - pages.json TabBar 没有配置图标文件（`iconPath`），视觉上只显示文字
+> - `task-edit.vue` 的 `pickDate()` / `pickTime()` 是占位实现（showModal），需替换为真实 picker
+> - `pages.json` TabBar 没有配置图标文件（`iconPath`），视觉上只显示文字
+> - `register.vue` 密码校验要求含字母+数字（后端也有此要求），注意提示一致
 
 ---
 

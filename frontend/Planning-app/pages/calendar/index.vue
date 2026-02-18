@@ -316,7 +316,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
-import { getHolidays } from '@/api/holiday.js';
+import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday.js';
 
 // ============================================================
 // Store
@@ -482,6 +482,8 @@ function prevWeek() {
   const d = new Date(currentWeekStart.value);
   d.setDate(d.getDate() - 7);
   currentWeekStart.value = d;
+  // 切换周后重新加载节日农历
+  loadHolidays();
 }
 
 /** 切换到下一周 */
@@ -489,6 +491,8 @@ function nextWeek() {
   const d = new Date(currentWeekStart.value);
   d.setDate(d.getDate() + 7);
   currentWeekStart.value = d;
+  // 切换周后重新加载节日农历
+  loadHolidays();
 }
 
 /** 周历触摸开始 */
@@ -552,18 +556,45 @@ async function convertLog(logId) {
   }
 }
 
-/** 加载节日节气数据（缓存一个月） */
+/** 加载当前周的节日节气 + 农历信息 */
 async function loadHolidays() {
   try {
-    const d = new Date();
-    const data = await getHolidays(d.getFullYear(), d.getMonth() + 1);
-    if (Array.isArray(data)) {
-      data.forEach(h => {
-        if (h.date) holidayMap.value[h.date] = h.shortLabel || h.name;
-      });
-    }
+    if (!currentWeekStart.value) return;
+    // 计算当前周的起止日期（周日到周六）
+    const weekEnd = new Date(currentWeekStart.value);
+    weekEnd.setDate(weekEnd.getDate() + 6);
+    const start = formatDate(currentWeekStart.value);
+    const end = formatDate(weekEnd);
+
+    // 并行请求节日 + 农历
+    const [holidayRes, lunarRes] = await Promise.all([
+      getHolidaysByRange(start, end),
+      getLunarInfoRange(start, end)
+    ]);
+
+    // 解析节日：holidayMap 结构为 { "YYYY-MM-DD": [{ name, type, ... }] }
+    const hMap = holidayRes?.holidayMap || {};
+    Object.entries(hMap).forEach(([date, list]) => {
+      if (Array.isArray(list) && list.length > 0) {
+        // 优先展示法定节假日，其次节气，其次其他
+        const sorted = [...list].sort((a, b) => {
+          const order = { public_holiday: 0, solar_term: 1 };
+          return (order[a.type] ?? 2) - (order[b.type] ?? 2);
+        });
+        holidayMap.value[date] = sorted[0].shortName || sorted[0].name;
+      }
+    });
+
+    // 解析农历：lunarMap 结构为 { "YYYY-MM-DD": { lunarDay, lunarMonth, ... } }
+    const lMap = lunarRes?.lunarMap || {};
+    Object.entries(lMap).forEach(([date, info]) => {
+      // 只有没有节日标注的日期才显示农历
+      if (!holidayMap.value[date] && info) {
+        holidayMap.value[date] = info.lunarDay || '';
+      }
+    });
   } catch (err) {
-    console.warn('[Calendar] 节日加载失败:', err);
+    console.warn('[Calendar] 节日农历加载失败:', err);
   }
 }
 

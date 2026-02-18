@@ -98,8 +98,9 @@ export default {
           password: this.form.password
         });
         console.log('[Login] 登录成功, token已获取:', !!result?.token, 'user:', result?.user);
-        console.log('[Login] 准备跳转首页 /pages/index/index');
-        uni.reLaunch({ url: '/pages/index/index' });
+        console.log('[Login] 准备跳转日历主页 /pages/calendar/index');
+        // 登录成功后跳转到日历主页（TabBar 第一个）
+        uni.reLaunch({ url: '/pages/calendar/index' });
       } catch (err) {
         console.error('[Login] 登录失败:', err.message, err);
         uni.showToast({ title: err.message || '登录失败，请重试', icon: 'none' });
