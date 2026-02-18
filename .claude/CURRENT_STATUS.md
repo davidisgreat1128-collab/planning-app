@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-02-18（第8次会话，前端字段对齐：store/task.js + calendar/index.vue）
+> **最后更新**: 2026-02-18（第9次会话，前端联调准备：login/register script setup化 + @tap统一）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 982300f fix(frontend): 对齐前端字段名与后端响应结构
+> **最新commit**: 6b1f031 refactor(frontend): login/register 升级为 script setup，@click 改 @tap
 
 ---
 
@@ -49,6 +49,16 @@
 - ✅ **节日种子数据**：55条（中国公历节日9条 + 农历节日12条 + 24节气 + 西方节日8条 + 国际节日4条）
 - ✅ **constants.js**：新增7个常量枚举组
 - ✅ **所有84个原有测试继续通过**（无回归）
+
+### Phase 3e - 前端登录/注册页完善（第9次会话，commit: 6b1f031）
+- ✅ **login.vue 重构**：Options API → `<script setup>`，`@click` → `@tap`
+- ✅ **register.vue 重构**：Options API → `<script setup>`，`@click` → `@tap`
+- ✅ **确认 App.vue 登录守卫完整**：onLaunch 恢复 token → 无 token 跳转登录页
+- ✅ **确认 pages.json 路由完整**：login / register / profile / calendar 所有页面已注册
+- ✅ **确认前端架构完整可联调**：
+  - request.js：uni.request 封装，自动注入 Token，401 自动跳转登录
+  - storage.js：多端兼容（H5 用 localStorage，App 用 uni.getStorageSync）
+  - config/index.js：开发环境 `http://127.0.0.1:3000/api/v1`
 
 ### Phase 3d - 前端字段对齐完整（第8次会话，commit: 982300f）
 - ✅ **store/task.js 字段对齐**：
@@ -119,23 +129,20 @@
 
 ### P0 - 下一个Claude应该做的
 
-1. **前端联调**（最关键）：
-   - 启动后端服务，验证各 API 接口是否能正常请求
-   - `pages/calendar/index.vue` 的 `loadTasks()` → `fetchTasksByDate(date)` 链路端到端测试
-   - task/log 创建/列表联调，确认字段完全对齐
+1. **实际联调验证**（最关键，需要用户启动后端服务）：
+   - 在 HBuilderX 中运行到 H5 浏览器
+   - 先注册账号（`/pages/user/register`），确认 `POST /api/v1/auth/register` 成功
+   - 登录后跳转日历主页，确认 `GET /api/v1/tasks?date=YYYY-MM-DD` 正常返回
+   - 创建任务，确认 `POST /api/v1/tasks` 字段正确写入数据库
 
-2. **前端登录/注册页联调**：
-   - `pages/user/login.vue`（骨架已存在，需联调后端）
-   - `pages/user/register.vue`（需新建）
-
-3. **闹铃功能**（Phase 4）：
+2. **闹铃功能**（Phase 4）：
    - 前端闹铃设置页面
    - 调用后端 `/api/v1/alarms` 接口
 
-4. **易经（IChingHexagram）模块**（可选）：
+3. **易经（IChingHexagram）模块**（可选）：
    - 64卦数据表 + 占卦算法
 
-5. **TabBar 图标配置**：
+4. **TabBar 图标配置**：
    - `pages.json` 中 TabBar 的 `iconPath` 和 `selectedIconPath` 需配置真实图标文件
 
 ---
@@ -221,17 +228,23 @@
 
 > 请先读 `D:\MyProject\Planning-app\.claude\CLAUDE.md` 和 `CURRENT_STATUS.md`。
 >
-> **当前状态**：最新commit `982300f`，前后端字段名已全面对齐（store/task.js + calendar/index.vue + api/task.js + api/log.js + task-edit.vue + profile.vue）。
+> **当前状态**：最新commit `6b1f031`，前端所有页面已完成（login / register / profile / calendar 四大模块），前后端字段名全面对齐，代码层面无明显 bug。
+>
+> **前端整体状态**（无需再改代码，等待实际联调）：
+> - `App.vue`：启动时自动恢复 token，无 token 跳转登录页 ✅
+> - `login.vue` / `register.vue`：`<script setup>` + `@tap`，调用 `store/user.js` 的 login/register ✅
+> - `store/user.js`：调用 `api/user.js`，保存 token 到 storage ✅
+> - `calendar/index.vue`：调用 `store/task.js` 的 `fetchTasksByDate(date)` ✅
+> - `store/task.js`：调用 `api/task.js` 的 `getTasks({ date })`，正确解析 `{ single, range, recurring }` ✅
 >
 > **下一步任务**（按优先级）：
-> 1. **前端联调**：启动后端服务（`cd backend && npm run dev`），在 UniApp 中调通日历主页任务加载（`fetchTasksByDate` → 后端 `/api/v1/tasks?date=YYYY-MM-DD` → 前端渲染）
-> 2. **login.vue 联调**：`pages/user/login.vue` 已有骨架，需联调后端 `POST /api/v1/auth/login`，登录成功后保存 token 并跳转日历主页
-> 3. **register.vue 新建**：注册页，调用 `POST /api/v1/auth/register`，注意后端 Joi 要求密码含字母+数字
-> 4. **闹铃功能**（Phase 4）
+> 1. **实际联调**：需用户在 HBuilderX 中运行到 H5/App，验证注册→登录→日历→创建任务完整流程
+> 2. **闹铃功能**（Phase 4）：前端闹铃设置页面
+> 3. **TabBar 图标**：配置真实图标文件
 >
 > **字段对齐已完成，无需再改**：
 > - 后端任务字段：`taskDate` / `startTime` / `endTime` / `isAllDay` / `dateType`
-> - 任务状态枚举：`'pending'` / `'completed'` / `'skipped'`（不是 `'done'`）
+> - 任务状态枚举：`'pending'` / `'completed'` / `'skipped'`
 > - 响应结构：`GET /api/v1/tasks?date=` 返回 `{ date, single: [], range: [], recurring: [] }`
 >
 > **已知问题**：
