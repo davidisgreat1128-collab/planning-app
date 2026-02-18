@@ -3,8 +3,8 @@
 > **文档性质**: 企业级AI协作核心文档
 > **适用对象**: 所有参与本项目的Claude实例
 > **重要程度**: ⭐⭐⭐⭐⭐ 最高优先级
-> **最后更新**: 2026-02-17
-> **文档版本**: v1.0
+> **最后更新**: 2026-02-18
+> **文档版本**: v1.1
 
 ---
 
@@ -174,7 +174,45 @@ Database(snake_case) → Sequelize自动映射 → Backend(camelCase) → API响
 
 **原因**: AI全程编写代码场景下，JavaScript更准确、更易于人类审查
 
-#### 决策3: UniApp多端统一 (不拆分平台目录)
+#### 决策3: 单例模式（隐式，通过 Node.js require 缓存）
+
+**问题**: 数据库连接、日志记录器等全局对象需要全局唯一，避免重复创建资源。
+
+**解决方案**: 利用 Node.js `require()` 的模块缓存机制——**同一文件在同一进程中只执行一次，后续调用直接返回缓存结果**，天然实现进程级单例，无需手写 `getInstance()` 模式。
+
+| 单例对象 | 创建位置 | 使用方式 |
+|---------|---------|---------|
+| Sequelize 实例 | `backend/src/models/index.js` 顶层 `new Sequelize(...)` | 所有 Model/Service `require('../models')` |
+| Winston Logger | `backend/src/middleware/logger.js` 顶层 `createLogger(...)` | 所有模块 `require('./logger')` |
+| Express App | `backend/src/app.js` 顶层 `express()` | `server.js` `require('./src/app')` |
+
+**新Claude注意**: 不需要、也不应该在各模块内重新 `new Sequelize()` 或 `createLogger()`，统一从上述入口模块 `require` 即可。
+
+#### 决策4: API 集中注册，Route→Controller→Service 分层
+
+**问题**: API 路由分散或路由文件中混入业务逻辑，导致难以维护。
+
+**解决方案**: `app.js` 是唯一的路由注册中心，所有 API 必须经过 **Route → Controller → Service → Model** 四层：
+
+```
+app.js（唯一注册入口）
+└── /api/v1  (apiV1 Router)
+    ├── /auth       → routes/auth.js       → authController       → —
+    ├── /users      → routes/user.js       → userController       → —
+    ├── /planning   → routes/planning.js   → planningController   → planningService
+    │                                      + planProgressController → planProgressService
+    ├── /holidays   → routes/holiday.js    → holidayController    → holidayService
+    ├── /tasks      → routes/task.js       → taskController       → taskService
+    ├── /alarms     → routes/alarm.js      → alarmController      → alarmService
+    └── /logs       → routes/log.js        → logController        → logService
+```
+
+**强制规范**：
+- 路由文件（routes/）只做：引入中间件、定义 Joi Schema、注册路由 → Controller
+- 业务逻辑只能写在 Controller / Service，**禁止在路由文件内写内联 `async (req, res) => { ... }` 业务代码**
+- 新增接口：先建 Service 函数 → 建 Controller 函数 → 在对应 routes/ 文件注册 → 在 app.js 确认已挂载（一般无需改动）
+
+#### 决策5: UniApp多端统一 (不拆分平台目录)
 
 **原因**: UniApp条件编译机制处理平台差异，无需分目录
 ```javascript
@@ -710,6 +748,8 @@ plus.device.getInfo(...)
 | 代码注释用英文 | 违反中文优先规范（第7.5节） |
 | 新建.md文件用英文命名 | 违反中文优先规范（第7.5节） |
 | 创建.md文件不登记导航 | 导致文档成为"孤儿"，无法找到 |
+| 在各模块内重新 `new Sequelize()` / `createLogger()` | 违反单例规范（第3.2节决策3），应从入口模块 require |
+| 在路由文件（routes/）内写内联业务逻辑 | 违反分层规范（第3.2节决策4），业务逻辑必须在 Controller/Service |
 | 输入框仅用 `v-model` | App 端行为不一致，必须用 `:value` + `@input`（第7.7节） |
 | 直接用 `localStorage` | App 端不支持，必须用 `uni.setStorageSync`（第7.7节） |
 | 直接用 `axios` 发请求 | App 端需特殊处理，必须用项目封装的 `utils/request.js`（第7.7节） |
@@ -845,6 +885,6 @@ Claude实例 | 2026-02-17
 
 ---
 
-**文档版本**: v1.0 | **创建**: 2026-02-17 | **作者**: Claude Sonnet 4.5 (实例A)
+**文档版本**: v1.1 | **创建**: 2026-02-17 | **最后更新**: 2026-02-18 | **作者**: Claude Sonnet 4.5
 
 **有任何疑问，优先查阅本文档。实在不确定，询问唐伯虎。**
