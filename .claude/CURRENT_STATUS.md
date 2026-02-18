@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-02-18（第10次会话，联调 Bug 修复：Controller response调用方式 + lunar API修复）
+> **最后更新**: 2026-02-18（第11次会话，可折叠日历条 + lint 修复）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 680a131 fix(backend): 修复联调发现的3个运行时错误
+> **最新commit**: fb742ef fix(frontend): 移除 calendar/index.vue 未使用的 contentTouchStartX 变量
 
 ---
 
@@ -11,7 +11,7 @@
 
 **阶段名称**: Phase 3 - 前端日历/时间体系
 **进度**: 🔄 进行中 (约75%)
-**已完成模块**: Auth / Users / Planning Records / 时间体系后端（5大系统） / 前端日历框架 / 后端企业级改造
+**已完成模块**: Auth / Users / Planning Records / 时间体系后端（5大系统） / 前端日历框架 / 后端企业级改造 / 可折叠日历条
 **待完成模块**: 前端业务页面联调 / 日期选择器完善 / 易经模块 / 闹铃功能
 
 ---
@@ -49,6 +49,20 @@
 - ✅ **节日种子数据**：55条（中国公历节日9条 + 农历节日12条 + 24节气 + 西方节日8条 + 国际节日4条）
 - ✅ **constants.js**：新增7个常量枚举组
 - ✅ **所有84个原有测试继续通过**（无回归）
+
+### Phase 3g - 可折叠日历条（第11次会话，commit: fb742ef）
+- ✅ **calendar/index.vue 完整重写**：实现周/月双模式日历条，手势驱动展开/折叠
+  - `weekDays = ['周一','周二','周三','周四','周五','周六','周日']`（周一起，符合中国习惯）
+  - `calendarMode: ref('week')` 状态机，`'week'` | `'month'` 两种模式
+  - `getWeekMonday(date)`：计算给定日期所在周的周一（JS getDay() 0=周日，diff = dow===0 ? -6 : 1-dow）
+  - `monthRows` 计算属性：6×7 = 42天二维数组，以当月1号所在周的周一为起点，`otherMonth` 标记补位日期（灰色显示）
+  - 日历条手势：水平 >50px → 切周/月，垂直向下 >60px → 展开月视图，垂直向上 >60px → 折叠回周视图
+  - 内容区手势：月模式 + scrollTop=0 + 上滑 → 折叠
+  - 点击月视图日期自动折叠回周视图
+  - CSS：补位日期灰色（`.other-month .date-num { color: #CCC }`），今天虚线圆圈边框
+  - 同步修复所有字段名：`task.status 'done'` → `'completed'`，`dueTime` → `startTime`，`loggedAt` → `logTime`
+- ✅ **lint 修复**：移除未使用的 `contentTouchStartX` 变量（声明 + 赋值两处）
+- ✅ **lint 修复**：`onContentTouchMove(e)` 未使用参数 `e` → 改为无参数
 
 ### Phase 3f - 联调 Bug 修复（第10次会话，commit: 680a131）
 - ✅ **根因分析**：task/log/holiday/alarm 四个 Controller 误用 `res.json(success(data))` 写法
@@ -236,14 +250,19 @@
 
 > 请先读 `D:\MyProject\Planning-app\.claude\CLAUDE.md` 和 `CURRENT_STATUS.md`。
 >
-> **当前状态**：最新commit `6b1f031`，前端所有页面已完成（login / register / profile / calendar 四大模块），前后端字段名全面对齐，代码层面无明显 bug。
+> **当前状态**：最新commit `fb742ef`，前端日历主页完成可折叠日历条（周/月双模式 + 手势驱动），所有 lint 警告已清除，前后端字段名全面对齐。
 >
 > **前端整体状态**（无需再改代码，等待实际联调）：
 > - `App.vue`：启动时自动恢复 token，无 token 跳转登录页 ✅
 > - `login.vue` / `register.vue`：`<script setup>` + `@tap`，调用 `store/user.js` 的 login/register ✅
 > - `store/user.js`：调用 `api/user.js`，保存 token 到 storage ✅
-> - `calendar/index.vue`：调用 `store/task.js` 的 `fetchTasksByDate(date)` ✅
+> - `calendar/index.vue`：可折叠日历条（周一~周日，周模式↔月模式手势），调用 `store/task.js` ✅
 > - `store/task.js`：调用 `api/task.js` 的 `getTasks({ date })`，正确解析 `{ single, range, recurring }` ✅
+>
+> **日历条关键逻辑**（calendar/index.vue）：
+> - 周模式：左/右滑 → 切周；下拉 >60px → 展开月视图
+> - 月模式：6×7=42天，补位日期灰色；左/右滑 → 切月；上划 >60px → 折叠；点击日期 → 自动折叠
+> - `getWeekMonday(date)`：`diff = dow===0 ? -6 : 1-dow`（周一为起点）
 >
 > **下一步任务**（按优先级）：
 > 1. **实际联调**：需用户在 HBuilderX 中运行到 H5/App，验证注册→登录→日历→创建任务完整流程
