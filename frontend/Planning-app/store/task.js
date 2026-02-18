@@ -1,0 +1,165 @@
+/**
+ * 任务 Pinia Store
+ * 管理任务列表、四象限分类、当前选中日期的任务
+ */
+import { defineStore } from 'pinia';
+import { ref, computed } from 'vue';
+import { getTasks, createTask, updateTask, updateTaskStatus, deleteTask } from '@/api/task.js';
+
+export const useTaskStore = defineStore('task', () => {
+  // ============================================================
+  // 状态
+  // ============================================================
+
+  /** 当前日期的任务列表 */
+  const tasks = ref([]);
+
+  /** 加载状态 */
+  const loading = ref(false);
+
+  /** 当前选中日期 YYYY-MM-DD */
+  const selectedDate = ref('');
+
+  // ============================================================
+  // 计算属性（四象限分类）
+  // ============================================================
+
+  /** 第一象限：紧急且重要（危机处理）- 红色 */
+  const urgentImportant = computed(() =>
+    tasks.value.filter(t => t.isUrgent && t.isImportant && t.status !== 'done')
+  );
+
+  /** 第二象限：重要不紧急（规划区）- 蓝色 */
+  const notUrgentImportant = computed(() =>
+    tasks.value.filter(t => !t.isUrgent && t.isImportant && t.status !== 'done')
+  );
+
+  /** 第三象限：紧急不重要（琐事区）- 黄色 */
+  const urgentNotImportant = computed(() =>
+    tasks.value.filter(t => t.isUrgent && !t.isImportant && t.status !== 'done')
+  );
+
+  /** 第四象限：不紧急不重要（消遣区）- 绿色 */
+  const notUrgentNotImportant = computed(() =>
+    tasks.value.filter(t => !t.isUrgent && !t.isImportant && t.status !== 'done')
+  );
+
+  /** 已完成任务 */
+  const doneTasks = computed(() =>
+    tasks.value.filter(t => t.status === 'done')
+  );
+
+  /** 时间轴视图（有 dueTime 的任务，按时间排序） */
+  const timelineTasks = computed(() => {
+    return [...tasks.value]
+      .filter(t => t.dueTime && t.status !== 'done')
+      .sort((a, b) => {
+        if (a.dueTime < b.dueTime) return -1;
+        if (a.dueTime > b.dueTime) return 1;
+        return 0;
+      });
+  });
+
+  // ============================================================
+  // 方法
+  // ============================================================
+
+  /**
+   * 加载指定日期的任务
+   * @param {string} date - YYYY-MM-DD
+   */
+  async function fetchTasksByDate(date) {
+    loading.value = true;
+    selectedDate.value = date;
+    try {
+      const res = await getTasks({ date });
+      tasks.value = res.list || res || [];
+    } catch (err) {
+      console.error('[TaskStore] 加载任务失败:', err);
+      uni.showToast({ title: err.message || '加载失败', icon: 'none' });
+    } finally {
+      loading.value = false;
+    }
+  }
+
+  /**
+   * 创建新任务
+   * @param {object} data - 任务数据
+   * @returns {Promise<object>} 新任务
+   */
+  async function addTask(data) {
+    const newTask = await createTask(data);
+    // 如果是当天任务，插入列表
+    if (!data.dueDate || data.dueDate === selectedDate.value) {
+      tasks.value.unshift(newTask);
+    }
+    return newTask;
+  }
+
+  /**
+   * 修改任务
+   * @param {number} id - 任务ID
+   * @param {object} data - 更新字段
+   */
+  async function editTask(id, data) {
+    const updated = await updateTask(id, data);
+    const idx = tasks.value.findIndex(t => t.id === id);
+    if (idx !== -1) {
+      tasks.value[idx] = { ...tasks.value[idx], ...updated };
+    }
+    return updated;
+  }
+
+  /**
+   * 切换任务完成状态
+   * @param {number} id - 任务ID
+   * @param {string} currentStatus - 当前状态
+   */
+  async function toggleDone(id, currentStatus) {
+    const newStatus = currentStatus === 'done' ? 'pending' : 'done';
+    await updateTaskStatus(id, newStatus);
+    const idx = tasks.value.findIndex(t => t.id === id);
+    if (idx !== -1) {
+      tasks.value[idx].status = newStatus;
+    }
+  }
+
+  /**
+   * 删除任务
+   * @param {number} id - 任务ID
+   */
+  async function removeTask(id) {
+    await deleteTask(id);
+    tasks.value = tasks.value.filter(t => t.id !== id);
+  }
+
+  /**
+   * 重置 store
+   */
+  function reset() {
+    tasks.value = [];
+    loading.value = false;
+    selectedDate.value = '';
+  }
+
+  return {
+    // 状态
+    tasks,
+    loading,
+    selectedDate,
+    // 计算属性
+    urgentImportant,
+    notUrgentImportant,
+    urgentNotImportant,
+    notUrgentNotImportant,
+    doneTasks,
+    timelineTasks,
+    // 方法
+    fetchTasksByDate,
+    addTask,
+    editTask,
+    toggleDone,
+    removeTask,
+    reset
+  };
+});

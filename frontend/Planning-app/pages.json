@@ -1,6 +1,13 @@
 {
 	"pages": [
 		{
+			"path": "pages/calendar/index",
+			"style": {
+				"navigationBarTitleText": "做计划",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/index/index",
 			"style": {
 				"navigationBarTitleText": "规划助手"
@@ -23,6 +30,30 @@
 			"path": "pages/user/profile",
 			"style": {
 				"navigationBarTitleText": "个人中心"
+			}
+		},
+		{
+			"path": "pages/calendar/task-edit",
+			"style": {
+				"navigationBarTitleText": "新建任务"
+			}
+		},
+		{
+			"path": "pages/calendar/log-edit",
+			"style": {
+				"navigationBarTitleText": "新建日志"
+			}
+		},
+		{
+			"path": "pages/calendar/view",
+			"style": {
+				"navigationBarTitleText": "视图"
+			}
+		},
+		{
+			"path": "pages/calendar/focus",
+			"style": {
+				"navigationBarTitleText": "专注"
 			}
 		},
 		{
@@ -106,16 +137,21 @@
 	],
 	"tabBar": {
 		"color": "#999",
-		"selectedColor": "#07c160",
+		"selectedColor": "#5B8CFF",
 		"backgroundColor": "#fff",
+		"borderStyle": "black",
 		"list": [
 			{
-				"pagePath": "pages/index/index",
-				"text": "首页"
+				"pagePath": "pages/calendar/index",
+				"text": "做计划"
 			},
 			{
-				"pagePath": "pages/iching/divination/index",
-				"text": "起卦"
+				"pagePath": "pages/calendar/view",
+				"text": "视图"
+			},
+			{
+				"pagePath": "pages/calendar/focus",
+				"text": "专注"
 			},
 			{
 				"pagePath": "pages/user/profile",
