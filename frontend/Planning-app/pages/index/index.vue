@@ -23,6 +23,7 @@
 
 <script>
 import { useUserStore } from '@/store/user.js';
+import { getToken, getUserInfo } from '@/utils/storage.js';
 
 export default {
   name: 'HomePage',
@@ -58,12 +59,22 @@ export default {
   },
 
   onLoad() {
-    // 进入首页时检查登录状态，未登录则跳转
+    // H5 下 reLaunch 会刷新页面，store 可能还未恢复，直接从 storage 读 token
+    const token = getToken();
     const userStore = useUserStore();
-    console.log('[Home] onLoad, isLoggedIn:', userStore.isLoggedIn, 'token:', !!userStore.token);
-    if (!userStore.isLoggedIn) {
+    console.log('[Home] onLoad, token from storage:', !!token, 'store isLoggedIn:', userStore.isLoggedIn);
+
+    if (!token) {
       console.warn('[Home] 未登录，跳转登录页');
       uni.reLaunch({ url: '/pages/user/login' });
+      return;
+    }
+
+    // 确保 store 同步了最新数据
+    if (!userStore.token) {
+      userStore.token = token;
+      userStore.userInfo = getUserInfo();
+      console.log('[Home] store 已同步, user:', userStore.userInfo);
     } else {
       console.log('[Home] 已登录，用户:', userStore.userInfo);
     }
