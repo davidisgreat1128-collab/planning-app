@@ -1,18 +1,18 @@
 # 项目当前状态
 
-> **最后更新**: 2026-02-18（第6次会话，联调修复：holiday API路由对齐、登录/注册跳转修正）
+> **最后更新**: 2026-02-18（第7次会话，企业级后端改造：Joi校验统一、分层修复、日志统一）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 4aef906 fix(frontend): 联调修复 - holiday API路由对齐、登录注册跳转修正
+> **最新commit**: 3305790 refactor(backend): 企业级后端改造 - 分层修复、Joi校验、日志统一
 
 ---
 
 ## 🎯 当前阶段
 
 **阶段名称**: Phase 3 - 前端日历/时间体系
-**进度**: 🔄 进行中 (约65%)
-**已完成模块**: Auth / Users / Planning Records / 时间体系后端（5大系统） / 前端日历框架
-**待完成模块**: 前端联调（接口对接）/ 易经模块 / 日期选择器完善 / 闹铃功能
+**进度**: 🔄 进行中 (约75%)
+**已完成模块**: Auth / Users / Planning Records / 时间体系后端（5大系统） / 前端日历框架 / 后端企业级改造
+**待完成模块**: 前端业务页面联调 / 日期选择器完善 / 易经模块 / 闹铃功能
 
 ---
 
@@ -50,7 +50,21 @@
 - ✅ **constants.js**：新增7个常量枚举组
 - ✅ **所有84个原有测试继续通过**（无回归）
 
-### Phase 3b - 前端日历框架（本次会话）
+### Phase 3c - 企业级后端改造（第7次会话，commit: 3305790）
+- ✅ **Bug修复：successCreated → created**（5处，分布于 task/log/alarm Controller 和 planning 路由）
+- ✅ **新建 planProgressController.js**：从路由文件抽取内联业务逻辑，完成 Route→Controller→Service 分层
+- ✅ **server.js 完善**：优雅关闭增加 `db.sequelize.close()` 关闭连接池 + `uncaughtException` 处理
+- ✅ **Joi 参数校验统一**（routes/task + alarm + log）：
+  - `routes/task.js`：createTaskSchema / updateTaskSchema / getTasksQuerySchema + idParamSchema
+  - `routes/alarm.js`：createAlarmSchema / updateAlarmSchema / createAlarmSoundSchema / trimSoundSchema
+  - `routes/log.js`：createLogSchema / updateLogSchema / convertToTaskSchema / getLogsQuerySchema
+  - 所有 `:id` 参数 `validateParams` 保护
+- ✅ **errorHandler 改用 winston**：移除 `console.error`，改用 `logger.warn/error`；4xx 用 warn、5xx 用 error
+- ✅ **前端 API 字段名对齐**：
+  - `api/task.js`：`dueDate/dueTime` → `taskDate/startTime/endTime/dateType`；新增 `createSingleTask / createTimedTask / updateOccurrence / getSubtasksByPlan`；删除不存在的 `getTaskDetail / updateTaskStatus`
+  - `api/log.js`：`startDate/endDate` → `start/end`；`loggedAt` → `logTime`；`convertLogToTask` 支持传入 `taskData`
+
+### Phase 3b - 前端日历框架（第5-6次会话）
 - ✅ **pages.json更新**：
   - 新增日历相关页面（calendar/index、task-edit、log-edit、view、focus）
   - TabBar 更新为4个Tab（做计划 / 视图 / 专注 / 我的）
@@ -118,10 +132,11 @@
 ## ⚠️ 已知问题和注意事项
 
 - ⚠️ `task-edit.vue` 日期/时间 Picker 目前是 showModal 占位，需完善为真实 picker
-- ⚠️ `holiday API` 返回格式需与后端对齐（`h.date` 和 `h.shortLabel` 字段名需确认）
+- ⚠️ `holiday API` 已对齐（返回 `holidayMap` / `lunarMap` 对象，`calendar/index.vue` 已适配）
 - ⚠️ `relatedStage` 字段的校验用的是中文 name
 - ⚠️ .env.development 含 MySQL 密码，绝对不能提交
 - ⚠️ bcrypt@6.0.0 在 dependencies（生产必须），supertest@7.2.2 在 devDependencies
+- ⚠️ `routes/log.js` 的 `getLogsQuerySchema` 用 `.or('date', 'start')` 约束，前端调用必须传其中之一
 
 ---
 
@@ -195,17 +210,18 @@
 
 > 请先读 `D:\MyProject\Planning-app\.claude\CLAUDE.md` 和 `CURRENT_STATUS.md`。
 >
-> **当前状态**：最新commit 见文档顶部，前端日历框架 + 联调修复已完成。
+> **当前状态**：最新commit `3305790`，后端企业级改造完成（Joi校验、分层修复、日志统一）。
 >
 > **下一步任务**（按优先级）：
-> 1. 完善 `frontend/Planning-app/pages/calendar/task-edit.vue` 的日期/时间选择器：`pickDate()` 和 `pickTime()` 函数目前是 showModal 占位，需换成 UniApp 的 `<picker>` 组件（mode="date" / mode="time"）
-> 2. 完善 `pages/user/profile.vue`：目前是骨架，需展示用户信息并对接退出登录
-> 3. 验证前后端联调：确保后端已启动（`node backend/src/app.js`），用模拟器访问日历页，确认任务/节日数据能正常加载
+> 1. **完善 `task-edit.vue` 日期/时间选择器**：`pickDate()` / `pickTime()` 目前是 showModal 占位，需换成 UniApp `<picker>` 组件（mode="date" / mode="time"），并正确写入 `form.taskDate`、`form.startTime`、`form.endTime`
+> 2. **完善 `pages/user/profile.vue`**：展示用户信息（调用 `GET /api/v1/users/me`），对接退出登录（清空 token/pinia store → 跳转登录页）
+> 3. **日历主页任务加载联调**：`pages/calendar/index.vue` 中 `loadTasks()` 调用 `getTasks({ date })` 后，响应结构为 `{ single: [], range: [], recurring: [] }`，需确保渲染逻辑对应
 >
 > **已知问题**：
 > - `task-edit.vue` 的 `pickDate()` / `pickTime()` 是占位实现（showModal），需替换为真实 picker
 > - `pages.json` TabBar 没有配置图标文件（`iconPath`），视觉上只显示文字
-> - `register.vue` 密码校验要求含字母+数字（后端也有此要求），注意提示一致
+> - `register.vue` 密码校验要求含字母+数字（后端 Joi schema 也有此要求），注意提示一致
+> - `routes/log.js` GET 接口要求 `date` 或 `start` 参数必填，前端不能裸调 `getLogs({})`
 
 ---
 
