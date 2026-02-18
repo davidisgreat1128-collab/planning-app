@@ -4,6 +4,7 @@
  */
 
 import config from '@/config/index.js';
+import { removeToken, removeUserInfo } from '@/utils/storage.js';
 
 /**
  * 发起HTTP请求
@@ -22,7 +23,12 @@ function request({ url, method = 'GET', data = {}, auth = true } = {}) {
 
     // 自动注入Token
     if (auth) {
+      // #ifdef H5
+      const token = localStorage.getItem(config.TOKEN_KEY);
+      // #endif
+      // #ifndef H5
       const token = uni.getStorageSync(config.TOKEN_KEY);
+      // #endif
       if (token) {
         header['Authorization'] = `Bearer ${token}`;
       }
@@ -49,8 +55,8 @@ function request({ url, method = 'GET', data = {}, auth = true } = {}) {
           resolve(null);
         } else if (res.statusCode === 401) {
           // Token失效，清除本地登录状态并跳转登录页
-          uni.removeStorageSync(config.TOKEN_KEY);
-          uni.removeStorageSync(config.USER_INFO_KEY);
+          removeToken();
+          removeUserInfo();
           uni.reLaunch({ url: '/pages/user/login' });
           reject(new Error('登录已过期，请重新登录'));
         } else if (res.statusCode === 404) {

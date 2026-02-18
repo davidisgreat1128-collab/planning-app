@@ -1,16 +1,44 @@
 /**
  * 本地存储工具函数
- * 统一封装uni.setStorageSync / getStorageSync，避免分散调用
+ * H5 端直接使用 localStorage，App 端使用 uni.setStorageSync
  */
 
 import config from '@/config/index.js';
+
+// 统一读写方法，条件编译区分 H5 和 App
+function setStorage(key, value) {
+  // #ifdef H5
+  localStorage.setItem(key, value);
+  // #endif
+  // #ifndef H5
+  uni.setStorageSync(key, value);
+  // #endif
+}
+
+function getStorage(key) {
+  // #ifdef H5
+  return localStorage.getItem(key);
+  // #endif
+  // #ifndef H5
+  return uni.getStorageSync(key);
+  // #endif
+}
+
+function removeStorage(key) {
+  // #ifdef H5
+  localStorage.removeItem(key);
+  // #endif
+  // #ifndef H5
+  uni.removeStorageSync(key);
+  // #endif
+}
 
 /**
  * 保存Token
  * @param {string} token
  */
 export function saveToken(token) {
-  uni.setStorageSync(config.TOKEN_KEY, token);
+  setStorage(config.TOKEN_KEY, token);
 }
 
 /**
@@ -18,14 +46,14 @@ export function saveToken(token) {
  * @returns {string|null}
  */
 export function getToken() {
-  return uni.getStorageSync(config.TOKEN_KEY) || null;
+  return getStorage(config.TOKEN_KEY) || null;
 }
 
 /**
  * 清除Token
  */
 export function removeToken() {
-  uni.removeStorageSync(config.TOKEN_KEY);
+  removeStorage(config.TOKEN_KEY);
 }
 
 /**
@@ -33,7 +61,7 @@ export function removeToken() {
  * @param {object} userInfo
  */
 export function saveUserInfo(userInfo) {
-  uni.setStorageSync(config.USER_INFO_KEY, JSON.stringify(userInfo));
+  setStorage(config.USER_INFO_KEY, JSON.stringify(userInfo));
 }
 
 /**
@@ -41,7 +69,7 @@ export function saveUserInfo(userInfo) {
  * @returns {object|null}
  */
 export function getUserInfo() {
-  const raw = uni.getStorageSync(config.USER_INFO_KEY);
+  const raw = getStorage(config.USER_INFO_KEY);
   if (!raw) return null;
   try {
     return JSON.parse(raw);
@@ -54,7 +82,7 @@ export function getUserInfo() {
  * 清除用户信息
  */
 export function removeUserInfo() {
-  uni.removeStorageSync(config.USER_INFO_KEY);
+  removeStorage(config.USER_INFO_KEY);
 }
 
 /**
@@ -71,7 +99,7 @@ export function clearAuth() {
  * @param {*} value
  */
 export function set(key, value) {
-  uni.setStorageSync(key, typeof value === 'object' ? JSON.stringify(value) : value);
+  setStorage(key, typeof value === 'object' ? JSON.stringify(value) : value);
 }
 
 /**
@@ -81,7 +109,7 @@ export function set(key, value) {
  * @returns {*}
  */
 export function get(key, defaultValue = null) {
-  const val = uni.getStorageSync(key);
+  const val = getStorage(key);
   if (val === '' || val === undefined || val === null) return defaultValue;
   try {
     return JSON.parse(val);
@@ -95,5 +123,5 @@ export function get(key, defaultValue = null) {
  * @param {string} key
  */
 export function remove(key) {
-  uni.removeStorageSync(key);
+  removeStorage(key);
 }
