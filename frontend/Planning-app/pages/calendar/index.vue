@@ -51,7 +51,15 @@
           <view class="date-circle">
             <text class="date-num">{{ item.day }}</text>
           </view>
-          <view v-if="item.hasTask" class="task-dot"></view>
+          <!-- 多色任务点（最多显示2个象限色） -->
+          <view v-if="item.hasTask" class="task-dots">
+            <view
+              v-for="(dot, di) in item.taskDots"
+              :key="di"
+              class="task-dot"
+              :class="'dot-' + dot"
+            ></view>
+          </view>
         </view>
       </view>
 
@@ -78,7 +86,14 @@
             <view class="date-circle">
               <text class="date-num">{{ item.day }}</text>
             </view>
-            <view v-if="item.hasTask" class="task-dot"></view>
+            <view v-if="item.hasTask" class="task-dots">
+              <view
+                v-for="(dot, di) in item.taskDots"
+                :key="di"
+                class="task-dot"
+                :class="'dot-' + dot"
+              ></view>
+            </view>
           </view>
         </view>
       </view>
@@ -109,22 +124,43 @@
 
       <!-- 时间轴视图 -->
       <view v-if="currentView === 'timeline'" class="timeline-view">
-        <!-- 全天任务 -->
-        <view v-if="allDayTasks.length > 0" class="allday-section">
-          <text class="section-title">全天</text>
-          <view
-            v-for="task in allDayTasks"
-            :key="task.id"
-            class="task-item"
-            :class="['quad-' + getQuadrant(task), { done: task.status === 'completed' }]"
-            @tap="openTask(task)"
-          >
-            <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-              <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
+
+        <!-- 顶部栏：目标和分类 + 时间轴标签 -->
+        <view class="tl-top-bar">
+          <view class="tl-filter-tab">
+            <text class="tl-filter-text">目标和分类</text>
+            <text class="tl-filter-icon">≡</text>
+            <view class="tl-filter-tab-ear"></view>
+          </view>
+          <view class="tl-mode-btn">
+            <text class="tl-mode-icon">⇌</text>
+            <text class="tl-mode-text">时间轴</text>
+          </view>
+        </view>
+
+        <!-- 全天任务区 -->
+        <view class="tl-allday-section">
+          <text class="tl-allday-label">全天</text>
+          <view class="tl-allday-bars">
+            <!-- 未完成任务：彩色实色bar -->
+            <view
+              v-for="task in allDayTasksPending"
+              :key="task.id"
+              class="tl-bar"
+              :class="'tl-bar-' + getQuadrant(task)"
+              @tap="openTask(task)"
+            >
+              <text class="tl-bar-text">{{ task.title }}</text>
             </view>
-            <text class="task-title">{{ task.title }}</text>
-            <view class="task-quad-tag" :class="'tag-' + getQuadrant(task)">
-              <text>{{ quadrantLabel(task) }}</text>
+            <!-- 已完成任务：淡色+删除线 -->
+            <view
+              v-for="task in allDayTasksDone"
+              :key="'done-' + task.id"
+              class="tl-bar tl-bar-done"
+              :class="'tl-bar-done-' + getQuadrant(task)"
+              @tap="openTask(task)"
+            >
+              <text class="tl-bar-text tl-bar-text-done">{{ task.title }}</text>
             </view>
           </view>
         </view>
@@ -147,17 +183,11 @@
               <view
                 v-for="task in getTasksAtHour(hour)"
                 :key="task.id"
-                class="timeline-task"
-                :class="['quad-' + getQuadrant(task), { done: task.status === 'completed' }]"
+                class="tl-timed-bar"
+                :class="['tl-bar-' + getQuadrant(task), { 'tl-bar-done': task.status === 'completed' }]"
                 @tap="openTask(task)"
               >
-                <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
-                </view>
-                <view class="timeline-task-info">
-                  <text class="task-title">{{ task.title }}</text>
-                  <text class="task-time-label">{{ task.startTime }}</text>
-                </view>
+                <text class="tl-bar-text" :class="{ 'tl-bar-text-done': task.status === 'completed' }">{{ task.title }}</text>
               </view>
             </view>
           </view>
@@ -181,109 +211,231 @@
 
       <!-- 四象限视图 -->
       <view v-if="currentView === 'quadrant'" class="quadrant-view">
-        <view class="quadrant-row">
-          <view class="quadrant-cell q1">
-            <view class="quad-header">
-              <text class="quad-icon">🔴</text>
-              <text class="quad-title">紧急重要</text>
-              <text class="quad-count">{{ taskStore.urgentImportant.length }}</text>
-            </view>
-            <view class="quad-tasks">
-              <view
-                v-for="task in taskStore.urgentImportant"
-                :key="task.id"
-                class="quad-task-item"
-                @tap="openTask(task)"
-              >
-                <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
-                </view>
-                <text class="task-title">{{ task.title }}</text>
-              </view>
-              <text v-if="taskStore.urgentImportant.length === 0" class="quad-empty">暂无</text>
-            </view>
+        <!-- 顶部栏：目标和分类 + 四象限切换标签 -->
+        <view class="quad-top-bar">
+          <view class="quad-filter-btn">
+            <text class="quad-filter-text">目标和分类</text>
+            <text class="quad-filter-icon">≡</text>
           </view>
-          <view class="quadrant-cell q2">
-            <view class="quad-header">
-              <text class="quad-icon">🔵</text>
-              <text class="quad-title">重要不紧急</text>
-              <text class="quad-count">{{ taskStore.notUrgentImportant.length }}</text>
-            </view>
-            <view class="quad-tasks">
-              <view
-                v-for="task in taskStore.notUrgentImportant"
-                :key="task.id"
-                class="quad-task-item"
-                @tap="openTask(task)"
-              >
-                <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
-                </view>
-                <text class="task-title">{{ task.title }}</text>
-              </view>
-              <text v-if="taskStore.notUrgentImportant.length === 0" class="quad-empty">暂无</text>
-            </view>
+          <view class="quad-mode-btn">
+            <text class="quad-mode-icon">⇌</text>
+            <text class="quad-mode-text">四象限</text>
           </view>
         </view>
-        <view class="quadrant-row">
-          <view class="quadrant-cell q3">
-            <view class="quad-header">
-              <text class="quad-icon">🟡</text>
-              <text class="quad-title">紧急不重要</text>
-              <text class="quad-count">{{ taskStore.urgentNotImportant.length }}</text>
+
+        <!-- 四象限网格（上行：Q3左 + Q1右） -->
+        <view class="quadrant-grid">
+          <view class="quadrant-row-wrap">
+          <!-- 左上：紧急不重要（Q3） -->
+          <view class="nb-card nb-q3">
+            <!-- 笔记本顶部夹子 -->
+            <view class="nb-clips">
+              <view class="nb-clip"></view>
+              <view class="nb-clip"></view>
             </view>
-            <view class="quad-tasks">
+            <!-- 笔记本标题栏 -->
+            <view class="nb-title-bar nb-title-q3">
+              <text class="nb-title-text">紧急不重要</text>
+            </view>
+            <!-- 任务内容 -->
+            <view class="nb-body">
+              <view v-if="taskStore.urgentNotImportant.length === 0 && urgentNotImportantDone.length === 0" class="nb-empty">
+                <view class="nb-empty-icon-wrap">
+                  <text class="nb-empty-icon">🚫</text>
+                </view>
+                <text class="nb-empty-tip">无益象限 快速做</text>
+              </view>
               <view
                 v-for="task in taskStore.urgentNotImportant"
                 :key="task.id"
-                class="quad-task-item"
-                @tap="openTask(task)"
+                class="nb-task-item"
+                @tap="openTaskDetail(task)"
               >
-                <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
+                <view
+                  class="nb-check nb-check-q3"
+                  @tap.stop="toggleTaskDone(task)"
+                ></view>
+                <view class="nb-task-right">
+                  <view v-if="task.hasSubtask" class="nb-subtask-icon">
+                    <text class="nb-subtask-icon-text">☰</text>
+                  </view>
+                  <text class="nb-task-title">{{ task.title }}</text>
                 </view>
-                <text class="task-title">{{ task.title }}</text>
               </view>
-              <text v-if="taskStore.urgentNotImportant.length === 0" class="quad-empty">暂无</text>
+              <!-- 已完成任务（灰色勾选+删除线） -->
+              <view
+                v-for="task in urgentNotImportantDone"
+                :key="'done-' + task.id"
+                class="nb-task-item nb-task-done"
+                @tap="openTaskDetail(task)"
+              >
+                <view
+                  class="nb-check nb-check-done"
+                  @tap.stop="toggleTaskDone(task)"
+                >
+                  <text class="nb-check-mark">✓</text>
+                </view>
+                <text class="nb-task-title nb-task-title-done">{{ task.title }}</text>
+              </view>
             </view>
           </view>
-          <view class="quadrant-cell q4">
-            <view class="quad-header">
-              <text class="quad-icon">🟢</text>
-              <text class="quad-title">不急不重要</text>
-              <text class="quad-count">{{ taskStore.notUrgentNotImportant.length }}</text>
+
+          <!-- 右上：重要且紧急（Q1） -->
+          <view class="nb-card nb-q1">
+            <view class="nb-clips">
+              <view class="nb-clip"></view>
+              <view class="nb-clip"></view>
             </view>
-            <view class="quad-tasks">
+            <view class="nb-title-bar nb-title-q1">
+              <text class="nb-title-text">重要且紧急</text>
+            </view>
+            <view class="nb-body">
+              <view v-if="taskStore.urgentImportant.length === 0 && urgentImportantDone.length === 0" class="nb-empty">
+                <view class="nb-empty-icon-wrap">
+                  <text class="nb-empty-icon">✨</text>
+                </view>
+                <text class="nb-empty-tip">重要优先做</text>
+              </view>
+              <view
+                v-for="task in taskStore.urgentImportant"
+                :key="task.id"
+                class="nb-task-item"
+                @tap="openTaskDetail(task)"
+              >
+                <view
+                  class="nb-check nb-check-q1"
+                  @tap.stop="toggleTaskDone(task)"
+                ></view>
+                <view class="nb-task-right">
+                  <view v-if="task.hasSubtask" class="nb-subtask-icon">
+                    <text class="nb-subtask-icon-text">☰</text>
+                  </view>
+                  <text class="nb-task-title">{{ task.title }}</text>
+                </view>
+              </view>
+              <view
+                v-for="task in urgentImportantDone"
+                :key="'done-' + task.id"
+                class="nb-task-item nb-task-done"
+                @tap="openTaskDetail(task)"
+              >
+                <view
+                  class="nb-check nb-check-done"
+                  @tap.stop="toggleTaskDone(task)"
+                >
+                  <text class="nb-check-mark">✓</text>
+                </view>
+                <text class="nb-task-title nb-task-title-done">{{ task.title }}</text>
+              </view>
+            </view>
+          </view>
+
+          </view><!-- end quadrant-row-wrap (上行) -->
+
+          <!-- 下行：Q4左 + Q2右 -->
+          <view class="quadrant-row-wrap">
+          <!-- 左下：不重要不紧急（Q4） -->
+          <view class="nb-card nb-q4">
+            <view class="nb-clips">
+              <view class="nb-clip"></view>
+              <view class="nb-clip"></view>
+            </view>
+            <view class="nb-title-bar nb-title-q4">
+              <text class="nb-title-text">不重要不紧急</text>
+            </view>
+            <view class="nb-body">
+              <view v-if="taskStore.notUrgentNotImportant.length === 0 && notUrgentNotImportantDone.length === 0" class="nb-empty">
+                <view class="nb-empty-icon-wrap">
+                  <text class="nb-empty-icon">📋</text>
+                </view>
+                <text class="nb-empty-tip">琐事象限 减少做</text>
+              </view>
               <view
                 v-for="task in taskStore.notUrgentNotImportant"
                 :key="task.id"
-                class="quad-task-item"
-                @tap="openTask(task)"
+                class="nb-task-item"
+                @tap="openTaskDetail(task)"
               >
-                <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-                  <text class="check-icon">{{ task.status === 'completed' ? '✓' : '' }}</text>
+                <view
+                  class="nb-check nb-check-q4"
+                  @tap.stop="toggleTaskDone(task)"
+                ></view>
+                <view class="nb-task-right">
+                  <view v-if="task.hasSubtask" class="nb-subtask-icon">
+                    <text class="nb-subtask-icon-text">☰</text>
+                  </view>
+                  <text class="nb-task-title">{{ task.title }}</text>
                 </view>
-                <text class="task-title">{{ task.title }}</text>
               </view>
-              <text v-if="taskStore.notUrgentNotImportant.length === 0" class="quad-empty">暂无</text>
+              <view
+                v-for="task in notUrgentNotImportantDone"
+                :key="'done-' + task.id"
+                class="nb-task-item nb-task-done"
+                @tap="openTaskDetail(task)"
+              >
+                <view
+                  class="nb-check nb-check-done"
+                  @tap.stop="toggleTaskDone(task)"
+                >
+                  <text class="nb-check-mark">✓</text>
+                </view>
+                <text class="nb-task-title nb-task-title-done">{{ task.title }}</text>
+              </view>
             </view>
           </view>
-        </view>
-        <view v-if="taskStore.doneTasks.length > 0" class="done-section">
-          <text class="section-title done-title">已完成 ({{ taskStore.doneTasks.length }})</text>
-          <view
-            v-for="task in taskStore.doneTasks"
-            :key="task.id"
-            class="task-item done"
-            @tap="openTask(task)"
-          >
-            <view class="task-check" @tap.stop="taskStore.toggleDone(task.id, task.status)">
-              <text class="check-icon">✓</text>
+
+          <!-- 右下：重要不紧急（Q2） -->
+          <view class="nb-card nb-q2">
+            <view class="nb-clips">
+              <view class="nb-clip"></view>
+              <view class="nb-clip"></view>
             </view>
-            <text class="task-title done-text">{{ task.title }}</text>
+            <view class="nb-title-bar nb-title-q2">
+              <text class="nb-title-text">重要不紧急</text>
+            </view>
+            <view class="nb-body">
+              <view v-if="taskStore.notUrgentImportant.length === 0 && notUrgentImportantDone.length === 0" class="nb-empty">
+                <view class="nb-empty-icon-wrap">
+                  <text class="nb-empty-icon">🎯</text>
+                </view>
+                <text class="nb-empty-tip">计划时间做</text>
+              </view>
+              <view
+                v-for="task in taskStore.notUrgentImportant"
+                :key="task.id"
+                class="nb-task-item"
+                @tap="openTaskDetail(task)"
+              >
+                <view
+                  class="nb-check nb-check-q2"
+                  @tap.stop="toggleTaskDone(task)"
+                ></view>
+                <view class="nb-task-right">
+                  <view v-if="task.hasSubtask" class="nb-subtask-icon">
+                    <text class="nb-subtask-icon-text">☰</text>
+                  </view>
+                  <text class="nb-task-title">{{ task.title }}</text>
+                </view>
+              </view>
+              <view
+                v-for="task in notUrgentImportantDone"
+                :key="'done-' + task.id"
+                class="nb-task-item nb-task-done"
+                @tap="openTaskDetail(task)"
+              >
+                <view
+                  class="nb-check nb-check-done"
+                  @tap.stop="toggleTaskDone(task)"
+                >
+                  <text class="nb-check-mark">✓</text>
+                </view>
+                <text class="nb-task-title nb-task-title-done">{{ task.title }}</text>
+              </view>
+            </view>
           </view>
-        </view>
-      </view>
+          </view><!-- end quadrant-row-wrap (下行) -->
+        </view><!-- end quadrant-grid -->
+      </view><!-- end quadrant-view -->
 
       <!-- 列表视图 -->
       <view v-if="currentView === 'list'" class="list-view">
@@ -335,6 +487,48 @@
         <text class="fab-icon">{{ fabOpen ? '×' : '+' }}</text>
       </view>
     </view>
+
+    <!-- 快速新建任务底部面板 -->
+    <AddTaskPanel
+      :visible="showAddPanel"
+      :presetDate="selectedDate"
+      @close="showAddPanel = false"
+      @submitted="onTaskSubmitted"
+    />
+
+    <!-- 子任务展开弹窗（38.jpg效果，放在根容器保证fixed定位正确） -->
+    <view v-if="subtaskPopup.visible" class="subtask-overlay" @tap="closeSubtaskPopup">
+      <view class="subtask-popup" @tap.stop>
+        <!-- 父任务 -->
+        <view class="subtask-popup-parent">
+          <view
+            class="nb-check"
+            :class="subtaskPopup.task && subtaskPopup.task.status === 'completed' ? 'nb-check-done' : ('nb-check-' + getQuadrantClass(subtaskPopup.task))"
+            @tap.stop="subtaskPopup.task && toggleTaskDone(subtaskPopup.task)"
+          >
+            <text v-if="subtaskPopup.task && subtaskPopup.task.status === 'completed'" class="nb-check-mark">✓</text>
+          </view>
+          <text class="subtask-popup-title">{{ subtaskPopup.task ? subtaskPopup.task.title : '' }}</text>
+        </view>
+        <!-- 左边红线分隔 -->
+        <view class="subtask-list">
+          <view class="subtask-left-line"></view>
+          <view class="subtask-items">
+            <view
+              v-for="(sub, idx) in subtaskPopup.subtasks"
+              :key="idx"
+              class="subtask-item"
+              @tap.stop="toggleSubtask(sub)"
+            >
+              <view class="subtask-check" :class="{ 'subtask-check-done': sub.done }">
+                <text v-if="sub.done" class="nb-check-mark">✓</text>
+              </view>
+              <text class="subtask-item-text" :class="{ 'subtask-item-done': sub.done }">{{ sub.title }}</text>
+            </view>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -343,6 +537,7 @@ import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
 import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday.js';
+import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 
 // ============================================================
 // Store
@@ -355,9 +550,19 @@ const logStore = useLogStore();
 // ============================================================
 const statusBarHeight = ref(20);
 const tabBarHeight = ref(50);
-const currentView = ref('timeline');
+const currentView = ref('quadrant');
 const fabOpen = ref(false);
 const selectedDate = ref('');
+
+// 快速新建任务底部面板
+const showAddPanel = ref(false);
+
+// 子任务弹窗状态
+const subtaskPopup = ref({
+  visible: false,
+  task: null,
+  subtasks: []
+});
 
 // 日历模式：'week' | 'month'
 const calendarMode = ref('week');
@@ -446,6 +651,24 @@ function getMonthFirst(date) {
 // 计算属性
 // ============================================================
 
+/**
+ * 获取某日期的任务象限色点（最多2个，不重复）
+ * 颜色：q1=红 q2=蓝 q3=黄 q4=绿
+ */
+function getTaskDots(dateStr) {
+  const allTasks = taskStore.tasks;
+  const dotsSet = new Set();
+  allTasks.forEach(t => {
+    if (!(t.taskDate || '').startsWith(dateStr)) return;
+    if (t.isUrgent && t.isImportant) dotsSet.add('q1');
+    else if (!t.isUrgent && t.isImportant) dotsSet.add('q2');
+    else if (t.isUrgent && !t.isImportant) dotsSet.add('q3');
+    else dotsSet.add('q4');
+  });
+  // 最多返回2种颜色
+  return [...dotsSet].slice(0, 2);
+}
+
 /** 当前周7天（周一~周日） */
 const currentWeekDates = computed(() => {
   if (!currentWeekStart.value) return [];
@@ -453,12 +676,14 @@ const currentWeekDates = computed(() => {
     const d = new Date(currentWeekStart.value);
     d.setDate(d.getDate() + i);
     const dateStr = formatDate(d);
-    const hasTask = taskStore.tasks.some(t => (t.taskDate || '').startsWith(dateStr));
+    const dateTasks = taskStore.tasks.filter(t => (t.taskDate || '').startsWith(dateStr));
+    const hasTask = dateTasks.length > 0;
     return {
       dateStr,
       day: d.getDate(),
       lunarLabel: holidayMap.value[dateStr] || '',
-      hasTask
+      hasTask,
+      taskDots: hasTask ? getTaskDots(dateStr) : []
     };
   });
 });
@@ -487,6 +712,7 @@ const monthRows = computed(() => {
         day: d.getDate(),
         lunarLabel: holidayMap.value[dateStr] || '',
         hasTask,
+        taskDots: hasTask ? getTaskDots(dateStr) : [],
         otherMonth: d.getMonth() !== curMonth
       });
     }
@@ -513,9 +739,30 @@ const currentTimeTop = computed(() => {
   return Math.round((currentMinutes.value / 60) * 120);
 });
 
-/** 全天任务 */
-const allDayTasks = computed(() =>
+/** 全天任务 - 未完成（时间轴彩色bar） */
+const allDayTasksPending = computed(() =>
   taskStore.tasks.filter(t => t.isAllDay && t.status !== 'completed')
+);
+
+/** 全天任务 - 已完成（时间轴淡色+删除线） */
+const allDayTasksDone = computed(() =>
+  taskStore.doneTasks.filter(t => t.isAllDay)
+);
+
+// ============================================================
+// 四象限：各象限已完成任务（用于同象限内显示删除线效果）
+// ============================================================
+const urgentImportantDone = computed(() =>
+  taskStore.doneTasks.filter(t => t.isUrgent && t.isImportant)
+);
+const notUrgentImportantDone = computed(() =>
+  taskStore.doneTasks.filter(t => !t.isUrgent && t.isImportant)
+);
+const urgentNotImportantDone = computed(() =>
+  taskStore.doneTasks.filter(t => t.isUrgent && !t.isImportant)
+);
+const notUrgentNotImportantDone = computed(() =>
+  taskStore.doneTasks.filter(t => !t.isUrgent && !t.isImportant)
 );
 
 // ============================================================
@@ -701,9 +948,76 @@ function openTask(task) {
   uni.navigateTo({ url: `/pages/calendar/task-edit?id=${task.id}&date=${selectedDate.value}` });
 }
 
+/**
+ * 四象限视图：点击任务
+ * - 有子任务时展开子任务弹窗（38.jpg效果）
+ * - 无子任务时跳转编辑页
+ */
+function openTaskDetail(task) {
+  fabOpen.value = false;
+  if (task.subtasks && task.subtasks.length > 0) {
+    // 有子任务数据：展开弹窗
+    subtaskPopup.value = {
+      visible: true,
+      task,
+      subtasks: task.subtasks.map(s => ({ ...s }))
+    };
+  } else {
+    // 无子任务：跳转编辑
+    uni.navigateTo({ url: `/pages/calendar/task-edit?id=${task.id}&date=${selectedDate.value}` });
+  }
+}
+
+/**
+ * 四象限视图：直接切换完成状态（不跳转）
+ */
+async function toggleTaskDone(task) {
+  try {
+    await taskStore.toggleDone(task.id, task.status);
+    // 若弹窗中父任务被切换，同步弹窗状态
+    if (subtaskPopup.value.task && subtaskPopup.value.task.id === task.id) {
+      subtaskPopup.value.task = {
+        ...subtaskPopup.value.task,
+        status: task.status === 'completed' ? 'pending' : 'completed'
+      };
+    }
+  } catch (err) {
+    uni.showToast({ title: err.message || '操作失败', icon: 'none' });
+  }
+}
+
+/** 关闭子任务弹窗 */
+function closeSubtaskPopup() {
+  subtaskPopup.value.visible = false;
+  subtaskPopup.value.task = null;
+  subtaskPopup.value.subtasks = [];
+}
+
+/** 切换弹窗中单个子任务完成状态（本地模拟，实际联调时需调用API） */
+function toggleSubtask(sub) {
+  sub.done = !sub.done;
+}
+
+/**
+ * 根据任务获取象限CSS类名（用于弹窗复选框颜色）
+ */
+function getQuadrantClass(task) {
+  if (!task) return 'q1';
+  if (task.isUrgent && task.isImportant) return 'q1';
+  if (!task.isUrgent && task.isImportant) return 'q2';
+  if (task.isUrgent && !task.isImportant) return 'q3';
+  return 'q4';
+}
+
 function openCreateTask() {
   fabOpen.value = false;
-  uni.navigateTo({ url: `/pages/calendar/task-edit?date=${selectedDate.value}` });
+  // 展开快速新建任务底部面板（替代跳转页面）
+  showAddPanel.value = true;
+}
+
+/** 任务提交成功后刷新当前日期的任务列表 */
+async function onTaskSubmitted() {
+  await taskStore.fetchTasksByDate(selectedDate.value);
 }
 
 function openCreateLog() {
@@ -1123,14 +1437,28 @@ onUnmounted(() => {
   color: #DDD;
 }
 
-/* 有任务圆点 */
+/* 有任务圆点容器（横排多色点） */
+.task-dots {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  gap: 4rpx;
+  margin-top: 2rpx;
+  min-height: 10rpx;
+}
+
 .task-dot {
   width: 8rpx;
   height: 8rpx;
   border-radius: 50%;
   background-color: #5B8CFF;
-  margin-top: 2rpx;
 }
+
+/* 各象限颜色点 */
+.dot-q1 { background-color: #FF4444; }
+.dot-q2 { background-color: #4F7FFF; }
+.dot-q3 { background-color: #FFB300; }
+.dot-q4 { background-color: #44AA66; }
 
 /* 月份标签 */
 .cal-month-label {
@@ -1221,17 +1549,121 @@ onUnmounted(() => {
 /* ============================================================
    时间轴视图
    ============================================================ */
-.timeline-view { padding-top: 16rpx; }
-.allday-section { padding: 0 24rpx 8rpx; }
+.timeline-view { padding-top: 0; }
 
-.section-title {
-  font-size: 26rpx;
-  color: #999;
-  padding: 8rpx 24rpx 12rpx;
-  display: block;
+/* 顶部筛选栏（目标和分类 + 时间轴） */
+.tl-top-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16rpx 24rpx 0;
+  background-color: #F5F6FA;
 }
 
-.timeline-slots { position: relative; padding: 0 24rpx; }
+/* 目标和分类：丝带/便签 tab 样式 */
+.tl-filter-tab {
+  position: relative;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background-color: #FFFFFF;
+  border-radius: 8rpx 8rpx 0 0;
+  padding: 14rpx 24rpx 14rpx 20rpx;
+  box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.08);
+  border: 1rpx solid #E8E8E8;
+  border-bottom: none;
+  min-width: 200rpx;
+}
+.tl-filter-text {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 600;
+  margin-right: 10rpx;
+}
+.tl-filter-icon {
+  font-size: 30rpx;
+  color: #555;
+}
+/* tab右侧衔接条（视觉补丁，让tab和下方内容区无缝衔接） */
+.tl-filter-tab-ear {
+  display: none;
+}
+
+/* 时间轴切换标签 */
+.tl-mode-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.tl-mode-icon { font-size: 28rpx; color: #555; margin-right: 6rpx; }
+.tl-mode-text { font-size: 26rpx; color: #555; }
+
+/* 全天区域 */
+.tl-allday-section {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  background-color: #FFFFFF;
+  border-bottom: 1rpx solid #EFEFEF;
+  padding: 8rpx 0;
+  min-height: 60rpx;
+}
+
+.tl-allday-label {
+  width: 80rpx;
+  font-size: 24rpx;
+  color: #999;
+  text-align: center;
+  padding-top: 12rpx;
+  flex-shrink: 0;
+  line-height: 1.4;
+}
+
+.tl-allday-bars {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 4rpx 16rpx 4rpx 0;
+  gap: 6rpx;
+}
+
+/* 彩色任务条 */
+.tl-bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  border-radius: 6rpx;
+  padding: 10rpx 16rpx;
+  min-height: 52rpx;
+}
+
+/* 各象限颜色（未完成：实色填充） */
+.tl-bar-q1 { background-color: #FFBCBC; }
+.tl-bar-q2 { background-color: #B8C8FF; }
+.tl-bar-q3 { background-color: #FFE08A; }
+.tl-bar-q4 { background-color: #A8D8B0; }
+
+/* 已完成任务条（淡色） */
+.tl-bar-done { opacity: 0.55; }
+.tl-bar-done-q1 { background-color: #FFD8D8; }
+.tl-bar-done-q2 { background-color: #D4DCFF; }
+.tl-bar-done-q3 { background-color: #FFF0C0; }
+.tl-bar-done-q4 { background-color: #CCEBD4; }
+
+.tl-bar-text {
+  font-size: 28rpx;
+  color: #333;
+  flex: 1;
+  line-height: 1.4;
+}
+.tl-bar-text-done {
+  text-decoration: line-through;
+  color: #999;
+}
+
+/* 时间轴区域 */
+.timeline-slots { position: relative; background-color: #FFFFFF; }
 
 .time-indicator {
   position: absolute;
@@ -1263,32 +1695,25 @@ onUnmounted(() => {
   font-size: 22rpx;
   color: #CCC;
   padding-top: 8rpx;
+  text-align: center;
   flex-shrink: 0;
 }
-.hour-content { flex: 1; padding: 8rpx 0; }
+.hour-content { flex: 1; padding: 6rpx 16rpx 6rpx 0; display: flex; flex-direction: column; gap: 6rpx; }
 
-.timeline-task {
+/* 定时任务条（时间格内） */
+.tl-timed-bar {
+  border-radius: 6rpx;
+  padding: 10rpx 16rpx;
+  min-height: 52rpx;
   display: flex;
-  flex-direction: row;
   align-items: center;
-  background-color: #FFFFFF;
-  border-radius: 12rpx;
-  padding: 16rpx;
-  margin-bottom: 8rpx;
-  border-left: 6rpx solid #5B8CFF;
-  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.05);
 }
-.timeline-task.quad-q1 { border-left-color: #FF4444; background-color: #FFF5F5; }
-.timeline-task.quad-q2 { border-left-color: #5B8CFF; background-color: #F5F8FF; }
-.timeline-task.quad-q3 { border-left-color: #FFB300; background-color: #FFFBF0; }
-.timeline-task.quad-q4 { border-left-color: #4CAF50; background-color: #F5FBF5; }
-.timeline-task.done { opacity: 0.6; }
 
-.timeline-task-info {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  margin-left: 16rpx;
+.section-title {
+  font-size: 26rpx;
+  color: #999;
+  padding: 8rpx 24rpx 12rpx;
+  display: block;
 }
 
 /* ============================================================
@@ -1318,39 +1743,321 @@ onUnmounted(() => {
 }
 
 /* ============================================================
-   四象限视图
+   四象限视图 - 笔记本风格
    ============================================================ */
-.quadrant-view { padding: 16rpx 24rpx; }
-.quadrant-row { display: flex; flex-direction: row; gap: 16rpx; margin-bottom: 16rpx; }
-.quadrant-cell { flex: 1; border-radius: 16rpx; padding: 20rpx; min-height: 240rpx; }
-.q1 { background-color: #FFF5F5; border: 1rpx solid #FFCDD2; }
-.q2 { background-color: #F5F8FF; border: 1rpx solid #BBDEFB; }
-.q3 { background-color: #FFFBF0; border: 1rpx solid #FFE082; }
-.q4 { background-color: #F5FBF5; border: 1rpx solid #C8E6C9; }
-
-.quad-header { display: flex; flex-direction: row; align-items: center; margin-bottom: 16rpx; }
-.quad-icon { font-size: 28rpx; margin-right: 8rpx; }
-.quad-title { font-size: 24rpx; color: #555; font-weight: bold; flex: 1; }
-.quad-count {
-  font-size: 24rpx;
-  color: #999;
-  background-color: rgba(0,0,0,0.06);
-  border-radius: 12rpx;
-  padding: 2rpx 12rpx;
+.quadrant-view {
+  padding: 0 0 120rpx;
 }
-.quad-tasks { display: flex; flex-direction: column; gap: 12rpx; }
-.quad-task-item {
+
+/* 顶部筛选栏 */
+.quad-top-bar {
   display: flex;
   flex-direction: row;
   align-items: center;
-  background-color: rgba(255,255,255,0.8);
-  border-radius: 10rpx;
-  padding: 12rpx 14rpx;
+  justify-content: space-between;
+  padding: 16rpx 24rpx 12rpx;
+  background-color: #F5F6FA;
 }
-.quad-task-item .task-check { width: 36rpx; height: 36rpx; margin-right: 12rpx; }
-.quad-task-item .task-title { font-size: 26rpx; }
-.quad-empty { font-size: 24rpx; color: #CCC; text-align: center; padding: 20rpx 0; }
+.quad-filter-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  background-color: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 10rpx 20rpx;
+  box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.06);
+}
+.quad-filter-text { font-size: 26rpx; color: #333; font-weight: 500; margin-right: 8rpx; }
+.quad-filter-icon { font-size: 28rpx; color: #555; }
 
+.quad-mode-btn {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+}
+.quad-mode-icon { font-size: 28rpx; color: #555; margin-right: 6rpx; }
+.quad-mode-text { font-size: 26rpx; color: #555; }
+
+/* 四象限外层容器 */
+.quadrant-grid {
+  display: flex;
+  flex-direction: column;
+  padding: 8rpx 16rpx 16rpx;
+}
+
+/* 每行两个卡片 */
+.quadrant-row-wrap {
+  display: flex;
+  flex-direction: row;
+  gap: 16rpx;
+  margin-bottom: 16rpx;
+}
+.quadrant-row-wrap .nb-card {
+  flex: 1;
+  min-width: 0;
+}
+
+
+/* 笔记本卡片 */
+.nb-card {
+  background-color: #FFFFFF;
+  border-radius: 16rpx;
+  border: 2rpx solid #E8E8E8;
+  overflow: visible;
+  position: relative;
+  box-shadow: 0 4rpx 12rpx rgba(0,0,0,0.06);
+  padding-top: 16rpx;
+  min-height: 320rpx;
+}
+
+/* 笔记本顶部回形针区域 */
+.nb-clips {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-around;
+  padding: 0 20rpx;
+  margin-bottom: 4rpx;
+  position: relative;
+  z-index: 2;
+}
+.nb-clip {
+  width: 18rpx;
+  height: 28rpx;
+  background-color: #C8C8C8;
+  border-radius: 6rpx 6rpx 3rpx 3rpx;
+  border: 2rpx solid #B0B0B0;
+  border-bottom: none;
+}
+
+/* 笔记本标题栏（带底部分隔线） */
+.nb-title-bar {
+  padding: 12rpx 20rpx 10rpx;
+  border-bottom: 2rpx solid #E0E0E0;
+  text-align: center;
+}
+.nb-title-text {
+  font-size: 24rpx;
+  font-weight: bold;
+  color: #444;
+}
+
+/* 各象限标题栏颜色主题 */
+.nb-title-q1 { border-bottom-color: #FFAAAA; }
+.nb-title-q1 .nb-title-text { color: #D64444; }
+
+.nb-title-q2 { border-bottom-color: #A8C0FF; }
+.nb-title-q2 .nb-title-text { color: #3A6ACB; }
+
+.nb-title-q3 { border-bottom-color: #FFD080; }
+.nb-title-q3 .nb-title-text { color: #B87800; }
+
+.nb-title-q4 { border-bottom-color: #90D4A0; }
+.nb-title-q4 .nb-title-text { color: #2E8B57; }
+
+/* 象限卡片边框颜色 */
+.nb-q1 { border-color: #FFCCCC; }
+.nb-q2 { border-color: #C8D8FF; }
+.nb-q3 { border-color: #FFE0A0; }
+.nb-q4 { border-color: #AADCB4; }
+
+/* 任务内容区 */
+.nb-body {
+  padding: 12rpx 16rpx 16rpx;
+  min-height: 200rpx;
+}
+
+/* 空状态 */
+.nb-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 24rpx 0;
+  min-height: 160rpx;
+}
+.nb-empty-icon-wrap {
+  width: 80rpx;
+  height: 80rpx;
+  border-radius: 50%;
+  border: 4rpx solid #E0E0E0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16rpx;
+}
+.nb-empty-icon { font-size: 36rpx; opacity: 0.35; }
+.nb-empty-tip { font-size: 22rpx; color: #C0C0C0; }
+
+/* 任务行 */
+.nb-task-item {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  padding: 10rpx 0;
+  border-bottom: 1rpx solid #F4F4F4;
+}
+.nb-task-item:last-child { border-bottom: none; }
+
+/* 复选框（各象限颜色） */
+.nb-check {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 3rpx solid #CCC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 10rpx;
+  margin-top: 4rpx;
+  box-sizing: border-box;
+}
+.nb-check-q1 { border-color: #FF5555; }
+.nb-check-q2 { border-color: #4F7FFF; }
+.nb-check-q3 { border-color: #FFB300; }
+.nb-check-q4 { border-color: #44AA66; }
+
+/* 已完成：实心填充+勾号 */
+.nb-check-done {
+  border-color: #CCC;
+  background-color: #CCC;
+}
+.nb-check-mark {
+  font-size: 22rpx;
+  color: #FFFFFF;
+  font-weight: bold;
+  line-height: 1;
+}
+
+/* 右侧任务内容（带子任务图标） */
+.nb-task-right {
+  flex: 1;
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+}
+.nb-subtask-icon {
+  width: 32rpx;
+  height: 32rpx;
+  background-color: #FFF0F0;
+  border-radius: 6rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 8rpx;
+  margin-top: 2rpx;
+}
+.nb-subtask-icon-text { font-size: 18rpx; color: #FF5555; }
+
+.nb-task-title {
+  flex: 1;
+  font-size: 26rpx;
+  color: #333;
+  line-height: 1.45;
+}
+
+/* 已完成任务行：灰色+删除线 */
+.nb-task-done { opacity: 0.7; }
+.nb-task-title-done {
+  text-decoration: line-through;
+  color: #BBBBBB;
+}
+
+/* ============================================================
+   子任务弹窗（38.jpg效果）
+   ============================================================ */
+.subtask-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.45);
+  z-index: 200;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.subtask-popup {
+  width: 560rpx;
+  background-color: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 32rpx;
+  box-shadow: 0 12rpx 40rpx rgba(0, 0, 0, 0.2);
+}
+
+/* 父任务行 */
+.subtask-popup-parent {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  margin-bottom: 24rpx;
+}
+.subtask-popup-title {
+  flex: 1;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #222;
+  line-height: 1.4;
+  margin-left: 12rpx;
+}
+
+/* 子任务列表（左边红线） */
+.subtask-list {
+  display: flex;
+  flex-direction: row;
+}
+.subtask-left-line {
+  width: 4rpx;
+  background-color: #FF5555;
+  border-radius: 4rpx;
+  flex-shrink: 0;
+  margin-right: 20rpx;
+  min-height: 60rpx;
+}
+.subtask-items { flex: 1; display: flex; flex-direction: column; }
+
+.subtask-item {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 14rpx 0;
+  border-bottom: 1rpx solid #F0F0F0;
+}
+.subtask-item:last-child { border-bottom: none; }
+
+.subtask-check {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 3rpx solid #CCCCCC;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-right: 16rpx;
+  box-sizing: border-box;
+}
+.subtask-check-done {
+  background-color: #CCCCCC;
+  border-color: #CCCCCC;
+}
+
+.subtask-item-text {
+  flex: 1;
+  font-size: 28rpx;
+  color: #333;
+}
+.subtask-item-done {
+  text-decoration: line-through;
+  color: #BBBBBB;
+}
+
+/* ============================================================
+   已废弃的旧四象限类（保留以防其他视图引用）
+   ============================================================ */
 .done-section { margin-top: 8rpx; }
 .done-title { padding: 8rpx 0 12rpx; }
 .done-text { text-decoration: line-through; color: #CCC !important; }
