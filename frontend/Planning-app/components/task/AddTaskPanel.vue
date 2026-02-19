@@ -242,7 +242,65 @@
       </view>
     </view>
 
-    <!-- ⑦ 时间滚轮弹窗（开关开启时，选择开始/结束时间） -->
+    <!-- ⑦ 时间选择弹窗（开关开启时） -->
+
+    <!-- #ifdef H5 -->
+    <!-- H5端：使用 picker mode="time"，两个原生时间选择器（兼容浏览器） -->
+    <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
+      <view class="tp-sheet" @tap.stop>
+        <text class="tp-date-title">{{ timePickerDateLabel }}</text>
+        <!-- 双时间选择行 -->
+        <view class="h5-time-row">
+          <!-- 开始时间 -->
+          <view class="h5-time-block">
+            <text class="h5-time-label">开始时间</text>
+            <picker
+              mode="multiSelector"
+              :range="[hourRange, minuteRange]"
+              :value="[startHour, startMin]"
+              @change="onH5StartPickerChange"
+              @columnchange="onH5StartColumnChange"
+            >
+              <view class="h5-time-display">
+                <text class="h5-time-text">{{ String(startHour).padStart(2,'0') }} : {{ String(startMin).padStart(2,'0') }}</text>
+                <text class="h5-time-hint">点击选择</text>
+              </view>
+            </picker>
+          </view>
+          <!-- 箭头 -->
+          <text class="h5-arrow">>></text>
+          <!-- 结束时间 -->
+          <view class="h5-time-block">
+            <text class="h5-time-label">结束时间</text>
+            <picker
+              mode="multiSelector"
+              :range="[hourRange, minuteRange]"
+              :value="[endHour, endMin]"
+              @change="onH5EndPickerChange"
+              @columnchange="onH5EndColumnChange"
+            >
+              <view class="h5-time-display">
+                <text class="h5-time-text">{{ String(endHour).padStart(2,'0') }} : {{ String(endMin).padStart(2,'0') }}</text>
+                <text class="h5-time-hint">点击选择</text>
+              </view>
+            </picker>
+          </view>
+        </view>
+        <!-- 持续时间预览 -->
+        <view class="h5-duration-row" v-if="previewDuration">
+          <text class="h5-duration-text">持续时间：{{ previewDuration }}</text>
+        </view>
+        <!-- 底部按钮 -->
+        <view class="tp-btns">
+          <view class="tp-btn tp-cancel" @tap="closeTimePicker"><text class="tp-btn-text">取消</text></view>
+          <view class="tp-btn tp-confirm" @tap="confirmTimePicker"><text class="tp-btn-text tp-confirm-text">确定</text></view>
+        </view>
+      </view>
+    </view>
+    <!-- #endif -->
+
+    <!-- #ifndef H5 -->
+    <!-- App端：自定义 scroll-view 滚轮（原生效果） -->
     <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
       <view class="tp-sheet" @tap.stop>
         <!-- 顶部日期标题 -->
@@ -325,6 +383,7 @@
         </view>
       </view>
     </view>
+    <!-- #endif -->
 
   </view>
 </template>
@@ -762,46 +821,38 @@ function onDpCellTap(cell) {
 }
 
 // ============================================================
-// 时间滚轮弹窗（开关开）
+// 时间选择弹窗（开关开）- 通用状态
 // ============================================================
 
 const showTimePicker = ref(false);
 
-/** 小时数组 0-23 */
-const hours = Array.from({ length: 24 }, (_, i) => i);
-
-/** 分钟数组 0-59 */
-const minutes = Array.from({ length: 60 }, (_, i) => i);
-
-/** 每个滚轮项高度（rpx 转 px 需要在运行时计算，这里用固定值） */
-const ITEM_H_PX = 44; // 约88rpx / 2（750rpx基准）
-
-/** 开始时间 */
+/** 开始时间（小时/分钟，整数索引） */
 const startHour = ref(new Date().getHours());
-const startMin = ref(new Date().getMinutes());
+const startMin  = ref(new Date().getMinutes());
 
-/** 结束时间（默认开始+30分钟） */
+/** 结束时间 */
 const endHour = ref(0);
-const endMin = ref(0);
-
-/** 滚轮 scroll-top（通过 computed 驱动） */
-const startHourScrollTop = computed(() => startHour.value * ITEM_H_PX);
-const startMinScrollTop  = computed(() => startMin.value  * ITEM_H_PX);
-const endHourScrollTop   = computed(() => endHour.value   * ITEM_H_PX);
-const endMinScrollTop    = computed(() => endMin.value    * ITEM_H_PX);
+const endMin  = ref(0);
 
 /** 时间选择弹窗顶部日期标签 */
-const timePickerDateLabel = computed(() => {
-  return timeCardLeftMain.value;
+const timePickerDateLabel = computed(() => timeCardLeftMain.value);
+
+/** 弹窗内持续时间预览（H5端用，实时显示） */
+const previewDuration = computed(() => {
+  const totalMin = (endHour.value * 60 + endMin.value) - (startHour.value * 60 + startMin.value);
+  if (totalMin <= 0) return '';
+  if (totalMin < 60) return `${totalMin}分钟`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}小时${m}分钟` : `${h}小时`;
 });
 
-/** 打开时间选择弹窗 */
+/** 打开时间选择弹窗（通用） */
 function openTimePicker() {
-  // 初始化为当前时间
   const now = new Date();
   startHour.value = now.getHours();
   startMin.value  = now.getMinutes();
-  // 结束时间 = 开始 + 30分钟
+  // 结束默认 = 开始 + 30分钟
   const endTotal = startHour.value * 60 + startMin.value + 30;
   endHour.value = Math.min(23, Math.floor(endTotal / 60));
   endMin.value  = endTotal % 60;
@@ -822,22 +873,75 @@ function confirmTimePicker() {
   showTimePicker.value = false;
 }
 
-/** 滚轮滚动监听（snap to item） */
+// ============================================================
+// H5端：picker multiSelector 专用
+// ============================================================
+
+/** 小时选项（字符串数组，picker range 需要字符串） */
+const hourRange   = Array.from({ length: 24 }, (_, i) => String(i).padStart(2, '0'));
+
+/** 分钟选项 */
+const minuteRange = Array.from({ length: 60 }, (_, i) => String(i).padStart(2, '0'));
+
+/** H5 开始时间 picker change（点确定时触发） */
+function onH5StartPickerChange(e) {
+  const [hIdx, mIdx] = e.detail.value;
+  startHour.value = hIdx;
+  startMin.value  = mIdx;
+}
+
+/** H5 开始时间 picker columnchange（滑动列时实时触发，用于预览） */
+function onH5StartColumnChange(e) {
+  const { column, value } = e.detail;
+  if (column === 0) startHour.value = value;
+  else startMin.value = value;
+}
+
+/** H5 结束时间 picker change */
+function onH5EndPickerChange(e) {
+  const [hIdx, mIdx] = e.detail.value;
+  endHour.value = hIdx;
+  endMin.value  = mIdx;
+}
+
+/** H5 结束时间 picker columnchange */
+function onH5EndColumnChange(e) {
+  const { column, value } = e.detail;
+  if (column === 0) endHour.value = value;
+  else endMin.value = value;
+}
+
+// ============================================================
+// App端：scroll-view 滚轮专用
+// ============================================================
+
+/** 每个滚轮项高度（px，按 750rpx 基准：88rpx ≈ 44px） */
+const ITEM_H_PX = 44;
+
+/** 小时数组 0-23（App端 v-for 用） */
+const hours = Array.from({ length: 24 }, (_, i) => i);
+
+/** 分钟数组 0-59（App端 v-for 用） */
+const minutes = Array.from({ length: 60 }, (_, i) => i);
+
+/** scroll-top 通过 computed 驱动初始定位 */
+const startHourScrollTop = computed(() => startHour.value * ITEM_H_PX);
+const startMinScrollTop  = computed(() => startMin.value  * ITEM_H_PX);
+const endHourScrollTop   = computed(() => endHour.value   * ITEM_H_PX);
+const endMinScrollTop    = computed(() => endMin.value    * ITEM_H_PX);
+
+/** App端滚动监听 */
 function onStartHourScroll(e) {
-  const top = e.detail.scrollTop;
-  startHour.value = Math.round(top / ITEM_H_PX);
+  startHour.value = Math.round(e.detail.scrollTop / ITEM_H_PX);
 }
 function onStartMinScroll(e) {
-  const top = e.detail.scrollTop;
-  startMin.value = Math.round(top / ITEM_H_PX);
+  startMin.value = Math.round(e.detail.scrollTop / ITEM_H_PX);
 }
 function onEndHourScroll(e) {
-  const top = e.detail.scrollTop;
-  endHour.value = Math.round(top / ITEM_H_PX);
+  endHour.value = Math.round(e.detail.scrollTop / ITEM_H_PX);
 }
 function onEndMinScroll(e) {
-  const top = e.detail.scrollTop;
-  endMin.value = Math.round(top / ITEM_H_PX);
+  endMin.value = Math.round(e.detail.scrollTop / ITEM_H_PX);
 }
 
 // ============================================================
@@ -1763,5 +1867,77 @@ function onMaskTap() {
   border-bottom: 2rpx solid #DDDDDD;
   pointer-events: none;
   margin-top: 36rpx; /* 微调，抵消 label 高度 */
+}
+
+/* ============================================================
+   H5端 picker 时间选择样式
+   ============================================================ */
+
+/* 双时间选择横排 */
+.h5-time-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: center;
+  padding: 16rpx 32rpx 32rpx;
+}
+
+/* 单个时间块（开始/结束） */
+.h5-time-block {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.h5-time-label {
+  font-size: 26rpx;
+  color: #999;
+  margin-bottom: 20rpx;
+}
+
+/* picker 触发区域（显示时间大字） */
+.h5-time-display {
+  background-color: #F5F5F5;
+  border-radius: 16rpx;
+  padding: 24rpx 32rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 200rpx;
+}
+
+.h5-time-text {
+  font-size: 52rpx;
+  font-weight: bold;
+  color: #222;
+  letter-spacing: 4rpx;
+  line-height: 1.2;
+}
+
+.h5-time-hint {
+  font-size: 22rpx;
+  color: #AAAAAA;
+  margin-top: 8rpx;
+}
+
+/* 中间箭头 */
+.h5-arrow {
+  font-size: 32rpx;
+  color: #CCCCCC;
+  padding: 0 20rpx;
+  padding-top: 40rpx; /* 与 label 对齐 */
+  flex-shrink: 0;
+}
+
+/* 持续时间预览行 */
+.h5-duration-row {
+  padding: 0 32rpx 24rpx;
+  text-align: center;
+}
+
+.h5-duration-text {
+  font-size: 26rpx;
+  color: #888;
 }
 </style>
