@@ -135,6 +135,14 @@
       </view>
     </view>
 
+    <!-- ④-B 重复面板（点击工具栏重复按钮后展开） -->
+    <repeat-panel
+      :visible="showRepeatPanel"
+      @update:repeatData="onRepeatDataUpdate"
+      @confirm="onRepeatConfirm"
+      @cancel="onRepeatCancel"
+    />
+
     <!-- ④ 底部工具栏 -->
     <view class="toolbar">
       <!-- 四象限 -->
@@ -162,10 +170,10 @@
         <text class="toolbar-label" :class="{ 'label-active': showTimePanel }">时间段</text>
       </view>
 
-      <!-- 重复（占位） -->
+      <!-- 重复 -->
       <view class="toolbar-item" @tap="onRepeatTap">
-        <text class="toolbar-icon-text">🔁</text>
-        <text class="toolbar-label">重复</text>
+        <text class="toolbar-icon-text" :class="{ 'icon-active': showRepeatPanel }">🔁</text>
+        <text class="toolbar-label" :class="{ 'label-active': showRepeatPanel || repeatData.mode !== 'none' }">重复</text>
       </view>
 
       <!-- 提醒（占位） -->
@@ -391,6 +399,7 @@
 <script setup>
 import { ref, computed, watch } from 'vue';
 import { useTaskStore } from '@/store/task.js';
+import RepeatPanel from './RepeatPanel.vue';
 
 // ============================================================
 // Props & Emits
@@ -945,11 +954,46 @@ function onEndMinScroll(e) {
 }
 
 // ============================================================
+// 重复功能
+// ============================================================
+
+/** 重复面板是否展开 */
+const showRepeatPanel = ref(false);
+
+/** 重复数据 */
+const repeatData = ref({
+  mode:     'none',
+  interval: 1,
+  weekDays: [],
+  endDate:  ''
+});
+
+/** 点击工具栏重复按钮：展开/折叠面板 */
+function onRepeatTap() {
+  showQuadrantPicker.value = false;
+  showRepeatPanel.value = !showRepeatPanel.value;
+}
+
+/** RepeatPanel emit update:repeatData */
+function onRepeatDataUpdate(data) {
+  repeatData.value = data;
+}
+
+/** RepeatPanel 确定 */
+function onRepeatConfirm() {
+  showRepeatPanel.value = false;
+}
+
+/** RepeatPanel 取消 */
+function onRepeatCancel() {
+  // 取消时恢复不重复
+  repeatData.value = { mode: 'none', interval: 1, weekDays: [], endDate: '' };
+  showRepeatPanel.value = false;
+}
+
+// ============================================================
 // 工具栏占位功能
 // ============================================================
-function onRepeatTap() {
-  uni.showToast({ title: '重复功能开发中', icon: 'none' });
-}
 function onReminderTap() {
   uni.showToast({ title: '提醒功能开发中', icon: 'none' });
 }
@@ -970,6 +1014,9 @@ async function submit() {
     const hasTimeRange = timeToggle.value && timeStart.value && timeEnd.value;
     const hasDayRange  = !timeToggle.value && endDayCount.value > 1;
 
+    const rd = repeatData.value;
+    const isRecurring = rd.mode !== 'none';
+
     const payload = {
       title:       form.value.title.trim(),
       isUrgent:    form.value.isUrgent,
@@ -977,7 +1024,12 @@ async function submit() {
       isAllDay:    !hasTimeRange,
       dateType:    hasDayRange ? 'range' : 'single',
       taskDate:    resolvedDate.value || getTodayStr(),
-      isRecurring: false
+      isRecurring,
+      // 重复字段
+      repeatMode:     isRecurring ? rd.mode     : undefined,
+      repeatInterval: isRecurring ? rd.interval : undefined,
+      repeatWeekDays: isRecurring && rd.weekDays.length ? rd.weekDays : undefined,
+      repeatEndDate:  isRecurring && rd.endDate  ? rd.endDate  : undefined
     };
 
     // 有具体时间段时，附加 startTime / endTime
@@ -1024,6 +1076,9 @@ function resetPanel() {
   timeEnd.value = '';
   endDayCount.value = 0;
   endDate.value = null;
+  // 重置重复
+  showRepeatPanel.value = false;
+  repeatData.value = { mode: 'none', interval: 1, weekDays: [], endDate: '' };
 }
 
 /** 关闭面板 */
