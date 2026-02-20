@@ -5,6 +5,12 @@
     <view :style="{ height: statusBarHeight + 'px' }"></view>
     <!-- #endif -->
 
+    <!-- 右上角访客模式开关 -->
+    <view class="guest-toggle-wrap" @tap="toggleGuestMode">
+      <text class="guest-toggle-icon">{{ guestMode ? '🔓' : '🔒' }}</text>
+      <text class="guest-toggle-label">{{ guestMode ? '访客模式' : '登录模式' }}</text>
+    </view>
+
     <view class="logo-area">
       <image class="logo" src="/static/logo.png" mode="aspectFit" />
       <text class="app-name">规划助手</text>
@@ -43,76 +49,87 @@
         class="btn-primary"
         :loading="loading"
         :disabled="loading"
-        @click="handleLogin"
+        @tap="handleLogin"
       >
         登录
       </button>
 
-      <button class="btn-text" @click="goRegister">
+      <button class="btn-text" @tap="goRegister">
         没有账号？立即注册
       </button>
     </view>
   </view>
 </template>
 
-<script>
+<script setup>
+import { ref, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
 
-export default {
-  name: 'LoginPage',
+// console.log('[Login] 页面开始加载');
 
-  data() {
-    return {
-      form: {
-        email: '',
-        password: ''
-      },
-      loading: false,
-      // App 端状态栏高度
-      statusBarHeight: 0
-    };
-  },
+// App 端状态栏高度
+const statusBarHeight = ref(0);
+const userStore = useUserStore();
 
-  onLoad() {
-    // #ifdef APP-PLUS
-    // 获取 App 端状态栏高度
-    this.statusBarHeight = plus.navigator.getStatusbarHeight();
-    // #endif
-  },
+const form = ref({
+  email: '',
+  password: ''
+});
+const loading = ref(false);
 
-  methods: {
-    async handleLogin() {
-      if (!this.form.email) {
-        return uni.showToast({ title: '请输入邮箱', icon: 'none' });
-      }
-      if (!this.form.password) {
-        return uni.showToast({ title: '请输入密码', icon: 'none' });
-      }
+// ── 访客模式开关 ────────────────────────────────
+// 读取本地持久化状态（默认关闭 = 登录模式）
+const guestMode = ref(!!uni.getStorageSync('guest_mode'));
+// console.log('[Login] guestMode初始值:', guestMode.value);
 
-      this.loading = true;
-      try {
-        const userStore = useUserStore();
-        console.log('[Login] 开始登录, email:', this.form.email);
-        const result = await userStore.login({
-          email: this.form.email,
-          password: this.form.password
-        });
-        console.log('[Login] 登录成功, token已获取:', !!result?.token, 'user:', result?.user);
-        console.log('[Login] 准备跳转首页 /pages/index/index');
-        uni.reLaunch({ url: '/pages/index/index' });
-      } catch (err) {
-        console.error('[Login] 登录失败:', err.message, err);
-        uni.showToast({ title: err.message || '登录失败，请重试', icon: 'none' });
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    goRegister() {
-      uni.navigateTo({ url: '/pages/user/register' });
-    }
+function toggleGuestMode() {
+  // console.log('[Login] 切换访客模式:', !guestMode.value);
+  guestMode.value = !guestMode.value;
+  uni.setStorageSync('guest_mode', guestMode.value);
+  if (guestMode.value) {
+    // 开启访客模式：立刻进入主页
+    // console.log('[Login] 开启访客模式，跳转主页');
+    userStore.enterGuestMode();
+    uni.reLaunch({ url: '/pages/calendar/index' });
   }
-};
+  // 关闭访客模式：保持在登录页，等待用户登录
+}
+
+onMounted(() => {
+  // console.log('[Login] onMounted 执行');
+  // #ifdef APP-PLUS
+  statusBarHeight.value = plus.navigator.getStatusbarHeight();
+  // console.log('[Login] APP-PLUS 状态栏高度:', statusBarHeight.value);
+  // #endif
+});
+
+async function handleLogin() {
+  if (!form.value.email) {
+    return uni.showToast({ title: '请输入邮箱', icon: 'none' });
+  }
+  if (!form.value.password) {
+    return uni.showToast({ title: '请输入密码', icon: 'none' });
+  }
+
+  loading.value = true;
+  try {
+    const result = await userStore.login({
+      email: form.value.email,
+      password: form.value.password
+    });
+    // console.log('[Login] 登录成功, user:', result?.user?.nickname);
+    // 登录成功后跳转到日历主页（TabBar 第一个）
+    uni.reLaunch({ url: '/pages/calendar/index' });
+  } catch (err) {
+    uni.showToast({ title: err.message || '登录失败，请重试', icon: 'none' });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function goRegister() {
+  uni.navigateTo({ url: '/pages/user/register' });
+}
 </script>
 
 <style scoped>
@@ -124,6 +141,7 @@ export default {
   align-items: center;
   padding-top: 100rpx;
   box-sizing: border-box;
+  position: relative;
 }
 .logo-area {
   display: flex;
@@ -190,5 +208,29 @@ export default {
   margin-top: 16rpx;
   border: none;
   box-shadow: none;
+}
+
+/* 右上角访客模式开关 */
+.guest-toggle-wrap {
+  position: absolute;
+  top: 40rpx;
+  right: 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12rpx 20rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+.guest-toggle-icon {
+  font-size: 44rpx;
+  line-height: 1;
+}
+.guest-toggle-label {
+  font-size: 20rpx;
+  color: #888;
+  margin-top: 6rpx;
+  white-space: nowrap;
 }
 </style>

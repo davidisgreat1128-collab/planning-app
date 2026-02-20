@@ -54,11 +54,19 @@ function request({ url, method = 'GET', data = {}, auth = true } = {}) {
         } else if (res.statusCode === 204) {
           resolve(null);
         } else if (res.statusCode === 401) {
-          // Token失效，清除本地登录状态并跳转登录页
-          removeToken();
-          removeUserInfo();
-          uni.reLaunch({ url: '/pages/user/login' });
-          reject(new Error('登录已过期，请重新登录'));
+          // Token失效：访客模式下静默返回空数据，不跳转登录页
+          const guestMode = uni.getStorageSync('guest_mode');
+          if (guestMode) {
+            // 访客模式：静默返回空数据，不阻塞UI，不显示toast
+            // console.log('[Request] 访客模式：401静默处理');
+            resolve({ success: true, data: null });
+            return;
+          } else {
+            removeToken();
+            removeUserInfo();
+            uni.reLaunch({ url: '/pages/user/login' });
+            reject(new Error('登录已过期，请重新登录'));
+          }
         } else if (res.statusCode === 404) {
           console.error(`[404] 接口不存在: ${method} ${fullUrl}`);
           reject(new Error(`接口不存在: ${url}`));

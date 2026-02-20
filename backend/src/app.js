@@ -49,11 +49,19 @@ const apiV1 = express.Router();
 const authRoutes = require('./routes/auth');
 const userRoutes = require('./routes/user');
 const planningRoutes = require('./routes/planning');
+const holidayRoutes = require('./routes/holiday');
+const taskRoutes = require('./routes/task');
+const alarmRoutes = require('./routes/alarm');
+const logRoutes = require('./routes/log');
 // const ichingRoutes = require('./routes/iching');
 
 apiV1.use('/auth', authRoutes);
 apiV1.use('/users', userRoutes);
 apiV1.use('/planning', planningRoutes);
+apiV1.use('/holidays', holidayRoutes);
+apiV1.use('/tasks', taskRoutes);
+apiV1.use('/alarms', alarmRoutes);
+apiV1.use('/logs', logRoutes);
 // apiV1.use('/iching', ichingRoutes);
 
 app.use('/api/v1', apiV1);

@@ -72,89 +72,81 @@
         class="btn-primary"
         :loading="loading"
         :disabled="loading"
-        @click="handleRegister"
+        @tap="handleRegister"
       >
         注册
       </button>
 
-      <button class="btn-text" @click="goLogin">
+      <button class="btn-text" @tap="goLogin">
         已有账号？去登录
       </button>
     </view>
   </view>
 </template>
 
-<script>
+<script setup>
+import { ref } from 'vue';
 import { useUserStore } from '@/store/user.js';
 
-export default {
-  name: 'RegisterPage',
+// App 端状态栏高度
+const statusBarHeight = ref(0);
+const userStore = useUserStore();
 
-  data() {
-    return {
-      form: {
-        nickname: '',
-        email: '',
-        password: '',
-        confirmPassword: ''
-      },
-      loading: false,
-      // App 端状态栏高度
-      statusBarHeight: 0
-    };
-  },
+const form = ref({
+  nickname: '',
+  email: '',
+  password: '',
+  confirmPassword: ''
+});
+const loading = ref(false);
 
-  onLoad() {
-    // #ifdef APP-PLUS
-    // 获取 App 端状态栏高度
-    this.statusBarHeight = plus.navigator.getStatusbarHeight();
-    // #endif
-  },
+// #ifdef APP-PLUS
+// 获取 App 端状态栏高度
+onLoad(() => {
+  statusBarHeight.value = plus.navigator.getStatusbarHeight();
+});
+// #endif
 
-  methods: {
-    async handleRegister() {
-      // 前端基础校验
-      if (!this.form.nickname || this.form.nickname.trim().length < 2) {
-        return uni.showToast({ title: '昵称至少2个字符', icon: 'none' });
-      }
-      if (!this.form.email) {
-        return uni.showToast({ title: '请输入邮箱', icon: 'none' });
-      }
-      if (!this.form.password || this.form.password.length < 8) {
-        return uni.showToast({ title: '密码至少8位', icon: 'none' });
-      }
-      if (!/(?=.*[A-Za-z])(?=.*\d)/.test(this.form.password)) {
-        return uni.showToast({ title: '密码必须同时含字母和数字', icon: 'none' });
-      }
-      if (this.form.password !== this.form.confirmPassword) {
-        return uni.showToast({ title: '两次密码不一致', icon: 'none' });
-      }
-
-      this.loading = true;
-      try {
-        const userStore = useUserStore();
-        await userStore.register({
-          email: this.form.email,
-          password: this.form.password,
-          nickname: this.form.nickname.trim()
-        });
-        uni.showToast({ title: '注册成功', icon: 'success' });
-        // 注册成功后跳转首页（清空页面栈）
-        setTimeout(() => {
-          uni.reLaunch({ url: '/pages/index/index' });
-        }, 1000);
-      } catch (err) {
-        uni.showToast({ title: err.message || '注册失败，请重试', icon: 'none' });
-      } finally {
-        this.loading = false;
-      }
-    },
-
-    goLogin() {
-      uni.navigateBack();
-    }
+async function handleRegister() {
+  // 前端基础校验
+  if (!form.value.nickname || form.value.nickname.trim().length < 2) {
+    return uni.showToast({ title: '昵称至少2个字符', icon: 'none' });
   }
-};
+  if (!form.value.email) {
+    return uni.showToast({ title: '请输入邮箱', icon: 'none' });
+  }
+  if (!form.value.password || form.value.password.length < 8) {
+    return uni.showToast({ title: '密码至少8位', icon: 'none' });
+  }
+  if (!/(?=.*[A-Za-z])(?=.*\d)/.test(form.value.password)) {
+    return uni.showToast({ title: '密码必须同时含字母和数字', icon: 'none' });
+  }
+  if (form.value.password !== form.value.confirmPassword) {
+    return uni.showToast({ title: '两次密码不一致', icon: 'none' });
+  }
+
+  loading.value = true;
+  try {
+    await userStore.register({
+      email: form.value.email,
+      password: form.value.password,
+      nickname: form.value.nickname.trim()
+    });
+    uni.showToast({ title: '注册成功', icon: 'success' });
+    // 注册成功后跳转日历主页（清空页面栈）
+    setTimeout(() => {
+      uni.reLaunch({ url: '/pages/calendar/index' });
+    }, 1000);
+  } catch (err) {
+    uni.showToast({ title: err.message || '注册失败，请重试', icon: 'none' });
+  } finally {
+    loading.value = false;
+  }
+}
+
+function goLogin() {
+  uni.navigateBack();
+}
 </script>
 
 <style scoped>

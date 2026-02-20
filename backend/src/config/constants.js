@@ -59,11 +59,79 @@ const HTTP_STATUS = {
   INTERNAL_ERROR: 500
 };
 
+// 节日类型
+const HOLIDAY_TYPE = {
+  CN_SOLAR: 'cn_solar',       // 中国公历节日（元旦/五一/国庆）
+  CN_LUNAR: 'cn_lunar',       // 中国农历节日（春节/中秋/端午）
+  WESTERN: 'western',         // 西方节日（圣诞/情人节）
+  INTL: 'intl',               // 国际节日（妇女节/儿童节）
+  SOLAR_TERM: 'solar_term'    // 24节气（立春/雨水...）
+};
+
+// 任务状态
+const TASK_STATUS = {
+  PENDING: 'pending',
+  COMPLETED: 'completed',
+  CANCELLED: 'cancelled'
+};
+
+// 任务日期类型
+const TASK_DATE_TYPE = {
+  SINGLE: 'single',   // 单日任务
+  RANGE: 'range',     // 跨天任务
+  NONE: 'none'        // 无日期（纯备忘）
+};
+
+// 任务来源类型
+const TASK_SOURCE_TYPE = {
+  MANUAL: 'manual',         // 手动创建
+  FROM_LOG: 'from_log',     // 由日志转化
+  FROM_PLAN: 'from_plan'    // 由规划拆分
+};
+
+// 日志类型
+const LOG_TYPE = {
+  NOTE: 'note',               // 心得/感悟
+  INSPIRATION: 'inspiration', // 灵感
+  EVENT: 'event',             // 事件记录
+  PLAN_UPDATE: 'plan_update'  // 规划进度更新
+};
+
+// 闹铃重复类型
+const ALARM_REPEAT = {
+  NONE: 'none',       // 不重复（单次）
+  DAILY: 'daily',     // 每天
+  WEEKLY: 'weekly',   // 每周
+  CUSTOM: 'custom'    // 自定义RRULE
+};
+
+// 重复任务实例状态
+const OCCURRENCE_STATUS = {
+  PENDING: 'pending',
+  COMPLETED: 'completed',
+  SKIPPED: 'skipped'
+};
+
+// 专注时段状态
+const SESSION_STATUS = {
+  COMPLETED: 'completed',
+  ABANDONED: 'abandoned',
+  INTERRUPTED: 'interrupted'
+};
+
 module.exports = {
   LIFE_STAGES,
   PLANNING_TYPES,
   PLANNING_STATUS,
   JWT,
   PAGINATION,
-  HTTP_STATUS
+  HTTP_STATUS,
+  HOLIDAY_TYPE,
+  TASK_STATUS,
+  TASK_DATE_TYPE,
+  TASK_SOURCE_TYPE,
+  LOG_TYPE,
+  ALARM_REPEAT,
+  OCCURRENCE_STATUS,
+  SESSION_STATUS
 };

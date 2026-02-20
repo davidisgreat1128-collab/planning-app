@@ -130,4 +130,22 @@ router.patch('/:id/status', authenticate, validate(updateStatusSchema), planning
  */
 router.delete('/:id', authenticate, planningController.remove);
 
+// ============================================================
+// 规划进度接口（由 planProgressController 统一管理）
+// ============================================================
+const planProgressController = require('../controllers/planProgressController');
+
+/**
+ * POST /api/v1/planning/:id/progress
+ * 记录规划进度（0-100）
+ * Body: { progressPct, note?, logId? }
+ */
+router.post('/:id/progress', authenticate, planProgressController.recordProgress);
+
+/**
+ * GET /api/v1/planning/:id/progress
+ * 获取规划进度历史
+ */
+router.get('/:id/progress', authenticate, planProgressController.getProgressHistory);
+
 module.exports = router;
