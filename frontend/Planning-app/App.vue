@@ -25,27 +25,29 @@ export default {
     const userInfo = getUserInfo();
     console.log('[App] onLaunch, token:', !!token);
 
+    // 检查是否开启了访客模式
+    const guestMode = uni.getStorageSync('guest_mode');
+
     if (token) {
-      // 有 Token：恢复登录状态
+      // 有 Token：恢复登录状态，跳转主页
       const userStore = useUserStore();
       userStore.token = token;
       userStore.userInfo = userInfo;
+      console.log('[App] 已登录，跳转主页');
+      setTimeout(() => {
+        uni.reLaunch({ url: '/pages/calendar/index' });
+      }, 100);
+    } else if (guestMode) {
+      // 访客模式：设置访客token，跳转主页
+      const userStore = useUserStore();
+      userStore.enterGuestMode();
+      console.log('[App] 访客模式，跳转主页');
+      setTimeout(() => {
+        uni.reLaunch({ url: '/pages/calendar/index' });
+      }, 100);
     } else {
-      // 无 Token：检查是否开启了访客模式
-      const guestMode = uni.getStorageSync('guest_mode');
-      if (guestMode) {
-        // 访客模式已开启：直接进入主页，无需登录
-        const userStore = useUserStore();
-        userStore.enterGuestMode();
-        setTimeout(() => {
-          uni.reLaunch({ url: '/pages/calendar/index' });
-        }, 100);
-      } else {
-        // 普通模式：跳转登录页（延迟等待首页组件加载完再跳转）
-        setTimeout(() => {
-          uni.reLaunch({ url: '/pages/user/login' });
-        }, 100);
-      }
+      // 普通模式 + 无token：pages.json已配置login为首页，无需跳转
+      console.log('[App] 未登录，停留在登录页');
     }
   },
 
