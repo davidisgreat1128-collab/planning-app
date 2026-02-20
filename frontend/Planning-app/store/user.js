@@ -79,6 +79,15 @@ export const useUserStore = defineStore('user', {
     },
 
     /**
+     * 进入访客模式（无需登录，跳过Auth）
+     * 仅在 guest_mode 开关开启时由 App.vue 调用
+     */
+    enterGuestMode() {
+      this.token = 'guest';
+      this.userInfo = { id: 0, nickname: '访客' };
+    },
+
+    /**
      * 刷新用户信息
      */
     async refreshProfile() {

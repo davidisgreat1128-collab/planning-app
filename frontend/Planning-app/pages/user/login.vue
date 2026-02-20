@@ -5,6 +5,12 @@
     <view :style="{ height: statusBarHeight + 'px' }"></view>
     <!-- #endif -->
 
+    <!-- 右上角访客模式开关 -->
+    <view class="guest-toggle-wrap" @tap="toggleGuestMode">
+      <text class="guest-toggle-icon">{{ guestMode ? '🔓' : '🔒' }}</text>
+      <text class="guest-toggle-label">{{ guestMode ? '访客模式' : '登录模式' }}</text>
+    </view>
+
     <view class="logo-area">
       <image class="logo" src="/static/logo.png" mode="aspectFit" />
       <text class="app-name">规划助手</text>
@@ -69,6 +75,21 @@ const form = ref({
 });
 const loading = ref(false);
 
+// ── 访客模式开关 ────────────────────────────────
+// 读取本地持久化状态（默认关闭 = 登录模式）
+const guestMode = ref(!!uni.getStorageSync('guest_mode'));
+
+function toggleGuestMode() {
+  guestMode.value = !guestMode.value;
+  uni.setStorageSync('guest_mode', guestMode.value);
+  if (guestMode.value) {
+    // 开启访客模式：立刻进入主页
+    userStore.enterGuestMode();
+    uni.reLaunch({ url: '/pages/calendar/index' });
+  }
+  // 关闭访客模式：保持在登录页，等待用户登录
+}
+
 // #ifdef APP-PLUS
 // 获取 App 端状态栏高度
 onLoad(() => {
@@ -114,6 +135,7 @@ function goRegister() {
   align-items: center;
   padding-top: 100rpx;
   box-sizing: border-box;
+  position: relative;
 }
 .logo-area {
   display: flex;
@@ -180,5 +202,29 @@ function goRegister() {
   margin-top: 16rpx;
   border: none;
   box-shadow: none;
+}
+
+/* 右上角访客模式开关 */
+.guest-toggle-wrap {
+  position: absolute;
+  top: 40rpx;
+  right: 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12rpx 20rpx;
+  border-radius: 16rpx;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.08);
+}
+.guest-toggle-icon {
+  font-size: 44rpx;
+  line-height: 1;
+}
+.guest-toggle-label {
+  font-size: 20rpx;
+  color: #888;
+  margin-top: 6rpx;
+  white-space: nowrap;
 }
 </style>

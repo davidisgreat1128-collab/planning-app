@@ -15,10 +15,21 @@ export default {
       userStore.token = token;
       userStore.userInfo = userInfo;
     } else {
-      // 无 Token：延迟跳转登录页（等待首页组件加载完再跳转）
-      setTimeout(() => {
-        uni.reLaunch({ url: '/pages/user/login' });
-      }, 100);
+      // 无 Token：检查是否开启了访客模式
+      const guestMode = uni.getStorageSync('guest_mode');
+      if (guestMode) {
+        // 访客模式已开启：直接进入主页，无需登录
+        const userStore = useUserStore();
+        userStore.enterGuestMode();
+        setTimeout(() => {
+          uni.reLaunch({ url: '/pages/calendar/index' });
+        }, 100);
+      } else {
+        // 普通模式：跳转登录页（延迟等待首页组件加载完再跳转）
+        setTimeout(() => {
+          uni.reLaunch({ url: '/pages/user/login' });
+        }, 100);
+      }
     }
   },
 

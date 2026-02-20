@@ -98,10 +98,7 @@ export const useTaskStore = defineStore('task', () => {
    */
   async function addTask(data) {
     const newTask = await createTask(data);
-    // 如果是当天任务，插入列表
-    if (!data.taskDate || data.taskDate === selectedDate.value) {
-      tasks.value.unshift({ ...newTask, _type: 'single' });
-    }
+    // 不做本地乐观插入，由调用方通过 fetchTasksByDate 刷新列表，避免重复
     return newTask;
   }
 

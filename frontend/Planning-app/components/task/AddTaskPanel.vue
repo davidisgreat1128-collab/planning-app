@@ -143,6 +143,15 @@
       @cancel="onRepeatCancel"
     />
 
+    <!-- ④-C 提醒面板（点击工具栏提醒按钮后展开） -->
+    <reminder-panel
+      :visible="showReminderPanel"
+      :taskDate="resolvedDate || getTodayStr()"
+      @update:reminderData="onReminderDataUpdate"
+      @confirm="onReminderConfirm"
+      @cancel="onReminderCancel"
+    />
+
     <!-- ④ 底部工具栏 -->
     <view class="toolbar">
       <!-- 四象限 -->
@@ -176,10 +185,10 @@
         <text class="toolbar-label" :class="{ 'label-active': showRepeatPanel || repeatData.mode !== 'none' }">重复</text>
       </view>
 
-      <!-- 提醒（占位） -->
+      <!-- 提醒 -->
       <view class="toolbar-item" @tap="onReminderTap">
-        <text class="toolbar-icon-text">⏰</text>
-        <text class="toolbar-label">提醒</text>
+        <text class="toolbar-icon-text" :class="{ 'icon-active': showReminderPanel || reminderData.enabled }">⏰</text>
+        <text class="toolbar-label" :class="{ 'label-active': showReminderPanel || reminderData.enabled }">提醒</text>
       </view>
 
       <!-- 发送按钮 -->
@@ -400,6 +409,7 @@
 import { ref, computed, watch } from 'vue';
 import { useTaskStore } from '@/store/task.js';
 import RepeatPanel from './RepeatPanel.vue';
+import ReminderPanel from './ReminderPanel.vue';
 
 // ============================================================
 // Props & Emits
@@ -992,20 +1002,102 @@ function onRepeatCancel() {
 }
 
 // ============================================================
-// 工具栏占位功能
+// 提醒功能
 // ============================================================
+
+/** 提醒面板是否展开 */
+const showReminderPanel = ref(false);
+
+/** 提醒数据 */
+const reminderData = ref({
+  enabled:    false,
+  time:       null,
+  persistent: true
+});
+
+/** 点击工具栏提醒按钮：展开/折叠面板 */
 function onReminderTap() {
-  uni.showToast({ title: '提醒功能开发中', icon: 'none' });
+  showQuadrantPicker.value = false;
+  showReminderPanel.value = !showReminderPanel.value;
+}
+
+/** ReminderPanel emit update:reminderData */
+function onReminderDataUpdate(data) {
+  reminderData.value = data;
+}
+
+/** ReminderPanel 确定 */
+function onReminderConfirm() {
+  showReminderPanel.value = false;
+}
+
+/** ReminderPanel 取消 */
+function onReminderCancel() {
+  reminderData.value = { enabled: false, time: null, persistent: true };
+  showReminderPanel.value = false;
 }
 
 // ============================================================
 // 提交
 // ============================================================
+/**
+ * 将 repeatData 转为标准 RRULE 字符串（后端要求格式）
+ * 例：FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH
+ */
+function buildRrule(rd) {
+  if (!rd || rd.mode === 'none') return '';
+
+  const freqMap = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY', yearly: 'YEARLY' };
+  const freq = freqMap[rd.mode];
+  if (!freq) return '';
+
+  const parts = [`FREQ=${freq}`];
+
+  if (rd.interval > 1) parts.push(`INTERVAL=${rd.interval}`);
+
+  // 每周：BYDAY（0=周一 MO ... 6=周日 SU）
+  if (rd.mode === 'weekly' && rd.weekDays && rd.weekDays.length > 0) {
+    const dayMap = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+    parts.push(`BYDAY=${rd.weekDays.map(d => dayMap[d]).join(',')}`);
+  }
+
+  // 每月-日期：BYMONTHDAY
+  if (rd.mode === 'monthly' && rd.monthlySubMode === 'date' && rd.monthDays && rd.monthDays.length > 0) {
+    parts.push(`BYMONTHDAY=${rd.monthDays.join(',')}`);
+  }
+
+  // 每月-星期：BYDAY（带序号，第几个）
+  if (rd.mode === 'monthly' && rd.monthlySubMode === 'week') {
+    const dayMap = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
+    // monthWeekOrdinal: 0-3=第一到第四个，4=最后一个（-1）
+    const pos = rd.monthWeekOrdinal === 4 ? -1 : rd.monthWeekOrdinal + 1;
+    parts.push(`BYDAY=${pos}${dayMap[rd.monthWeekDay]}`);
+  }
+
+  // 每年：BYMONTH + BYMONTHDAY
+  if (rd.mode === 'yearly') {
+    parts.push(`BYMONTH=${rd.yearlyMonth}`);
+    parts.push(`BYMONTHDAY=${rd.yearlyDay}`);
+  }
+
+  // 结束日期：UNTIL
+  if (rd.endDate) {
+    parts.push(`UNTIL=${rd.endDate.replace(/-/g, '')}T235959Z`);
+  }
+
+  return parts.join(';');
+}
+
+// 防重复提交标志
+let _submitting = false;
+
 async function submit() {
   if (!form.value.title.trim()) {
     uni.showToast({ title: '请填写任务内容', icon: 'none' });
     return;
   }
+  if (_submitting) return;
+  _submitting = true;
 
   try {
     uni.showLoading({ title: '保存中...' });
@@ -1015,7 +1107,11 @@ async function submit() {
     const hasDayRange  = !timeToggle.value && endDayCount.value > 1;
 
     const rd = repeatData.value;
-    const isRecurring = rd.mode !== 'none';
+    // 跨天任务（range）与重复任务互斥：range 时强制视为不重复
+    const isRecurring = !hasDayRange && rd.mode !== 'none';
+    const rrule = isRecurring ? buildRrule(rd) : undefined;
+
+    const todayStr = resolvedDate.value || getTodayStr();
 
     const payload = {
       title:       form.value.title.trim(),
@@ -1023,14 +1119,22 @@ async function submit() {
       isImportant: form.value.isImportant,
       isAllDay:    !hasTimeRange,
       dateType:    hasDayRange ? 'range' : 'single',
-      taskDate:    resolvedDate.value || getTodayStr(),
       isRecurring,
-      // 重复字段
-      repeatMode:     isRecurring ? rd.mode     : undefined,
-      repeatInterval: isRecurring ? rd.interval : undefined,
-      repeatWeekDays: isRecurring && rd.weekDays.length ? rd.weekDays : undefined,
-      repeatEndDate:  isRecurring && rd.endDate  ? rd.endDate  : undefined
+      // 重复字段：rrule（后端要求的标准格式）
+      rrule,
+      // 提醒字段
+      reminderTime:       reminderData.value.enabled && reminderData.value.time ? reminderData.value.time : undefined,
+      reminderPersistent: reminderData.value.enabled ? reminderData.value.persistent : undefined
     };
+
+    if (hasDayRange) {
+      // range 模式：startDate + endDate（后端不接受 taskDate）
+      payload.startDate = todayStr;
+      payload.endDate   = endDate.value ? formatDate(endDate.value) : todayStr;
+    } else {
+      // single 模式：taskDate
+      payload.taskDate = todayStr;
+    }
 
     // 有具体时间段时，附加 startTime / endTime
     if (hasTimeRange) {
@@ -1038,22 +1142,18 @@ async function submit() {
       payload.endTime   = timeEnd.value;
     }
 
-    // 有天数跨越时，附加结束日期
-    if (hasDayRange && endDate.value) {
-      payload.endDate = formatDate(endDate.value);
-    }
-
     await taskStore.addTask(payload);
 
+    uni.hideLoading();
     resetPanel();
     emit('submitted');
     closePanel();
-
     uni.showToast({ title: '已添加', icon: 'success' });
   } catch (err) {
+    uni.hideLoading();
     uni.showToast({ title: err.message || '保存失败', icon: 'none' });
   } finally {
-    uni.hideLoading();
+    _submitting = false;
   }
 }
 
@@ -1079,6 +1179,9 @@ function resetPanel() {
   // 重置重复
   showRepeatPanel.value = false;
   repeatData.value = { mode: 'none', interval: 1, weekDays: [], endDate: '' };
+  // 重置提醒
+  showReminderPanel.value = false;
+  reminderData.value = { enabled: false, time: null, persistent: true };
 }
 
 /** 关闭面板 */
