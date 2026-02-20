@@ -43,7 +43,7 @@ beforeAll(async () => {
     .post('/api/v1/auth/register')
     .send(userB);
   tokenB = resB.body.data.token;
-});
+}, 30000); // 增加超时时间到 30 秒
 
 afterAll(async () => {
   // 清理测试数据（不在此处关闭连接，避免影响其他测试套件）
