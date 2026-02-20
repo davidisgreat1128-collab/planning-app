@@ -974,6 +974,12 @@ function openTaskDetail(task) {
  * 四象限视图：直接切换完成状态（不跳转）
  */
 async function toggleTaskDone(task) {
+  // 访客模式：禁止修改演示数据
+  if (userStore.token === 'guest') {
+    uni.showToast({ title: '访客模式下无法修改任务，请登录后使用', icon: 'none', duration: 2000 });
+    return;
+  }
+
   try {
     await taskStore.toggleDone(task.id, task.status);
     // 若弹窗中父任务被切换，同步弹窗状态
@@ -997,6 +1003,11 @@ function closeSubtaskPopup() {
 
 /** 切换弹窗中单个子任务完成状态（本地模拟，实际联调时需调用API） */
 function toggleSubtask(sub) {
+  // 访客模式：禁止修改演示数据
+  if (userStore.token === 'guest') {
+    uni.showToast({ title: '访客模式下无法修改任务，请登录后使用', icon: 'none', duration: 2000 });
+    return;
+  }
   sub.done = !sub.done;
 }
 
