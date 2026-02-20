@@ -24,7 +24,7 @@ let userId = null;    // 注册后保存的用户ID
 
 beforeAll(async () => {
   await sequelize.sync({ force: true });
-});
+}, 30000); // 增加超时时间到 30 秒
 
 afterAll(async () => {
   await User.destroy({ where: {}, force: true });

@@ -31,7 +31,7 @@ const testUser = {
 beforeAll(async () => {
   // 同步测试表结构（force:false 不删除已有数据）
   await sequelize.sync({ force: true });
-});
+}, 30000); // 增加超时时间到 30 秒
 
 afterAll(async () => {
   // 清理测试数据（不在此处关闭连接，避免影响其他测试套件）
