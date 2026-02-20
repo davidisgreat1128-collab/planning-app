@@ -62,8 +62,10 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
+
+console.log('[Login] 页面开始加载');
 
 // App 端状态栏高度
 const statusBarHeight = ref(0);
@@ -78,24 +80,28 @@ const loading = ref(false);
 // ── 访客模式开关 ────────────────────────────────
 // 读取本地持久化状态（默认关闭 = 登录模式）
 const guestMode = ref(!!uni.getStorageSync('guest_mode'));
+console.log('[Login] guestMode初始值:', guestMode.value);
 
 function toggleGuestMode() {
+  console.log('[Login] 切换访客模式:', !guestMode.value);
   guestMode.value = !guestMode.value;
   uni.setStorageSync('guest_mode', guestMode.value);
   if (guestMode.value) {
     // 开启访客模式：立刻进入主页
+    console.log('[Login] 开启访客模式，跳转主页');
     userStore.enterGuestMode();
     uni.reLaunch({ url: '/pages/calendar/index' });
   }
   // 关闭访客模式：保持在登录页，等待用户登录
 }
 
-// #ifdef APP-PLUS
-// 获取 App 端状态栏高度
-onLoad(() => {
+onMounted(() => {
+  console.log('[Login] onMounted 执行');
+  // #ifdef APP-PLUS
   statusBarHeight.value = plus.navigator.getStatusbarHeight();
+  console.log('[Login] APP-PLUS 状态栏高度:', statusBarHeight.value);
+  // #endif
 });
-// #endif
 
 async function handleLogin() {
   if (!form.value.email) {
