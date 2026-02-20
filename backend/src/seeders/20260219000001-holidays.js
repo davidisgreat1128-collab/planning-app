@@ -16,8 +16,6 @@
  */
 module.exports = {
   async up(queryInterface) {
-    const now = new Date();
-
     const holidays = [
       // ============================================================
       // 中国公历节日 (cn_solar) - 固定月日
@@ -82,9 +80,9 @@ module.exports = {
       { name: '元旦', type: 'western', month: 1, day: 1, color: '#FFD700', description: '西方新年（与中国元旦同日）', is_active: false }, // 避免重复显示
       { name: '情人节', type: 'western', month: 2, day: 14, color: '#FF69B4', description: "Valentine's Day", is_active: true },
       { name: '愚人节', type: 'western', month: 4, day: 1, color: '#FF8C00', description: "April Fools' Day", is_active: true },
-      { name: '万圣节', type: 'western', month: 10, day: 31, color: '#FF6347', description: "Halloween", is_active: true },
-      { name: '平安夜', type: 'western', month: 12, day: 24, color: '#228B22', description: "Christmas Eve", is_active: true },
-      { name: '圣诞节', type: 'western', month: 12, day: 25, color: '#FF4444', description: "Christmas Day", is_active: true },
+      { name: '万圣节', type: 'western', month: 10, day: 31, color: '#FF6347', description: 'Halloween', is_active: true },
+      { name: '平安夜', type: 'western', month: 12, day: 24, color: '#228B22', description: 'Christmas Eve', is_active: true },
+      { name: '圣诞节', type: 'western', month: 12, day: 25, color: '#FF4444', description: 'Christmas Day', is_active: true },
 
       // ============================================================
       // 特殊规则节日（母亲节/父亲节）

@@ -162,7 +162,7 @@ function getLunarInfoRange(startDate, endDate) {
  * @param {boolean} isLeap - 是否闰月
  * @returns {string|null} YYYY-MM-DD 或 null
  */
-function lunarToSolar(year, lunarMonth, lunarDay, isLeap = false) {
+function lunarToSolar(year, lunarMonth, lunarDay, _isLeap = false) {
   try {
     // 先找该公历年对应的农历年（春节前后可能跨年）
     // 尝试当年农历

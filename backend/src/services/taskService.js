@@ -1,7 +1,7 @@
 'use strict';
 
 const { Op } = require('sequelize');
-const { Task, TaskOccurrence, User } = require('../models');
+const { Task, TaskOccurrence } = require('../models');
 const { NotFoundError, ValidationError } = require('../utils/errors');
 
 /**
