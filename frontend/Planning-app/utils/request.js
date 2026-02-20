@@ -58,7 +58,7 @@ function request({ url, method = 'GET', data = {}, auth = true } = {}) {
           const guestMode = uni.getStorageSync('guest_mode');
           if (guestMode) {
             // 访客模式：静默返回空数据，不阻塞UI，不显示toast
-            console.log('[Request] 访客模式：401静默处理');
+            // console.log('[Request] 访客模式：401静默处理');
             resolve({ success: true, data: null });
             return;
           } else {

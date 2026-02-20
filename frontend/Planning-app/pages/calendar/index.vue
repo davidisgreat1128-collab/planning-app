@@ -1223,7 +1223,7 @@ onMounted(async () => {
 
   // 访客模式：跳过网络请求，使用演示数据
   if (userStore.token === 'guest') {
-    console.log('[Calendar] 访客模式：加载演示数据');
+    // console.log('[Calendar] 访客模式：加载演示数据');
     // 加载演示任务数据（覆盖四象限 + 时间轴）
     taskStore.tasks = [
       {

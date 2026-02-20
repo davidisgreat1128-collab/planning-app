@@ -73,15 +73,31 @@ export const useTaskStore = defineStore('task', () => {
     selectedDate.value = date;
     try {
       const res = await getTasks({ date });
+      // console.log('[TaskStore] fetchTasksByDate 返回数据:', JSON.stringify(res, null, 2));
+
       // 后端返回结构：{ date, single: [], range: [], recurring: [] }
       // 三类任务合并为一个列表，并附加 _type 标记
-      const single    = (res.single    || []).map(t => ({ ...t, _type: 'single' }));
-      const range     = (res.range     || []).map(t => ({ ...t, _type: 'range' }));
+
+      // 🔧 修复：过滤掉 single 中的重复任务（isRecurring=true），避免与 recurring 实例重复显示
+      const single    = (res.single    || [])
+        .filter(t => !t.isRecurring)  // 重复任务只显示实例，不显示原始任务
+        .map(t => ({ ...t, _type: 'single' }));
+
+      const range     = (res.range     || [])
+        .filter(t => !t.isRecurring)  // 同样过滤跨天重复任务
+        .map(t => ({ ...t, _type: 'range' }));
+
       const recurring = (res.recurring || []).map(o => ({
         ...o.task,        // 展开关联 task 字段
         ...o,             // occurrence 字段覆盖（如 occurDate/occurStartTime）
         _type: 'recurring'
       }));
+
+      // console.log('[TaskStore] single 数量 (过滤后):', single.length);
+      // console.log('[TaskStore] range 数量 (过滤后):', range.length);
+      // console.log('[TaskStore] recurring 数量:', recurring.length);
+      // console.log('[TaskStore] 合并后总数:', single.length + range.length + recurring.length);
+
       tasks.value = [...single, ...range, ...recurring];
     } catch (err) {
       console.error('[TaskStore] 加载任务失败:', err);

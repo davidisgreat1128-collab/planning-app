@@ -117,7 +117,7 @@ async function checkLoginAndLoad() {
 
   // 访客模式：跳过网络请求
   if (userStore.token === 'guest') {
-    console.log('[Profile] 访客模式：跳过刷新用户信息');
+    // console.log('[Profile] 访客模式：跳过刷新用户信息');
     return;
   }
 
