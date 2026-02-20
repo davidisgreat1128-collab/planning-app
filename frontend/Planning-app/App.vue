@@ -4,18 +4,11 @@ import { useUserStore } from '@/store/user.js';
 
 export default {
   onLaunch() {
-    // 清除旧版本缓存数据（防止结构不兼容导致白屏）
-    // 注意：保留 guest_mode / planning_app_token / planning_app_user 三个关键key
+    // 【测试阶段】启动时完全清除所有缓存，强制进入登录页
+    // TODO: 正式发布时改为按版本号判断是否清除
     try {
-      const storageInfo = uni.getStorageInfoSync();
-      const oldKeys = storageInfo.keys || [];
-      const keepKeys = ['guest_mode', 'planning_app_token', 'planning_app_user'];
-      oldKeys.forEach(key => {
-        if (!keepKeys.includes(key)) {
-          uni.removeStorageSync(key);
-        }
-      });
-      console.log('[App] 已清除旧版本缓存，保留keys:', keepKeys);
+      uni.clearStorageSync();
+      console.log('[App] 已清除所有缓存（测试模式）');
     } catch (e) {
       console.warn('[App] 清除缓存失败:', e);
     }
