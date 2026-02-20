@@ -115,6 +115,12 @@ async function checkLoginAndLoad() {
     userStore.token = savedToken;
   }
 
+  // 访客模式：跳过网络请求
+  if (userStore.token === 'guest') {
+    console.log('[Profile] 访客模式：跳过刷新用户信息');
+    return;
+  }
+
   loading.value = true;
   try {
     await userStore.refreshProfile();

@@ -4,6 +4,22 @@ import { useUserStore } from '@/store/user.js';
 
 export default {
   onLaunch() {
+    // 清除旧版本缓存数据（防止结构不兼容导致白屏）
+    // 注意：保留 guest_mode / planning_app_token / planning_app_user 三个关键key
+    try {
+      const storageInfo = uni.getStorageInfoSync();
+      const oldKeys = storageInfo.keys || [];
+      const keepKeys = ['guest_mode', 'planning_app_token', 'planning_app_user'];
+      oldKeys.forEach(key => {
+        if (!keepKeys.includes(key)) {
+          uni.removeStorageSync(key);
+        }
+      });
+      console.log('[App] 已清除旧版本缓存，保留keys:', keepKeys);
+    } catch (e) {
+      console.warn('[App] 清除缓存失败:', e);
+    }
+
     // 启动时从本地存储恢复登录状态到 store
     const token = getToken();
     const userInfo = getUserInfo();
