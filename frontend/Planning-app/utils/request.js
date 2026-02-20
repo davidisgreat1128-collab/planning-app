@@ -54,11 +54,13 @@ function request({ url, method = 'GET', data = {}, auth = true } = {}) {
         } else if (res.statusCode === 204) {
           resolve(null);
         } else if (res.statusCode === 401) {
-          // Token失效：访客模式下仅提示，不跳转登录页
+          // Token失效：访客模式下静默返回空数据，不跳转登录页
           const guestMode = uni.getStorageSync('guest_mode');
           if (guestMode) {
-            uni.showToast({ title: '请登录后使用该功能', icon: 'none' });
-            reject(new Error('请登录后使用该功能'));
+            // 访客模式：静默返回空数据，不阻塞UI，不显示toast
+            console.log('[Request] 访客模式：401静默处理');
+            resolve({ success: true, data: null });
+            return;
           } else {
             removeToken();
             removeUserInfo();

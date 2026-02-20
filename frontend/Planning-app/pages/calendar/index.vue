@@ -536,6 +536,7 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
+import { useUserStore } from '@/store/user.js';
 import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday.js';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 
@@ -544,6 +545,7 @@ import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 // ============================================================
 const taskStore = useTaskStore();
 const logStore = useLogStore();
+const userStore = useUserStore();
 
 // ============================================================
 // 状态变量
@@ -1207,11 +1209,75 @@ onMounted(async () => {
   taskStore.selectedDate = todayStr;
 
   updateCurrentTime();
-  await Promise.all([
-    taskStore.fetchTasksByDate(todayStr),
-    logStore.fetchLogsByDate(todayStr),
-    loadHolidays()
-  ]);
+
+  // 访客模式：跳过网络请求，使用演示数据
+  if (userStore.token === 'guest') {
+    console.log('[Calendar] 访客模式：加载演示数据');
+    // 加载演示任务数据（覆盖四象限 + 时间轴）
+    taskStore.tasks = [
+      {
+        id: 1,
+        title: '重要紧急示例任务',
+        description: '这是一个演示任务，展示重要且紧急象限',
+        isUrgent: true,
+        isImportant: true,
+        status: 'pending',
+        isAllDay: true,
+        taskDate: todayStr
+      },
+      {
+        id: 2,
+        title: '重要不紧急示例',
+        description: '规划区任务示例',
+        isUrgent: false,
+        isImportant: true,
+        status: 'pending',
+        isAllDay: true,
+        taskDate: todayStr
+      },
+      {
+        id: 3,
+        title: '紧急不重要（已完成）',
+        description: '琐事象限，已完成',
+        isUrgent: true,
+        isImportant: false,
+        status: 'completed',
+        isAllDay: true,
+        taskDate: todayStr
+      },
+      {
+        id: 4,
+        title: '定时任务示例 10:00',
+        description: '时间轴视图展示',
+        isUrgent: false,
+        isImportant: true,
+        status: 'pending',
+        isAllDay: false,
+        startTime: '10:00',
+        endTime: '11:00',
+        taskDate: todayStr
+      },
+      {
+        id: 5,
+        title: '不急不重要示例',
+        description: '消遣区任务',
+        isUrgent: false,
+        isImportant: false,
+        status: 'pending',
+        isAllDay: true,
+        taskDate: todayStr
+      }
+    ];
+    logStore.logs = [];
+    holidayMap.value = {};
+  } else {
+    // 正常登录模式：请求后端
+    await Promise.all([
+      taskStore.fetchTasksByDate(todayStr),
+      logStore.fetchLogsByDate(todayStr),
+      loadHolidays()
+    ]);
+  }
 
   timeTimer = setInterval(updateCurrentTime, 60000);
 
