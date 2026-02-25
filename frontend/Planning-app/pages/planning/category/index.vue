@@ -728,18 +728,19 @@ function onTouchEnd(e, categoryId) {
   min-width: 0; /* 允许内容缩小 */
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 8rpx;
 }
 
 .plan-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 15rpx;
 }
 
 .plan-icon {
   font-size: 40rpx;
   flex-shrink: 0;
+  line-height: 1.2;
 }
 
 .plan-name {
@@ -749,16 +750,18 @@ function onTouchEnd(e, categoryId) {
   color: #333;
   word-wrap: break-word;
   word-break: break-all;
-  line-height: 1.4;
+  line-height: 1.3;
+  margin-top: 2rpx;
 }
 
 .plan-buff {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #666;
-  line-height: 1.5;
+  line-height: 1.4;
   word-wrap: break-word;
   word-break: break-all;
   white-space: normal;
+  padding-left: 55rpx; /* 与规划名称对齐（图标40rpx + gap15rpx） */
 }
 
 .plan-stats {
@@ -767,6 +770,7 @@ function onTouchEnd(e, categoryId) {
   gap: 20rpx;
   font-size: 24rpx;
   color: #666;
+  padding-left: 55rpx; /* 与规划名称对齐 */
 }
 
 .plan-milestone {
