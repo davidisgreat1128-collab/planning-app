@@ -283,13 +283,15 @@
       </view>
     </view>
 
-    <!-- ⑤.6 新建分类弹窗 -->
-    <CategoryDialog
-      :visible="showCategoryDialog"
-      :edit-mode="false"
-      @update:visible="showCategoryDialog = $event"
-      @save="onCategorySave"
-    />
+    <!-- ⑤.6 新建分类弹窗（使用teleport传送到body层级，确保全屏居中） -->
+    <teleport to="body">
+      <CategoryDialog
+        :visible="showCategoryDialog"
+        :edit-mode="false"
+        @update:visible="showCategoryDialog = $event"
+        @save="onCategorySave"
+      />
+    </teleport>
 
     <!-- ⑥ 天数日历弹窗（开关关闭时，选择结束天） -->
     <view v-if="showDayPicker" class="tp-mask" @tap.stop="closeDayPicker">
