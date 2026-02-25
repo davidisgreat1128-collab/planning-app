@@ -38,17 +38,17 @@
                 @touchend="onPlanTouchEnd($event, plan.id)"
               >
                 <!-- 前景：规划卡片内容 -->
-                <view class="plan-card" :class="{ active: plan.isSelected }" @tap="togglePlanSelection(plan.id)">
+                <view class="plan-card" :class="{ active: selectedCategory === plan.id }" @tap="togglePlanSelection(plan.id)">
                   <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
                   <view class="plan-content">
-                    <text class="plan-title">{{ plan.title }}</text>
+                    <text class="plan-title">{{ plan.name }}</text>
                     <text class="plan-buff">{{ plan.buff }}</text>
                     <text class="plan-stats">
-                      里程碑：{{ plan.stats.completedMilestones }}/{{ plan.stats.totalMilestones }}
-                      已进行{{ plan.stats.progressDays }}天
+                      里程碑：{{ getPlanCompletedMilestones(plan) }}/{{ getPlanTotalMilestones(plan) }}
+                      已进行{{ getPlanProgressDays(plan) }}天
                     </text>
                   </view>
-                  <text v-if="plan.isSelected" class="plan-check">✓</text>
+                  <text v-if="selectedCategory === plan.id" class="plan-check">✓</text>
                 </view>
 
                 <!-- 背景：操作按钮 -->
@@ -97,9 +97,9 @@
               <text v-if="selectedCategory === 'none'" class="category-check">✓</text>
             </view>
 
-            <!-- 用户创建的分类（支持左滑操作） -->
+            <!-- 用户创建的普通分类（不包含规划，支持左滑操作） -->
             <view
-              v-for="category in userCategories"
+              v-for="category in normalCategories"
               :key="category.id"
               class="category-item-wrapper"
             >
@@ -186,7 +186,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
-import { usePlanStore } from '@/store/plan.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
 import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
@@ -204,7 +203,6 @@ const emit = defineEmits(['update:visible', 'create-goal', 'container-changed'])
 // Store
 // ============================================================
 const userStore = useUserStore();
-const planStore = usePlanStore();
 
 // ============================================================
 // 状态变量
@@ -239,10 +237,17 @@ const userNickname = computed(() => userStore.userInfo?.nickname || userStore.us
 const userAvatar = computed(() => userStore.userInfo?.avatar || '🐣');
 
 /**
- * 获取所有激活的规划
+ * 获取所有规划（从 userCategories 中过滤 type='plan'）
  */
 const activePlans = computed(() => {
-  return planStore.activePlans || [];
+  return userCategories.value.filter(cat => cat.type === 'plan');
+});
+
+/**
+ * 获取普通分类（从 userCategories 中过滤非规划）
+ */
+const normalCategories = computed(() => {
+  return userCategories.value.filter(cat => cat.type !== 'plan');
 });
 
 /**
@@ -267,14 +272,54 @@ const persistDays = computed(() => {
 });
 
 // ============================================================
+// 规划统计函数
+// ============================================================
+
+/**
+ * 获取规划的总里程碑数
+ */
+function getPlanTotalMilestones(plan) {
+  return plan.milestones?.length || 0;
+}
+
+/**
+ * 获取规划已完成的里程碑数
+ */
+function getPlanCompletedMilestones(plan) {
+  if (!plan.milestones || plan.milestones.length === 0) return 0;
+  return plan.milestones.filter(m => m.isCompleted).length;
+}
+
+/**
+ * 获取规划已进行天数
+ * 计算方式：当前日期 - 创建日期 + 1
+ */
+function getPlanProgressDays(plan) {
+  if (!plan.createTime) return 1;
+
+  const createDate = new Date(plan.createTime);
+  const today = new Date();
+
+  // 清除时间部分，只比较日期
+  createDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  // 计算天数差
+  const diffTime = today - createDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  // 包含创建当天，所以 +1
+  return diffDays + 1;
+}
+
+// ============================================================
 // 监听弹窗显示状态
 // ============================================================
 watch(() => props.visible, (newVal) => {
   if (newVal) {
-    loadCategories();
-    planStore.loadPlans(); // 加载规划列表
+    loadCategories(); // 加载分类（包含规划）
 
-    // 加载选中状态（规划优先）
+    // 加载选中状态
     loadContainerSelection();
   } else {
     // 关闭所有左滑
@@ -284,19 +329,9 @@ watch(() => props.visible, (newVal) => {
 });
 
 /**
- * 加载容器选中状态（规划或分类）
+ * 加载容器选中状态（分类，包含规划类型的分类）
  */
 function loadContainerSelection() {
-  // 优先检查是否有选中的规划
-  const savedPlanId = uni.getStorageSync('selected_plan_id');
-  if (savedPlanId) {
-    // 选中规划时，清除分类选中
-    selectedCategory.value = '';
-    // 规划的选中状态由 planStore 管理，这里不需要设置
-    return;
-  }
-
-  // 如果没有选中规划，则加载分类选中状态
   const savedCategory = uni.getStorageSync('selected_category_id');
   if (savedCategory) {
     selectedCategory.value = savedCategory;
@@ -309,7 +344,7 @@ function loadContainerSelection() {
 // 组件挂载时加载数据
 // ============================================================
 onMounted(() => {
-  planStore.loadPlans();
+  loadCategories(); // 加载分类（包含规划）
 });
 
 // ============================================================
@@ -370,17 +405,11 @@ function handleCreateGoal() {
 }
 
 /**
- * 切换规划选中状态
+ * 切换规划选中状态（规划现在是分类的一种，直接使用分类选择逻辑）
  */
 function togglePlanSelection(planId) {
-  const plan = planStore.plans.find(p => p.id === planId);
-  if (!plan) {
-    return;
-  }
-
   // 如果点击的是已选中的规划，则取消选中
-  if (plan.isSelected) {
-    planStore.deselectPlan();
+  if (selectedCategory.value === planId) {
     // 恢复为"全部"
     selectedCategory.value = 'all';
     uni.setStorageSync('selected_category_id', 'all');
@@ -401,18 +430,14 @@ function togglePlanSelection(planId) {
     return;
   }
 
-  // 选中规划，取消分类选中
-  planStore.selectPlan(planId);
-  selectedCategory.value = ''; // 清除分类选中状态
+  // 选中规划（规划也是分类，使用 categoryId）
+  selectedCategory.value = planId;
 
-  // 保存选中的规划ID
-  uni.setStorageSync('selected_plan_id', planId);
-
-  // 清除选中的分类ID
-  uni.removeStorageSync('selected_category_id');
+  // 保存选中的分类ID（规划ID也存在这里）
+  uni.setStorageSync('selected_category_id', planId);
 
   // 发出容器变更事件，通知父页面更新
-  emit('container-changed', { type: 'plan', id: planId });
+  emit('container-changed', { type: 'category', id: planId });
 
   uni.showToast({
     title: '已选择规划',
@@ -681,16 +706,24 @@ function deletePlan(plan) {
 function onDeletePlanConfirm(deleteWithTasks) {
   if (!deletingPlan.value) return;
 
-  console.log('[CategoryDrawer] 确认删除规划:', deletingPlan.value.title, '是否同时删除任务:', deleteWithTasks);
+  console.log('[CategoryDrawer] 确认删除规划:', deletingPlan.value.name, '是否同时删除任务:', deleteWithTasks);
 
-  // 调用 planStore 的删除方法
-  planStore.deletePlan(deletingPlan.value.id, deleteWithTasks);
+  // 从 userCategories 中删除规划
+  const index = userCategories.value.findIndex(c => c.id === deletingPlan.value.id);
+  if (index !== -1) {
+    userCategories.value.splice(index, 1);
+    saveCategories();
+  }
+
+  // TODO: 如果 deleteWithTasks 为 true，还需要删除关联的任务
+  // 这需要调用后端API或者更新本地任务列表
 
   uni.showToast({
     title: deleteWithTasks ? '规划和计划已删除' : '规划已删除',
     icon: 'success'
   });
 
+  showDeletePlanDialog.value = false;
   deletingPlan.value = null;
 }
 </script>
