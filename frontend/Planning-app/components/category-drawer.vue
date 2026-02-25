@@ -27,20 +27,42 @@
             <view
               v-for="plan in activePlans"
               :key="plan.id"
-              class="plan-card"
+              class="plan-card-wrapper"
             >
-              <text class="plan-icon">🔔</text>
-              <view class="plan-content">
-                <text class="plan-title">{{ plan.title }}</text>
-                <text class="plan-buff">{{ plan.buff }}</text>
-                <text class="plan-stats">
-                  里程碑：{{ plan.stats.completedMilestones }}/{{ plan.stats.totalMilestones }}
-                  已进行{{ plan.stats.progressDays }}天
-                </text>
-              </view>
-              <view class="plan-checkbox" @tap="togglePlanSelection(plan.id)">
-                <view v-if="plan.isSelected" class="checkbox-checked">✓</view>
-                <view v-else class="checkbox-unchecked"></view>
+              <!-- 左滑容器 -->
+              <view
+                class="plan-card-swipe"
+                :class="{ 'swipe-open': swipeOpenPlanId === plan.id }"
+                @touchstart="onPlanTouchStart($event, plan.id)"
+                @touchmove="onPlanTouchMove($event, plan.id)"
+                @touchend="onPlanTouchEnd($event, plan.id)"
+              >
+                <!-- 前景：规划卡片内容 -->
+                <view class="plan-card">
+                  <text class="plan-icon">🔔</text>
+                  <view class="plan-content">
+                    <text class="plan-title">{{ plan.title }}</text>
+                    <text class="plan-buff">{{ plan.buff }}</text>
+                    <text class="plan-stats">
+                      里程碑：{{ plan.stats.completedMilestones }}/{{ plan.stats.totalMilestones }}
+                      已进行{{ plan.stats.progressDays }}天
+                    </text>
+                  </view>
+                  <view class="plan-checkbox" @tap="togglePlanSelection(plan.id)">
+                    <view v-if="plan.isSelected" class="checkbox-checked">✓</view>
+                    <view v-else class="checkbox-unchecked"></view>
+                  </view>
+                </view>
+
+                <!-- 背景：操作按钮 -->
+                <view class="swipe-actions plan-swipe-actions">
+                  <view class="swipe-btn edit-btn" @tap.stop="editPlan(plan)">
+                    <text class="swipe-icon">🖊</text>
+                  </view>
+                  <view class="swipe-btn delete-btn" @tap.stop="deletePlan(plan)">
+                    <text class="swipe-icon">🗑️</text>
+                  </view>
+                </view>
               </view>
             </view>
           </view>
@@ -152,6 +174,14 @@
         @update:visible="showDeleteDialog = $event"
         @confirm="onDeleteConfirm"
       />
+
+      <!-- 删除规划确认弹窗 -->
+      <DeletePlanDialog
+        :visible="showDeletePlanDialog"
+        :plan-title="deletingPlan?.title"
+        @update:visible="showDeletePlanDialog = $event"
+        @confirm="onDeletePlanConfirm"
+      />
     </view>
   </view>
 </template>
@@ -162,6 +192,7 @@ import { useUserStore } from '@/store/user.js';
 import { usePlanStore } from '@/store/plan.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
+import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
 
 const props = defineProps({
   visible: {
@@ -190,10 +221,19 @@ const showDeleteDialog = ref(false); // 删除分类确认弹窗
 const deletingCategory = ref(null); // 正在删除的分类
 const userCategories = ref([]); // 用户创建的分类列表
 
-// 左滑相关状态
+// 左滑相关状态（分类）
 const swipeOpenId = ref(null); // 当前左滑打开的分类 ID
 const touchStartX = ref(0); // 触摸开始的 X 坐标
 const touchStartY = ref(0); // 触摸开始的 Y 坐标
+
+// 左滑相关状态（规划）
+const swipeOpenPlanId = ref(null); // 当前左滑打开的规划 ID
+const planTouchStartX = ref(0); // 规划触摸开始的 X 坐标
+const planTouchStartY = ref(0); // 规划触摸开始的 Y 坐标
+
+// 删除规划相关状态
+const showDeletePlanDialog = ref(false); // 删除规划确认弹窗
+const deletingPlan = ref(null); // 正在删除的规划
 
 // ============================================================
 // 计算属性
@@ -244,6 +284,7 @@ watch(() => props.visible, (newVal) => {
   } else {
     // 关闭所有左滑
     swipeOpenId.value = null;
+    swipeOpenPlanId.value = null;
   }
 });
 
@@ -503,6 +544,101 @@ function onTouchEnd(event, categoryId) {
     swipeOpenId.value = null;
   }
 }
+
+// ============================================================
+// 规划左滑手势
+// ============================================================
+
+/**
+ * 规划触摸开始
+ */
+function onPlanTouchStart(event, planId) {
+  planTouchStartX.value = event.touches[0].pageX;
+  planTouchStartY.value = event.touches[0].pageY;
+}
+
+/**
+ * 规划触摸移动
+ */
+function onPlanTouchMove(event, planId) {
+  const touchX = event.touches[0].pageX;
+  const touchY = event.touches[0].pageY;
+  const deltaX = touchX - planTouchStartX.value;
+  const deltaY = touchY - planTouchStartY.value;
+
+  // 判断是否是横向滑动
+  if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
+    // 阻止默认滚动行为
+    event.preventDefault?.();
+  }
+}
+
+/**
+ * 规划触摸结束
+ */
+function onPlanTouchEnd(event, planId) {
+  const touchX = event.changedTouches[0].pageX;
+  const deltaX = touchX - planTouchStartX.value;
+
+  // 左滑阈值：滑动距离超过 50px
+  if (deltaX < -50) {
+    // 左滑，打开操作按钮
+    swipeOpenPlanId.value = planId;
+  } else if (deltaX > 50) {
+    // 右滑，关闭操作按钮
+    swipeOpenPlanId.value = null;
+  } else if (swipeOpenPlanId.value === planId && Math.abs(deltaX) < 10) {
+    // 点击已打开的项，关闭
+    swipeOpenPlanId.value = null;
+  }
+}
+
+/**
+ * 编辑规划
+ */
+function editPlan(plan) {
+  console.log('[CategoryDrawer] 编辑规划:', plan.title);
+
+  swipeOpenPlanId.value = null;
+
+  // 关闭抽屉
+  emit('update:visible', false);
+
+  // 跳转到规划详情页面
+  uni.navigateTo({
+    url: `/pages/planning/detail/index?id=${plan.id}`
+  });
+}
+
+/**
+ * 删除规划（打开确认弹窗）
+ */
+function deletePlan(plan) {
+  console.log('[CategoryDrawer] 删除规划:', plan.title);
+
+  swipeOpenPlanId.value = null;
+  deletingPlan.value = plan;
+  showDeletePlanDialog.value = true;
+}
+
+/**
+ * 确认删除规划
+ */
+function onDeletePlanConfirm(deleteWithTasks) {
+  if (!deletingPlan.value) return;
+
+  console.log('[CategoryDrawer] 确认删除规划:', deletingPlan.value.title, '是否同时删除任务:', deleteWithTasks);
+
+  // 调用 planStore 的删除方法
+  planStore.deletePlan(deletingPlan.value.id, deleteWithTasks);
+
+  uni.showToast({
+    title: deleteWithTasks ? '规划和计划已删除' : '规划已删除',
+    icon: 'success'
+  });
+
+  deletingPlan.value = null;
+}
 </script>
 
 <style scoped>
@@ -628,6 +764,22 @@ function onTouchEnd(event, categoryId) {
   flex-direction: column;
   gap: 15rpx;
   margin-bottom: 20rpx;
+}
+
+.plan-card-wrapper {
+  position: relative;
+  width: 100%;
+  overflow: hidden;
+}
+
+.plan-card-swipe {
+  position: relative;
+  transition: transform 0.3s ease-out;
+  width: 100%;
+}
+
+.plan-card-swipe.swipe-open {
+  transform: translateX(-160rpx);
 }
 
 .plan-card {
@@ -846,6 +998,16 @@ function onTouchEnd(event, categoryId) {
 
 .swipe-icon {
   font-size: 36rpx;
+}
+
+/* 规划左滑操作按钮 */
+.plan-swipe-actions {
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  gap: 10rpx;
 }
 
 .bottom-spacer {

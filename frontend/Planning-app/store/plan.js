@@ -97,8 +97,10 @@ export const usePlanStore = defineStore('plan', {
 
     /**
      * 删除规划
+     * @param {string} planId - 规划ID
+     * @param {boolean} deleteWithTasks - 是否同时删除关联的计划
      */
-    deletePlan(planId) {
+    deletePlan(planId, deleteWithTasks = false) {
       const index = this.plans.findIndex(p => p.id === planId);
       if (index !== -1) {
         this.plans[index].isDeleted = true;
@@ -107,9 +109,23 @@ export const usePlanStore = defineStore('plan', {
         // 如果删除的是当前选中的规划，取消选中
         if (this.selectedPlanId === planId) {
           this.selectedPlanId = null;
+          // 清空生成的任务
+          this.generatedTasks = [];
         }
 
         this.savePlans();
+
+        // TODO: 处理关联的计划（任务）
+        if (deleteWithTasks) {
+          // 删除该规划下的所有计划
+          // 这里需要从任务列表中删除 planId === planId 的任务
+          // 目前前端只有 generatedTasks，已在上面清空
+          console.log('[PlanStore] 需要删除规划下的所有计划');
+        } else {
+          // 将该规划下的计划改为无分类
+          // 这里需要将任务的 planId 设置为 null
+          console.log('[PlanStore] 需要将规划下的计划改为无分类');
+        }
       }
     },
 
