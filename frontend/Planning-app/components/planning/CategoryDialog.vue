@@ -452,10 +452,14 @@ watch(() => props.visible, (val) => {
    ============================================================ */
 .category-dialog {
   width: 600rpx;
+  max-height: 85vh;
   background-color: #fff;
   border-radius: 24rpx;
   padding: 40rpx 30rpx 30rpx;
   box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.15);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
 }
 
 .dialog-title {
@@ -464,6 +468,7 @@ watch(() => props.visible, (val) => {
   text-align: center;
   margin-bottom: 30rpx;
   color: #333;
+  flex-shrink: 0;
 }
 
 /* ============================================================
@@ -476,6 +481,7 @@ watch(() => props.visible, (val) => {
   padding: 20rpx 100rpx 20rpx 20rpx;
   margin-bottom: 30rpx;
   background-color: #fff;
+  flex-shrink: 0;
 }
 
 .name-input {
@@ -508,6 +514,7 @@ watch(() => props.visible, (val) => {
   overflow-x: auto;
   white-space: nowrap;
   -webkit-overflow-scrolling: touch;
+  flex-shrink: 0;
 }
 
 .icon-tabs::-webkit-scrollbar {
@@ -548,9 +555,10 @@ watch(() => props.visible, (val) => {
   grid-template-columns: repeat(5, 1fr);
   gap: 20rpx;
   margin-bottom: 30rpx;
-  max-height: 600rpx;
+  flex: 1;
   overflow-y: auto;
   padding-bottom: 10rpx;
+  min-height: 300rpx;
 }
 
 .icon-grid::-webkit-scrollbar {
@@ -593,6 +601,8 @@ watch(() => props.visible, (val) => {
 .dialog-buttons {
   display: flex;
   gap: 20rpx;
+  flex-shrink: 0;
+  margin-top: auto;
 }
 
 .dialog-btn {
