@@ -271,7 +271,7 @@
             @tap="selectPlan(plan.id)"
           >
             <view class="cp-icon-wrapper">
-              <text class="cp-icon">{{ plan.title.charAt(0) }}</text>
+              <text class="cp-icon">{{ plan.iconEmoji || '🔔' }}</text>
             </view>
             <view class="cp-item-content">
               <text class="cp-item-name">{{ plan.title }}</text>
