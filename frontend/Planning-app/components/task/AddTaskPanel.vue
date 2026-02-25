@@ -564,13 +564,13 @@ const activePlans = computed(() => planStore.activePlans || []);
 
 /** 当前图标显示 */
 const currentCategoryIcon = computed(() => {
-  // 如果选中了规划
+  // 如果选中了规划容器
   if (selectedPlanId.value) {
-    const plan = planStore.getPlanById(selectedPlanId.value);
-    return plan ? plan.title.charAt(0) : '无';
+    // 规划统一使用 🔔 图标
+    return '🔔';
   }
 
-  // 如果选中了分类
+  // 如果选中了分类容器
   if (selectedCategoryId.value) {
     const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
     return category ? (category.iconEmoji || category.name.charAt(0)) : '无';
