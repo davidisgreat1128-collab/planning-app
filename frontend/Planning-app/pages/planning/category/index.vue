@@ -31,40 +31,28 @@
       </view>
 
       <!-- 规划列表 -->
-      <view class="category-list" v-if="userPlans.length > 0">
+      <view class="plan-list" v-if="userPlans.length > 0">
         <view
           v-for="plan in userPlans"
           :key="plan.id"
-          class="category-item-wrapper"
+          class="plan-item"
+          :class="{ active: selectedCategory === plan.id }"
+          @tap="selectCategory(plan.id)"
         >
-          <view
-            class="category-item-swipe"
-            :class="{ 'swipe-open': swipeOpenId === plan.id }"
-            @touchstart="onTouchStart($event, plan.id)"
-            @touchmove="onTouchMove($event, plan.id)"
-            @touchend="onTouchEnd($event, plan.id)"
-          >
-            <!-- 前景：规划内容 -->
-            <view
-              class="category-item"
-              :class="{ active: selectedCategory === plan.id }"
-              @tap="selectCategory(plan.id)"
-            >
-              <view class="category-name-wrapper">
-                <text class="category-icon">{{ plan.iconEmoji || '🔔' }}</text>
-                <text class="category-text">{{ plan.name }}</text>
-              </view>
-              <text v-if="selectedCategory === plan.id" class="category-check">✓</text>
+          <view class="plan-header">
+            <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
+            <text class="plan-name">{{ plan.name }}</text>
+          </view>
+          <view class="plan-stats">
+            <text class="plan-milestone">里程碑：{{ getPlanCompletedMilestones(plan) }}/{{ getPlanTotalMilestones(plan) }}</text>
+            <text class="plan-days">已进行{{ getPlanProgressDays(plan) }}天</text>
+          </view>
+          <view class="plan-actions">
+            <view class="plan-action-btn" @tap.stop="editCategory(plan)">
+              <text class="action-icon">✏️</text>
             </view>
-
-            <!-- 背景：操作按钮 -->
-            <view class="swipe-actions">
-              <view class="swipe-btn edit-btn" @tap.stop="editCategory(plan)">
-                <text class="swipe-icon">✏️</text>
-              </view>
-              <view class="swipe-btn delete-btn" @tap.stop="deleteCategory(plan)">
-                <text class="swipe-icon">🗑️</text>
-              </view>
+            <view class="plan-action-btn" @tap.stop="deleteCategory(plan)">
+              <text class="action-icon">🗑️</text>
             </view>
           </view>
         </view>
@@ -242,6 +230,47 @@ const persistDays = computed(() => {
   // 包含首日，所以 +1
   return diffDays + 1;
 });
+
+// ============================================================
+// 规划统计函数
+// ============================================================
+
+/**
+ * 获取规划的总里程碑数
+ */
+function getPlanTotalMilestones(plan) {
+  return plan.milestones?.length || 0;
+}
+
+/**
+ * 获取规划已完成的里程碑数
+ */
+function getPlanCompletedMilestones(plan) {
+  if (!plan.milestones || plan.milestones.length === 0) return 0;
+  return plan.milestones.filter(m => m.isCompleted).length;
+}
+
+/**
+ * 获取规划已进行天数
+ * 计算方式：当前日期 - 创建日期 + 1
+ */
+function getPlanProgressDays(plan) {
+  if (!plan.createTime) return 1;
+
+  const createDate = new Date(plan.createTime);
+  const today = new Date();
+
+  // 清除时间部分，只比较日期
+  createDate.setHours(0, 0, 0, 0);
+  today.setHours(0, 0, 0, 0);
+
+  // 计算天数差
+  const diffTime = today - createDate;
+  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
+
+  // 包含创建当天，所以 +1
+  return diffDays + 1;
+}
 
 // ============================================================
 // 生命周期
@@ -653,6 +682,99 @@ function onTouchEnd(e, categoryId) {
 .create-desc {
   font-size: 24rpx;
   color: #999;
+}
+
+/* ============================================================
+   规划列表
+   ============================================================ */
+.plan-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15rpx;
+  margin-top: 20rpx;
+}
+
+.plan-item {
+  background-color: #fff;
+  border: 2rpx solid #e0e0e0;
+  border-radius: 12rpx;
+  padding: 20rpx;
+  cursor: pointer;
+  transition: all 0.2s;
+  position: relative;
+}
+
+.plan-item.active {
+  border-color: #5B8CFF;
+  background-color: #f0f7ff;
+}
+
+.plan-item:active {
+  opacity: 0.8;
+}
+
+.plan-header {
+  display: flex;
+  align-items: center;
+  gap: 15rpx;
+  margin-bottom: 15rpx;
+}
+
+.plan-icon {
+  font-size: 40rpx;
+}
+
+.plan-name {
+  flex: 1;
+  font-size: 30rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.plan-stats {
+  display: flex;
+  align-items: center;
+  gap: 20rpx;
+  font-size: 24rpx;
+  color: #666;
+  margin-bottom: 10rpx;
+}
+
+.plan-milestone {
+  color: #666;
+}
+
+.plan-days {
+  color: #999;
+}
+
+.plan-actions {
+  position: absolute;
+  top: 20rpx;
+  right: 20rpx;
+  display: flex;
+  gap: 15rpx;
+}
+
+.plan-action-btn {
+  width: 60rpx;
+  height: 60rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.plan-action-btn:active {
+  background-color: #e0e0e0;
+  transform: scale(0.95);
+}
+
+.action-icon {
+  font-size: 32rpx;
 }
 
 /* ============================================================
