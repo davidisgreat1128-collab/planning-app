@@ -2046,12 +2046,13 @@ watch(() => props.visible, (newVal) => {
 
 .category-picker {
   width: 100%;
-  max-height: 70vh;
+  max-height: 80vh;
   background-color: #FFFFFF;
   border-radius: 24rpx 24rpx 0 0;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s ease-out;
+  overflow: hidden; /* 防止内容溢出 */
 }
 
 @keyframes slideUp {
@@ -2068,6 +2069,7 @@ watch(() => props.visible, (newVal) => {
   display: flex;
   padding: 20rpx 30rpx 10rpx;
   border-bottom: 1rpx solid #E0E0E0;
+  flex-shrink: 0; /* 防止Tab被压缩 */
 }
 
 .cp-tab {
@@ -2105,6 +2107,9 @@ watch(() => props.visible, (newVal) => {
 .cp-scroll {
   flex: 1;
   padding: 20rpx 30rpx;
+  overflow-y: auto; /* 启用垂直滚动 */
+  min-height: 200rpx; /* 最小高度 */
+  max-height: calc(80vh - 120rpx); /* 减去Tab栏高度 */
 }
 
 /* 列表项 */
