@@ -301,6 +301,14 @@
       </view>
     </view>
 
+    <!-- ⑤.6 新建分类弹窗 -->
+    <CategoryDialog
+      :visible="showCategoryDialog"
+      :edit-mode="false"
+      @update:visible="showCategoryDialog = $event"
+      @save="onCategorySave"
+    />
+
     <!-- ⑥ 天数日历弹窗（开关关闭时，选择结束天） -->
     <view v-if="showDayPicker" class="tp-mask" @tap.stop="closeDayPicker">
       <view class="tp-sheet" @tap.stop>
@@ -567,6 +575,9 @@ const selectedPlanId = ref(null);
 /** 用户分类列表 */
 const userCategories = ref([]);
 
+/** 新建分类弹窗是否显示 */
+const showCategoryDialog = ref(false);
+
 /** 激活的规划列表 */
 const activePlans = computed(() => planStore.activePlans || []);
 
@@ -615,10 +626,42 @@ function selectPlan(planId) {
 /** 新建分类 */
 function createNewCategory() {
   console.log('[AddTaskPanel] 新建分类');
-  // TODO: 打开新建分类弹窗
+  // 打开新建分类弹窗
+  showCategoryDialog.value = true;
+}
+
+/** 保存新建的分类 */
+function onCategorySave(data) {
+  console.log('[AddTaskPanel] 保存分类:', data);
+
+  // 创建新分类对象
+  const newCategory = {
+    id: Date.now().toString(),
+    name: data.name,
+    icon: data.icon,
+    iconEmoji: data.iconEmoji,
+    createTime: new Date().toISOString()
+  };
+
+  // 添加到分类列表
+  userCategories.value.push(newCategory);
+
+  // 保存到本地存储
+  uni.setStorageSync('user_categories', JSON.stringify(userCategories.value));
+
+  // 自动选中新创建的分类
+  selectedCategoryId.value = newCategory.id;
+  selectedPlanId.value = null;
+
+  // 关闭分类弹窗
+  showCategoryDialog.value = false;
+
+  // 关闭分类选择器
+  showCategoryPicker.value = false;
+
   uni.showToast({
-    title: '新建分类功能待实现',
-    icon: 'none'
+    title: '分类创建成功',
+    icon: 'success'
   });
 }
 
@@ -1371,6 +1414,7 @@ function resetPanel() {
   showSubtasks.value = false;
   showQuadrantPicker.value = false;
   showCategoryPicker.value = false; // 重置分类选择器
+  showCategoryDialog.value = false; // 重置分类弹窗
   selectedCategoryId.value = null; // 重置选中的分类
   selectedPlanId.value = null; // 重置选中的规划
   categoryPickerTab.value = 'category'; // 重置Tab
