@@ -871,7 +871,7 @@ function onDeletePlanConfirm(deleteWithTasks) {
 
 .plan-card {
   display: flex;
-  align-items: center;
+  align-items: flex-start;  /* 改为顶部对齐，支持文字换行 */
   gap: 15rpx;
   background-color: #fff;
   border: 2rpx solid #e0e0e0;
@@ -880,6 +880,8 @@ function onDeletePlanConfirm(deleteWithTasks) {
   box-sizing: border-box;
   cursor: pointer;
   transition: all 0.2s;
+  height: auto;  /* 高度自适应 */
+  min-height: auto;
 }
 
 .plan-card.active {
@@ -890,6 +892,8 @@ function onDeletePlanConfirm(deleteWithTasks) {
 .plan-icon {
   font-size: 40rpx;
   flex-shrink: 0;
+  line-height: 1;
+  height: auto;
 }
 
 .plan-content {
@@ -897,16 +901,18 @@ function onDeletePlanConfirm(deleteWithTasks) {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-  min-width: 0;
+  min-width: 0;  /* 允许内容缩小，实现换行 */
+  height: auto;
 }
 
 .plan-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #333;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-wrap: break-word;  /* 允许单词内换行 */
+  word-break: break-all;  /* 允许任意位置换行 */
+  line-height: 1.4;
+  height: auto;
 }
 
 .plan-card.active .plan-title {
@@ -916,9 +922,11 @@ function onDeletePlanConfirm(deleteWithTasks) {
 .plan-buff {
   font-size: 24rpx;
   color: #666;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-wrap: break-word;  /* 允许单词内换行 */
+  word-break: break-all;  /* 允许任意位置换行 */
+  line-height: 1.5;
+  white-space: normal;  /* 允许正常换行 */
+  height: auto;
 }
 
 .plan-card.active .plan-buff {
@@ -928,6 +936,8 @@ function onDeletePlanConfirm(deleteWithTasks) {
 .plan-stats {
   font-size: 22rpx;
   color: #999;
+  word-wrap: break-word;
+  height: auto;
 }
 
 .plan-card.active .plan-stats {
@@ -938,6 +948,7 @@ function onDeletePlanConfirm(deleteWithTasks) {
   font-size: 32rpx;
   color: #fff;
   flex-shrink: 0;
+  margin-top: 4rpx;  /* 稍微向下偏移，视觉上更平衡 */
 }
 
 /* 创建规划卡片 */
