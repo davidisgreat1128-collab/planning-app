@@ -140,7 +140,14 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue';
+import { usePlanStore } from '@/store/plan.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
+
+// 获取 planStore
+const planStore = usePlanStore();
+
+// 当前规划ID
+const currentPlanId = ref(null);
 
 // 展开的里程碑索引
 const expandedMilestones = reactive({});
@@ -258,6 +265,53 @@ function goBack() {
   uni.navigateBack();
 }
 
+/**
+ * 从 planStore 加载规划数据
+ */
+function loadPlanData(planId) {
+  console.log('[GoalDetail] 加载规划数据:', planId);
+
+  // 先加载所有规划
+  planStore.loadPlans();
+
+  // 从 store 获取规划
+  const plan = planStore.getPlanById(planId);
+
+  if (!plan) {
+    console.error('[GoalDetail] 未找到规划:', planId);
+    uni.showToast({
+      title: '规划不存在',
+      icon: 'none'
+    });
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 1500);
+    return;
+  }
+
+  console.log('[GoalDetail] 规划数据:', plan);
+
+  // 更新目标数据
+  goalData.value.title = plan.title;
+  goalData.value.buff = plan.buff;
+
+  // 格式化结束日期：从 2026/07/16 转为 2026年7月16日
+  if (plan.endDate) {
+    const dateParts = plan.endDate.split('/');
+    goalData.value.endDate = `${dateParts[0]}年${parseInt(dateParts[1])}月${parseInt(dateParts[2])}日`;
+  }
+
+  // 使用 store 中的统计数据
+  goalData.value.totalDays = plan.stats.totalDays;
+
+  // 更新里程碑
+  if (plan.milestones && plan.milestones.length > 0) {
+    goalData.value.milestones = plan.milestones;
+  }
+
+  console.log('[GoalDetail] 显示数据:', goalData.value);
+}
+
 // 页面加载时接收传递的数据
 onMounted(() => {
   // 获取页面参数
@@ -265,7 +319,15 @@ onMounted(() => {
   const currentPage = pages[pages.length - 1];
   const options = currentPage.options;
 
-  if (options.planData) {
+  console.log('[GoalDetail] onMounted 接收参数:', options);
+
+  // 优先使用 planId 从 store 加载
+  if (options.planId) {
+    currentPlanId.value = options.planId;
+    loadPlanData(options.planId);
+  }
+  // 兼容旧方式：通过 planData 参数传递（向后兼容）
+  else if (options.planData) {
     try {
       const planData = JSON.parse(decodeURIComponent(options.planData));
 
@@ -292,7 +354,7 @@ onMounted(() => {
         goalData.value.milestones = planData.milestones;
       }
 
-      console.log('[GoalDetail] 接收到规划数据:', goalData.value);
+      console.log('[GoalDetail] 接收到规划数据（旧方式）:', goalData.value);
     } catch (error) {
       console.error('[GoalDetail] 解析规划数据失败:', error);
     }

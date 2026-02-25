@@ -347,10 +347,10 @@ function createPlan() {
     icon: 'success'
   });
 
-  // 跳转到日历页面（tabBar页面使用 switchTab）
+  // 跳转到规划详情页，传递规划ID
   setTimeout(() => {
-    uni.switchTab({
-      url: '/pages/calendar/index'
+    uni.navigateTo({
+      url: `/pages/planning/plan/detail?planId=${newPlan.id}`
     });
   }, 1500);
 }
