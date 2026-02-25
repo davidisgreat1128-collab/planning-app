@@ -674,61 +674,80 @@ function getMonthFirst(date) {
 
 /**
  * 获取当前选中容器（规划或分类）的图标
+ * 规划和分类是平级的容器概念，互斥选中
  */
 const currentCategoryIcon = computed(() => {
   console.log('[Calendar] 计算 currentCategoryIcon');
   console.log('  - selectedPlanId.value:', selectedPlanId.value);
   console.log('  - selectedCategoryId.value:', selectedCategoryId.value);
 
-  // 优先检查是否选中了规划
+  // 如果选中了规划容器
   if (selectedPlanId.value) {
-    console.log('  - 检查规划ID:', selectedPlanId.value);
+    console.log('  - 当前容器类型: 规划');
     const plan = planStore.plans.find(p => p.id === selectedPlanId.value);
     const icon = plan ? '🔔' : '';
     console.log('  - 找到规划?', !!plan, ', 返回图标:', icon);
     return icon;
   }
 
-  // 检查分类
+  // 如果选中了分类容器
   if (selectedCategoryId.value === 'all' || selectedCategoryId.value === 'none') {
-    console.log('  - 分类为 all/none，返回空图标');
+    console.log('  - 当前容器类型: 分类 (', selectedCategoryId.value, ')，返回空图标');
     return '';
   }
-  const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
-  const icon = category?.iconEmoji || '';
-  console.log('  - 找到分类?', !!category, ', 返回图标:', icon);
-  return icon;
+
+  if (selectedCategoryId.value) {
+    console.log('  - 当前容器类型: 分类');
+    const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
+    const icon = category?.iconEmoji || '';
+    console.log('  - 找到分类?', !!category, ', 返回图标:', icon);
+    return icon;
+  }
+
+  // 默认情况（理论上不应该到达这里）
+  console.log('  - 无选中容器，返回空图标');
+  return '';
 });
 
 /**
  * 获取当前选中容器（规划或分类）的显示名称
+ * 规划和分类是平级的容器概念，互斥选中
  */
 const currentCategoryName = computed(() => {
   console.log('[Calendar] 计算 currentCategoryName');
   console.log('  - selectedPlanId.value:', selectedPlanId.value);
   console.log('  - selectedCategoryId.value:', selectedCategoryId.value);
 
-  // 优先检查是否选中了规划
+  // 如果选中了规划容器
   if (selectedPlanId.value) {
+    console.log('  - 当前容器类型: 规划');
     const plan = planStore.plans.find(p => p.id === selectedPlanId.value);
     const name = plan ? plan.title : '规划和分类';
     console.log('  - 规划名称:', name);
     return name;
   }
 
-  // 检查分类
+  // 如果选中了分类容器
   if (selectedCategoryId.value === 'all') {
-    console.log('  - 返回: 规划和分类');
+    console.log('  - 当前容器类型: 分类 (all)');
     return '规划和分类';
   }
   if (selectedCategoryId.value === 'none') {
-    console.log('  - 返回: 无分类');
+    console.log('  - 当前容器类型: 分类 (none)');
     return '无分类';
   }
-  const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
-  const name = category ? category.name : '规划和分类';
-  console.log('  - 分类名称:', name);
-  return name;
+
+  if (selectedCategoryId.value) {
+    console.log('  - 当前容器类型: 分类');
+    const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
+    const name = category ? category.name : '规划和分类';
+    console.log('  - 分类名称:', name);
+    return name;
+  }
+
+  // 默认情况（理论上不应该到达这里）
+  console.log('  - 无选中容器，返回默认名称');
+  return '规划和分类';
 });
 
 /**
