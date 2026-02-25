@@ -220,82 +220,64 @@
     <!-- ⑤.5 分类/规划选择器浮层 -->
     <view v-if="showCategoryPicker" class="category-picker-mask" @tap="closeCategoryPicker">
       <view class="category-picker" @tap.stop>
-        <!-- Tab切换：分类 / 规划 -->
-        <view class="cp-tabs">
-          <view
-            class="cp-tab"
-            :class="{ 'cp-tab-active': categoryPickerTab === 'category' }"
-            @tap="categoryPickerTab = 'category'"
-          >
-            <text class="cp-tab-text">分类</text>
+        <!-- 顶部操作按钮 -->
+        <view class="cp-header">
+          <view class="cp-create-action" @tap="createNewCategory">
+            <text class="cp-create-plus">+</text>
+            <text class="cp-create-label">新建分类</text>
           </view>
-          <view
-            class="cp-tab"
-            :class="{ 'cp-tab-active': categoryPickerTab === 'plan' }"
-            @tap="categoryPickerTab = 'plan'"
-          >
-            <text class="cp-tab-text">规划</text>
+          <view class="cp-create-action" @tap="createNewPlan">
+            <text class="cp-create-plus">+</text>
+            <text class="cp-create-label">新建目标</text>
           </view>
         </view>
 
-        <!-- 分类列表 -->
-        <scroll-view v-if="categoryPickerTab === 'category'" class="cp-scroll" scroll-y>
+        <!-- 统一列表：无分类 + 分类 + 规划 -->
+        <scroll-view class="cp-scroll" scroll-y>
           <!-- 无分类选项 -->
           <view
             class="cp-item"
-            :class="{ 'cp-item-selected': selectedCategoryId === null }"
+            :class="{ 'cp-item-selected': selectedCategoryId === null && selectedPlanId === null }"
             @tap="selectCategory(null)"
           >
-            <view class="cp-icon-circle">
-              <text class="cp-icon-text">无</text>
+            <view class="cp-icon-wrapper">
+              <text class="cp-icon">无</text>
             </view>
             <text class="cp-item-name">无分类</text>
-            <text v-if="selectedCategoryId === null" class="cp-check">✓</text>
+            <text v-if="selectedCategoryId === null && selectedPlanId === null" class="cp-check">✓</text>
           </view>
 
           <!-- 用户分类列表 -->
           <view
             v-for="category in userCategories"
-            :key="category.id"
+            :key="'cat-' + category.id"
             class="cp-item"
             :class="{ 'cp-item-selected': selectedCategoryId === category.id }"
             @tap="selectCategory(category.id)"
           >
-            <view class="cp-icon-circle">
-              <text class="cp-icon-text">{{ category.iconEmoji || category.name.charAt(0) }}</text>
+            <view class="cp-icon-wrapper">
+              <text class="cp-icon">{{ category.iconEmoji || category.name.charAt(0) }}</text>
             </view>
             <text class="cp-item-name">{{ category.name }}</text>
             <text v-if="selectedCategoryId === category.id" class="cp-check">✓</text>
           </view>
 
-          <!-- 新建分类按钮 -->
-          <view class="cp-create-btn" @tap="createNewCategory">
-            <text class="cp-create-icon">+</text>
-            <text class="cp-create-text">新建分类</text>
-          </view>
-        </scroll-view>
-
-        <!-- 规划列表 -->
-        <scroll-view v-if="categoryPickerTab === 'plan'" class="cp-scroll" scroll-y>
           <!-- 用户规划列表 -->
           <view
             v-for="plan in activePlans"
-            :key="plan.id"
+            :key="'plan-' + plan.id"
             class="cp-item"
             :class="{ 'cp-item-selected': selectedPlanId === plan.id }"
             @tap="selectPlan(plan.id)"
           >
-            <view class="cp-icon-circle">
-              <text class="cp-icon-text">{{ plan.title.charAt(0) }}</text>
+            <view class="cp-icon-wrapper">
+              <text class="cp-icon">{{ plan.title.charAt(0) }}</text>
             </view>
-            <text class="cp-item-name">{{ plan.title }}</text>
+            <view class="cp-item-content">
+              <text class="cp-item-name">{{ plan.title }}</text>
+              <text class="cp-item-tag">目标</text>
+            </view>
             <text v-if="selectedPlanId === plan.id" class="cp-check">✓</text>
-          </view>
-
-          <!-- 新建规划按钮 -->
-          <view class="cp-create-btn" @tap="createNewPlan">
-            <text class="cp-create-icon">+</text>
-            <text class="cp-create-text">新建规划</text>
           </view>
         </scroll-view>
       </view>
@@ -562,9 +544,6 @@ const showQuadrantPicker = ref(false);
 
 /** 分类/规划选择器是否展开 */
 const showCategoryPicker = ref(false);
-
-/** 当前选择器Tab：'category' | 'plan' */
-const categoryPickerTab = ref('category');
 
 /** 选中的分类ID */
 const selectedCategoryId = ref(null);
@@ -1417,7 +1396,6 @@ function resetPanel() {
   showCategoryDialog.value = false; // 重置分类弹窗
   selectedCategoryId.value = null; // 重置选中的分类
   selectedPlanId.value = null; // 重置选中的规划
-  categoryPickerTab.value = 'category'; // 重置Tab
   activeDateTab.value = 'today';
   // 重置时间段
   showTimePanel.value = false;
@@ -2046,13 +2024,13 @@ watch(() => props.visible, (newVal) => {
 
 .category-picker {
   width: 100%;
-  max-height: 80vh;
+  max-height: 85vh;
   background-color: #FFFFFF;
   border-radius: 24rpx 24rpx 0 0;
   display: flex;
   flex-direction: column;
   animation: slideUp 0.3s ease-out;
-  overflow: hidden; /* 防止内容溢出 */
+  overflow: hidden;
 }
 
 @keyframes slideUp {
@@ -2064,135 +2042,118 @@ watch(() => props.visible, (newVal) => {
   }
 }
 
-/* Tab切换 */
-.cp-tabs {
+/* 顶部操作按钮区域（54.jpg风格） */
+.cp-header {
   display: flex;
-  padding: 20rpx 30rpx 10rpx;
-  border-bottom: 1rpx solid #E0E0E0;
-  flex-shrink: 0; /* 防止Tab被压缩 */
+  padding: 30rpx 40rpx 20rpx;
+  gap: 20rpx;
+  border-bottom: 1rpx solid #F0F0F0;
+  flex-shrink: 0;
 }
 
-.cp-tab {
-  flex: 1;
-  text-align: center;
-  padding: 15rpx 0;
-  position: relative;
+.cp-create-action {
+  display: flex;
+  align-items: center;
+  gap: 8rpx;
   cursor: pointer;
+  transition: opacity 0.2s;
 }
 
-.cp-tab-text {
-  font-size: 28rpx;
-  color: #999;
-  transition: color 0.2s;
+.cp-create-action:active {
+  opacity: 0.6;
 }
 
-.cp-tab-active .cp-tab-text {
+.cp-create-plus {
+  font-size: 32rpx;
   color: #5B8CFF;
-  font-weight: 600;
+  font-weight: 300;
+  line-height: 1;
 }
 
-.cp-tab-active::after {
-  content: '';
-  position: absolute;
-  bottom: 0;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 60rpx;
-  height: 4rpx;
-  background-color: #5B8CFF;
-  border-radius: 2rpx;
+.cp-create-label {
+  font-size: 28rpx;
+  color: #5B8CFF;
+  font-weight: 500;
 }
 
 /* 滚动区域 */
 .cp-scroll {
   flex: 1;
-  padding: 20rpx 30rpx;
-  overflow-y: auto; /* 启用垂直滚动 */
-  min-height: 200rpx; /* 最小高度 */
-  max-height: calc(80vh - 120rpx); /* 减去Tab栏高度 */
+  padding: 10rpx 0;
+  overflow-y: auto;
+  min-height: 200rpx;
+  max-height: calc(85vh - 120rpx);
 }
 
-/* 列表项 */
+/* 列表项（54.jpg风格：更大间距） */
 .cp-item {
   display: flex;
   align-items: center;
-  padding: 20rpx 15rpx;
-  border-radius: 12rpx;
-  margin-bottom: 10rpx;
+  padding: 24rpx 40rpx;
   transition: background-color 0.2s;
   cursor: pointer;
 }
 
 .cp-item:active {
-  background-color: #F5F5F5;
+  background-color: #F8F8F8;
 }
 
 .cp-item-selected {
-  background-color: #E8F0FF;
+  background-color: transparent;
 }
 
-.cp-icon-circle {
-  width: 48rpx;
-  height: 48rpx;
+/* 图标容器（54.jpg风格：更大圆圈） */
+.cp-icon-wrapper {
+  width: 68rpx;
+  height: 68rpx;
   border-radius: 50%;
-  background-color: #E0E0E0;
+  background-color: #F5F5F5;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-right: 15rpx;
+  margin-right: 24rpx;
   flex-shrink: 0;
 }
 
-.cp-icon-text {
-  font-size: 22rpx;
+.cp-icon {
+  font-size: 32rpx;
   color: #333;
-  font-weight: 600;
   line-height: 1;
 }
 
-.cp-item-name {
+/* 列表项内容区域 */
+.cp-item-content {
   flex: 1;
-  font-size: 28rpx;
+  display: flex;
+  align-items: center;
+  gap: 12rpx;
+}
+
+.cp-item-name {
+  font-size: 30rpx;
   color: #333;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
 
+/* 目标标签（54.jpg风格） */
+.cp-item-tag {
+  font-size: 24rpx;
+  color: #999;
+  background-color: #F5F5F5;
+  padding: 4rpx 12rpx;
+  border-radius: 8rpx;
+  flex-shrink: 0;
+}
+
+/* 勾选标记 */
 .cp-check {
-  font-size: 32rpx;
+  font-size: 36rpx;
   color: #5B8CFF;
   flex-shrink: 0;
   margin-left: 10rpx;
-}
-
-/* 新建按钮 */
-.cp-create-btn {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 20rpx;
-  margin-top: 10rpx;
-  border: 2rpx dashed #CCC;
-  border-radius: 12rpx;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.cp-create-btn:active {
-  background-color: #F5F5F5;
-  border-color: #5B8CFF;
-}
-
-.cp-create-icon {
-  font-size: 28rpx;
-  color: #5B8CFF;
-  margin-right: 10rpx;
-}
-
-.cp-create-text {
-  font-size: 26rpx;
-  color: #5B8CFF;
+  font-weight: 600;
 }
 
 /* ============================================================
