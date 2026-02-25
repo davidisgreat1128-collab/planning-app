@@ -718,10 +718,12 @@ function onTouchEnd(e, categoryId) {
   align-items: center;
   gap: 15rpx;
   margin-bottom: 15rpx;
+  padding-right: 150rpx; /* 为右侧操作按钮留出空间 */
 }
 
 .plan-icon {
   font-size: 40rpx;
+  flex-shrink: 0; /* 图标不缩小 */
 }
 
 .plan-name {
@@ -729,6 +731,9 @@ function onTouchEnd(e, categoryId) {
   font-size: 30rpx;
   font-weight: 600;
   color: #333;
+  word-wrap: break-word; /* 长文字换行 */
+  word-break: break-all;
+  overflow: hidden;
 }
 
 .plan-stats {
