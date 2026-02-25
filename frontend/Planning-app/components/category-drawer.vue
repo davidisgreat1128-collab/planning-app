@@ -38,7 +38,7 @@
                 @touchend="onPlanTouchEnd($event, plan.id)"
               >
                 <!-- 前景：规划卡片内容 -->
-                <view class="plan-card">
+                <view class="plan-card" :class="{ active: plan.isSelected }" @tap="togglePlanSelection(plan.id)">
                   <text class="plan-icon">🔔</text>
                   <view class="plan-content">
                     <text class="plan-title">{{ plan.title }}</text>
@@ -48,16 +48,13 @@
                       已进行{{ plan.stats.progressDays }}天
                     </text>
                   </view>
-                  <view class="plan-checkbox" @tap="togglePlanSelection(plan.id)">
-                    <view v-if="plan.isSelected" class="checkbox-checked">✓</view>
-                    <view v-else class="checkbox-unchecked"></view>
-                  </view>
+                  <text v-if="plan.isSelected" class="plan-check">✓</text>
                 </view>
 
                 <!-- 背景：操作按钮 -->
                 <view class="swipe-actions plan-swipe-actions">
                   <view class="swipe-btn edit-btn" @tap.stop="editPlan(plan)">
-                    <text class="swipe-icon">🖊</text>
+                    <text class="swipe-icon">✏️</text>
                   </view>
                   <view class="swipe-btn delete-btn" @tap.stop="deletePlan(plan)">
                     <text class="swipe-icon">🗑️</text>
@@ -606,7 +603,7 @@ function editPlan(plan) {
 
   // 跳转到规划详情页面
   uni.navigateTo({
-    url: `/pages/planning/detail/index?id=${plan.id}`
+    url: `/pages/planning/plan/detail?id=${plan.id}`
   });
 }
 
@@ -791,6 +788,13 @@ function onDeletePlanConfirm(deleteWithTasks) {
   border-radius: 16rpx;
   padding: 20rpx;
   box-sizing: border-box;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.plan-card.active {
+  background-color: #7CA1FF;
+  border-color: #7CA1FF;
 }
 
 .plan-icon {
@@ -815,6 +819,10 @@ function onDeletePlanConfirm(deleteWithTasks) {
   white-space: nowrap;
 }
 
+.plan-card.active .plan-title {
+  color: #fff;
+}
+
 .plan-buff {
   font-size: 24rpx;
   color: #666;
@@ -823,36 +831,23 @@ function onDeletePlanConfirm(deleteWithTasks) {
   white-space: nowrap;
 }
 
+.plan-card.active .plan-buff {
+  color: rgba(255, 255, 255, 0.9);
+}
+
 .plan-stats {
   font-size: 22rpx;
   color: #999;
 }
 
-.plan-checkbox {
-  flex-shrink: 0;
-  cursor: pointer;
-  padding: 5rpx;
+.plan-card.active .plan-stats {
+  color: rgba(255, 255, 255, 0.8);
 }
 
-.checkbox-unchecked {
-  width: 40rpx;
-  height: 40rpx;
-  border: 3rpx solid #ccc;
-  border-radius: 50%;
-  box-sizing: border-box;
-}
-
-.checkbox-checked {
-  width: 40rpx;
-  height: 40rpx;
-  background-color: #5B8CFF;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 24rpx;
+.plan-check {
+  font-size: 32rpx;
   color: #fff;
-  font-weight: 600;
+  flex-shrink: 0;
 }
 
 /* 创建规划卡片 */
