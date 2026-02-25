@@ -314,8 +314,13 @@ function toggleShowCompleted() {
 function selectCategory(categoryId) {
   selectedCategory.value = categoryId;
 
+  // 取消所有规划的选中状态
+  planStore.deselectPlan();
+
   // 保存选中的分类到全局状态
   uni.setStorageSync('selected_category_id', categoryId);
+  // 清除选中的规划ID
+  uni.removeStorageSync('selected_plan_id');
 
   // 关闭抽屉
   emit('update:visible', false);
@@ -351,14 +356,16 @@ function togglePlanSelection(planId) {
   const plan = planStore.plans.find(p => p.id === planId);
   if (!plan) return;
 
-  // 切换选中状态
-  planStore.togglePlanSelection(planId);
-
-  // 如果选中了规划，关闭抽屉
+  // 如果点击的是已选中的规划，则取消选中
   if (plan.isSelected) {
+    planStore.deselectPlan();
+    // 恢复为"全部"
+    selectedCategory.value = 'all';
+    uni.setStorageSync('selected_category_id', 'all');
+
     uni.showToast({
-      title: '已选择规划',
-      icon: 'success',
+      title: '已取消选择',
+      icon: 'none',
       duration: 1500
     });
 
@@ -366,7 +373,28 @@ function togglePlanSelection(planId) {
     setTimeout(() => {
       emit('update:visible', false);
     }, 500);
+    return;
   }
+
+  // 选中规划，取消分类选中
+  planStore.selectPlan(planId);
+  selectedCategory.value = ''; // 清除分类选中状态
+
+  // 保存选中的规划ID
+  uni.setStorageSync('selected_plan_id', planId);
+  // 清除选中的分类ID
+  uni.removeStorageSync('selected_category_id');
+
+  uni.showToast({
+    title: '已选择规划',
+    icon: 'success',
+    duration: 1500
+  });
+
+  // 关闭抽屉
+  setTimeout(() => {
+    emit('update:visible', false);
+  }, 500);
 }
 
 /**

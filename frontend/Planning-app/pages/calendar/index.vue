@@ -128,6 +128,7 @@
         <!-- 顶部栏：规划和分类 + 时间轴标签 -->
         <view class="tl-top-bar">
           <view class="tl-filter-tab" @tap="goToPlanningCategory">
+            <text v-if="currentCategoryIcon" class="tl-filter-icon-emoji">{{ currentCategoryIcon }}</text>
             <text class="tl-filter-text">{{ currentCategoryName }}</text>
             <text class="tl-filter-icon">≡</text>
             <view class="tl-filter-tab-ear"></view>
@@ -214,6 +215,7 @@
         <!-- 顶部栏：规划和分类 + 四象限切换标签 -->
         <view class="quad-top-bar">
           <view class="quad-filter-btn" @tap="goToPlanningCategory">
+            <text v-if="currentCategoryIcon" class="quad-filter-icon-emoji">{{ currentCategoryIcon }}</text>
             <text class="quad-filter-text">{{ currentCategoryName }}</text>
             <text class="quad-filter-icon">≡</text>
           </view>
@@ -564,6 +566,7 @@ const currentView = ref('quadrant');
 const fabOpen = ref(false);
 const selectedDate = ref('');
 const selectedCategoryId = ref('all'); // 当前选中的分类ID：'all', 'none', 或具体分类ID
+const selectedPlanId = ref(''); // 当前选中的规划ID
 const userCategories = ref([]); // 用户创建的分类列表
 
 // 快速新建任务底部面板
@@ -667,9 +670,34 @@ function getMonthFirst(date) {
 // ============================================================
 
 /**
- * 获取当前选中分类的显示名称
+ * 获取当前选中容器（规划或分类）的图标
+ */
+const currentCategoryIcon = computed(() => {
+  // 优先检查是否选中了规划
+  if (selectedPlanId.value) {
+    const plan = planStore.plans.find(p => p.id === selectedPlanId.value);
+    return plan ? '🔔' : ''; // 规划默认使用🔔图标
+  }
+
+  // 检查分类
+  if (selectedCategoryId.value === 'all' || selectedCategoryId.value === 'none') {
+    return '';
+  }
+  const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
+  return category?.iconEmoji || '';
+});
+
+/**
+ * 获取当前选中容器（规划或分类）的显示名称
  */
 const currentCategoryName = computed(() => {
+  // 优先检查是否选中了规划
+  if (selectedPlanId.value) {
+    const plan = planStore.plans.find(p => p.id === selectedPlanId.value);
+    return plan ? plan.title : '规划和分类';
+  }
+
+  // 检查分类
   if (selectedCategoryId.value === 'all') return '规划和分类';
   if (selectedCategoryId.value === 'none') return '无分类';
   const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
@@ -1449,7 +1477,7 @@ function goToPlanningCategory() {
 // ============================================================
 
 /**
- * 加载分类数据（包括分类列表和选中的分类）
+ * 加载分类和规划的选中状态
  */
 function loadCategorySelection() {
   // 加载用户创建的分类列表
@@ -1465,10 +1493,20 @@ function loadCategorySelection() {
     userCategories.value = [];
   }
 
-  // 加载选中的分类ID
+  // 优先加载选中的规划ID
+  const savedPlanId = uni.getStorageSync('selected_plan_id');
+  if (savedPlanId) {
+    selectedPlanId.value = savedPlanId;
+    selectedCategoryId.value = ''; // 清除分类选中
+    return;
+  }
+
+  // 如果没有选中规划，则加载选中的分类ID
   const savedCategoryId = uni.getStorageSync('selected_category_id');
   if (savedCategoryId) {
     selectedCategoryId.value = savedCategoryId;
+  } else {
+    selectedCategoryId.value = 'all'; // 默认为"全部"
   }
 }
 
@@ -1834,6 +1872,10 @@ onUnmounted(() => {
   border-bottom: none;
   min-width: 200rpx;
 }
+.tl-filter-icon-emoji {
+  font-size: 32rpx;
+  margin-right: 8rpx;
+}
 .tl-filter-text {
   font-size: 28rpx;
   color: #333;
@@ -2026,6 +2068,7 @@ onUnmounted(() => {
   padding: 10rpx 20rpx;
   box-shadow: 0 2rpx 6rpx rgba(0,0,0,0.06);
 }
+.quad-filter-icon-emoji { font-size: 30rpx; margin-right: 6rpx; }
 .quad-filter-text { font-size: 26rpx; color: #333; font-weight: 500; margin-right: 8rpx; }
 .quad-filter-icon { font-size: 28rpx; color: #555; }
 
