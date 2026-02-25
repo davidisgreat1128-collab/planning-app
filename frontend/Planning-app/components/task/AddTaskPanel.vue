@@ -1454,24 +1454,41 @@ watch(() => props.visible, (newVal) => {
  * 加载全局选中的容器（规划或分类）
  */
 function loadSelectedContainer() {
+  console.log('[AddTaskPanel] ========== 加载容器选中状态 ==========');
+
   // 优先加载选中的规划
   const savedPlanId = uni.getStorageSync('selected_plan_id');
+  console.log('[AddTaskPanel] localStorage 中的 selected_plan_id:', savedPlanId);
+
   if (savedPlanId) {
+    console.log('[AddTaskPanel] 设置 selectedPlanId =', savedPlanId);
     selectedPlanId.value = savedPlanId;
     selectedCategoryId.value = null;
+    console.log('[AddTaskPanel] 清除 selectedCategoryId = null');
+    console.log('[AddTaskPanel] currentCategoryIcon:', currentCategoryIcon.value);
     return;
   }
 
   // 加载选中的分类
   const savedCategoryId = uni.getStorageSync('selected_category_id');
+  console.log('[AddTaskPanel] localStorage 中的 selected_category_id:', savedCategoryId);
+
   if (savedCategoryId && savedCategoryId !== 'all' && savedCategoryId !== 'none') {
+    console.log('[AddTaskPanel] 设置 selectedCategoryId =', savedCategoryId);
     selectedCategoryId.value = savedCategoryId;
     selectedPlanId.value = null;
+    console.log('[AddTaskPanel] 清除 selectedPlanId = null');
   } else {
+    console.log('[AddTaskPanel] 使用默认值：selectedCategoryId = null, selectedPlanId = null');
     // 默认为无分类
     selectedCategoryId.value = null;
     selectedPlanId.value = null;
   }
+
+  console.log('[AddTaskPanel] 最终状态:');
+  console.log('  - selectedPlanId:', selectedPlanId.value);
+  console.log('  - selectedCategoryId:', selectedCategoryId.value);
+  console.log('  - currentCategoryIcon:', currentCategoryIcon.value);
 }
 </script>
 

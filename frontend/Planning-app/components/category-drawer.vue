@@ -332,15 +332,26 @@ function toggleShowCompleted() {
  * 选择分类
  */
 function selectCategory(categoryId) {
+  console.log('[CategoryDrawer] ========== 选择分类 ==========');
+  console.log('[CategoryDrawer] categoryId:', categoryId);
+
   selectedCategory.value = categoryId;
 
   // 取消所有规划的选中状态
+  console.log('[CategoryDrawer] 取消所有规划选中状态');
   planStore.deselectPlan();
 
   // 保存选中的分类到全局状态
+  console.log('[CategoryDrawer] 保存到 localStorage: selected_category_id =', categoryId);
   uni.setStorageSync('selected_category_id', categoryId);
+
   // 清除选中的规划ID
+  console.log('[CategoryDrawer] 清除 localStorage: selected_plan_id');
   uni.removeStorageSync('selected_plan_id');
+
+  console.log('[CategoryDrawer] localStorage 验证:');
+  console.log('  - selected_category_id:', uni.getStorageSync('selected_category_id'));
+  console.log('  - selected_plan_id:', uni.getStorageSync('selected_plan_id'));
 
   // 关闭抽屉
   emit('update:visible', false);
@@ -371,17 +382,28 @@ function handleCreateGoal() {
  * 切换规划选中状态
  */
 function togglePlanSelection(planId) {
-  console.log('[CategoryDrawer] 切换规划选中:', planId);
+  console.log('[CategoryDrawer] ========== 选择规划 ==========');
+  console.log('[CategoryDrawer] planId:', planId);
 
   const plan = planStore.plans.find(p => p.id === planId);
-  if (!plan) return;
+  if (!plan) {
+    console.log('[CategoryDrawer] 错误：找不到规划');
+    return;
+  }
+
+  console.log('[CategoryDrawer] 规划信息:', { id: plan.id, title: plan.title, isSelected: plan.isSelected });
 
   // 如果点击的是已选中的规划，则取消选中
   if (plan.isSelected) {
+    console.log('[CategoryDrawer] 取消选中规划');
     planStore.deselectPlan();
     // 恢复为"全部"
     selectedCategory.value = 'all';
     uni.setStorageSync('selected_category_id', 'all');
+
+    console.log('[CategoryDrawer] localStorage 验证（取消选中后）:');
+    console.log('  - selected_category_id:', uni.getStorageSync('selected_category_id'));
+    console.log('  - selected_plan_id:', uni.getStorageSync('selected_plan_id'));
 
     uni.showToast({
       title: '已取消选择',
@@ -397,13 +419,23 @@ function togglePlanSelection(planId) {
   }
 
   // 选中规划，取消分类选中
+  console.log('[CategoryDrawer] 调用 planStore.selectPlan');
   planStore.selectPlan(planId);
+
+  console.log('[CategoryDrawer] 清除分类选中状态');
   selectedCategory.value = ''; // 清除分类选中状态
 
   // 保存选中的规划ID
+  console.log('[CategoryDrawer] 保存到 localStorage: selected_plan_id =', planId);
   uni.setStorageSync('selected_plan_id', planId);
+
   // 清除选中的分类ID
+  console.log('[CategoryDrawer] 清除 localStorage: selected_category_id');
   uni.removeStorageSync('selected_category_id');
+
+  console.log('[CategoryDrawer] localStorage 验证（选中后）:');
+  console.log('  - selected_category_id:', uni.getStorageSync('selected_category_id'));
+  console.log('  - selected_plan_id:', uni.getStorageSync('selected_plan_id'));
 
   uni.showToast({
     title: '已选择规划',
