@@ -534,7 +534,10 @@
     </view>
 
     <!-- 规划和分类抽屉 -->
-    <CategoryDrawer v-model:visible="showCategoryDrawer" />
+    <CategoryDrawer
+      v-model:visible="showCategoryDrawer"
+      @container-changed="onContainerChanged"
+    />
   </view>
 </template>
 
@@ -1501,6 +1504,23 @@ onMounted(async () => {
  */
 function goToPlanningCategory() {
   showCategoryDrawer.value = true;
+}
+
+/**
+ * 容器变更事件处理
+ */
+function onContainerChanged(data) {
+  console.log('[Calendar] ========== 接收到 container-changed 事件 ==========');
+  console.log('[Calendar] 事件数据:', data);
+
+  // 重新加载容器选中状态
+  loadCategorySelection();
+
+  console.log('[Calendar] 容器变更后的状态:');
+  console.log('  - selectedPlanId:', selectedPlanId.value);
+  console.log('  - selectedCategoryId:', selectedCategoryId.value);
+  console.log('  - currentCategoryIcon:', currentCategoryIcon.value);
+  console.log('  - currentCategoryName:', currentCategoryName.value);
 }
 
 // ============================================================

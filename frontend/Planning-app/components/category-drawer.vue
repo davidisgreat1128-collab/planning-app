@@ -198,7 +198,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['update:visible', 'create-goal']);
+const emit = defineEmits(['update:visible', 'create-goal', 'container-changed']);
 
 // ============================================================
 // Store
@@ -353,6 +353,10 @@ function selectCategory(categoryId) {
   console.log('  - selected_category_id:', uni.getStorageSync('selected_category_id'));
   console.log('  - selected_plan_id:', uni.getStorageSync('selected_plan_id'));
 
+  // 发出容器变更事件，通知父页面更新
+  console.log('[CategoryDrawer] 发出 container-changed 事件');
+  emit('container-changed', { type: 'category', id: categoryId });
+
   // 关闭抽屉
   emit('update:visible', false);
 
@@ -405,6 +409,10 @@ function togglePlanSelection(planId) {
     console.log('  - selected_category_id:', uni.getStorageSync('selected_category_id'));
     console.log('  - selected_plan_id:', uni.getStorageSync('selected_plan_id'));
 
+    // 发出容器变更事件（恢复为"全部"）
+    console.log('[CategoryDrawer] 发出 container-changed 事件（恢复全部）');
+    emit('container-changed', { type: 'category', id: 'all' });
+
     uni.showToast({
       title: '已取消选择',
       icon: 'none',
@@ -436,6 +444,10 @@ function togglePlanSelection(planId) {
   console.log('[CategoryDrawer] localStorage 验证（选中后）:');
   console.log('  - selected_category_id:', uni.getStorageSync('selected_category_id'));
   console.log('  - selected_plan_id:', uni.getStorageSync('selected_plan_id'));
+
+  // 发出容器变更事件，通知父页面更新
+  console.log('[CategoryDrawer] 发出 container-changed 事件');
+  emit('container-changed', { type: 'plan', id: planId });
 
   uni.showToast({
     title: '已选择规划',
