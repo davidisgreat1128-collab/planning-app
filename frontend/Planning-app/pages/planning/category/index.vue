@@ -45,6 +45,7 @@
               <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
               <text class="plan-name">{{ plan.name }}</text>
             </view>
+            <text v-if="plan.buff" class="plan-buff">{{ plan.buff }}</text>
             <view class="plan-stats">
               <text class="plan-milestone">里程碑：{{ getPlanCompletedMilestones(plan) }}/{{ getPlanTotalMilestones(plan) }}</text>
               <text class="plan-days">已进行{{ getPlanProgressDays(plan) }}天</text>
@@ -749,6 +750,15 @@ function onTouchEnd(e, categoryId) {
   word-wrap: break-word;
   word-break: break-all;
   line-height: 1.4;
+}
+
+.plan-buff {
+  font-size: 26rpx;
+  color: #666;
+  line-height: 1.5;
+  word-wrap: break-word;
+  word-break: break-all;
+  white-space: normal;
 }
 
 .plan-stats {
