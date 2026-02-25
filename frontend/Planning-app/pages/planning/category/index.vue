@@ -713,8 +713,6 @@ function onTouchEnd(e, categoryId) {
   gap: 20rpx;
   min-height: auto;
   height: auto;
-  /* 调试：整个卡片边框 */
-  border: 3rpx solid #ff0000 !important;
 }
 
 .plan-item.active {
@@ -734,9 +732,6 @@ function onTouchEnd(e, categoryId) {
   flex-direction: column;
   gap: 10rpx;
   height: auto;
-  /* 调试：左侧内容区域背景 */
-  background-color: rgba(255, 200, 200, 0.3);
-  border: 2rpx solid #00ff00;
 }
 
 .plan-header {
@@ -744,9 +739,6 @@ function onTouchEnd(e, categoryId) {
   align-items: flex-start;
   gap: 15rpx;
   height: auto;
-  /* 调试：头部区域背景 */
-  background-color: rgba(200, 200, 255, 0.3);
-  border: 1rpx dashed #0000ff;
 }
 
 .plan-icon {
@@ -754,8 +746,6 @@ function onTouchEnd(e, categoryId) {
   flex-shrink: 0;
   line-height: 1;
   height: auto;
-  /* 调试：图标背景 */
-  background-color: rgba(255, 255, 0, 0.5);
 }
 
 .plan-name {
@@ -767,8 +757,6 @@ function onTouchEnd(e, categoryId) {
   word-break: break-all;
   line-height: 1.4;
   height: auto;
-  /* 调试：名称背景 */
-  background-color: rgba(0, 255, 255, 0.3);
 }
 
 .plan-buff {
@@ -780,9 +768,6 @@ function onTouchEnd(e, categoryId) {
   white-space: normal;
   padding-left: 55rpx; /* 与规划名称对齐（图标40rpx + gap15rpx） */
   height: auto;
-  /* 调试：激励语背景 */
-  background-color: rgba(255, 0, 255, 0.3);
-  border: 1rpx solid #ff00ff;
 }
 
 .plan-stats {
@@ -793,9 +778,6 @@ function onTouchEnd(e, categoryId) {
   color: #666;
   padding-left: 55rpx; /* 与规划名称对齐 */
   height: auto;
-  /* 调试：统计信息背景 */
-  background-color: rgba(255, 165, 0, 0.3);
-  border: 1rpx solid orange;
 }
 
 .plan-milestone {
