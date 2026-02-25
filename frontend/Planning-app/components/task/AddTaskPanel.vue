@@ -232,25 +232,25 @@
           </view>
         </view>
 
-        <!-- 统一列表：无分类 + 分类 + 规划 -->
+        <!-- 统一列表：无分类 + 分类（包含规划） -->
         <scroll-view class="cp-scroll" scroll-y>
           <!-- 无分类选项 -->
           <view
             class="cp-item"
-            :class="{ 'cp-item-selected': selectedCategoryId === null && selectedPlanId === null }"
+            :class="{ 'cp-item-selected': selectedCategoryId === null }"
             @tap="selectCategory(null)"
           >
             <view class="cp-icon-wrapper">
               <text class="cp-icon">无</text>
             </view>
             <text class="cp-item-name">无分类</text>
-            <text v-if="selectedCategoryId === null && selectedPlanId === null" class="cp-check">✓</text>
+            <text v-if="selectedCategoryId === null" class="cp-check">✓</text>
           </view>
 
-          <!-- 用户分类列表 -->
+          <!-- 分类列表（包含普通分类和规划） -->
           <view
             v-for="category in userCategories"
-            :key="'cat-' + category.id"
+            :key="category.id"
             class="cp-item"
             :class="{ 'cp-item-selected': selectedCategoryId === category.id }"
             @tap="selectCategory(category.id)"
@@ -258,26 +258,12 @@
             <view class="cp-icon-wrapper">
               <text class="cp-icon">{{ category.iconEmoji || category.name.charAt(0) }}</text>
             </view>
-            <text class="cp-item-name">{{ category.name }}</text>
+            <view v-if="category.type === 'plan'" class="cp-item-content">
+              <text class="cp-item-name">{{ category.name }}</text>
+              <text class="cp-item-tag">规划</text>
+            </view>
+            <text v-else class="cp-item-name">{{ category.name }}</text>
             <text v-if="selectedCategoryId === category.id" class="cp-check">✓</text>
-          </view>
-
-          <!-- 用户规划列表 -->
-          <view
-            v-for="plan in activePlans"
-            :key="'plan-' + plan.id"
-            class="cp-item"
-            :class="{ 'cp-item-selected': selectedPlanId === plan.id }"
-            @tap="selectPlan(plan.id)"
-          >
-            <view class="cp-icon-wrapper">
-              <text class="cp-icon">{{ plan.iconEmoji || '🔔' }}</text>
-            </view>
-            <view class="cp-item-content">
-              <text class="cp-item-name">{{ plan.title }}</text>
-              <text class="cp-item-tag">目标</text>
-            </view>
-            <text v-if="selectedPlanId === plan.id" class="cp-check">✓</text>
           </view>
         </scroll-view>
       </view>
@@ -485,7 +471,6 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
-import { usePlanStore } from '@/store/plan.js';
 import RepeatPanel from './RepeatPanel.vue';
 import ReminderPanel from './ReminderPanel.vue';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
@@ -517,7 +502,6 @@ const emit = defineEmits(['close', 'submitted']);
 // Store
 // ============================================================
 const taskStore = useTaskStore();
-const planStore = usePlanStore();
 
 // ============================================================
 // 表单数据
@@ -547,36 +531,21 @@ const showQuadrantPicker = ref(false);
 /** 分类/规划选择器是否展开 */
 const showCategoryPicker = ref(false);
 
-/** 选中的分类ID */
+/** 选中的分类ID（包含普通分类和规划） */
 const selectedCategoryId = ref(null);
 
-/** 选中的规划ID */
-const selectedPlanId = ref(null);
-
-/** 用户分类列表 */
+/** 用户分类列表（包含普通分类和规划） */
 const userCategories = ref([]);
 
 /** 新建分类弹窗是否显示 */
 const showCategoryDialog = ref(false);
 
-/** 激活的规划列表 */
-const activePlans = computed(() => planStore.activePlans || []);
-
 /** 当前图标显示 */
 const currentCategoryIcon = computed(() => {
-  // 如果选中了规划容器
-  if (selectedPlanId.value) {
-    const plan = planStore.getPlanById(selectedPlanId.value);
-    return plan ? (plan.iconEmoji || '🔔') : '无';
-  }
-
-  // 如果选中了分类容器
   if (selectedCategoryId.value) {
     const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
     return category ? (category.iconEmoji || category.name.charAt(0)) : '无';
   }
-
-  // 默认显示"无"
   return '无';
 });
 
@@ -593,14 +562,6 @@ function closeCategoryPicker() {
 /** 选择分类 */
 function selectCategory(categoryId) {
   selectedCategoryId.value = categoryId;
-  selectedPlanId.value = null; // 清空规划选择
-  showCategoryPicker.value = false;
-}
-
-/** 选择规划 */
-function selectPlan(planId) {
-  selectedPlanId.value = planId;
-  selectedCategoryId.value = null; // 清空分类选择
   showCategoryPicker.value = false;
 }
 
@@ -1342,15 +1303,11 @@ async function submit() {
     };
 
     // 分类字段：优先使用用户选择的分类，其次使用 props 传入的
+    // 注意：规划也是特殊类型的分类，所以用同一个 categoryId 字段
     if (selectedCategoryId.value) {
       payload.categoryId = selectedCategoryId.value;
     } else if (props.categoryId && typeof props.categoryId === 'string') {
       payload.categoryId = props.categoryId;
-    }
-
-    // 规划字段：如果选择了规划，添加到payload
-    if (selectedPlanId.value) {
-      payload.planId = selectedPlanId.value;
     }
 
     if (hasDayRange) {
@@ -1396,8 +1353,7 @@ function resetPanel() {
   showQuadrantPicker.value = false;
   showCategoryPicker.value = false; // 重置分类选择器
   showCategoryDialog.value = false; // 重置分类弹窗
-  selectedCategoryId.value = null; // 重置选中的分类
-  selectedPlanId.value = null; // 重置选中的规划
+  selectedCategoryId.value = null; // 重置选中的分类（包含规划）
   activeDateTab.value = 'today';
   // 重置时间段
   showTimePanel.value = false;
@@ -1451,26 +1407,15 @@ watch(() => props.visible, (newVal) => {
 });
 
 /**
- * 加载全局选中的容器（规划或分类）
+ * 加载全局选中的容器（分类，包含规划类型的分类）
  */
 function loadSelectedContainer() {
-  // 加载选中的规划
-  const savedPlanId = uni.getStorageSync('selected_plan_id');
-  if (savedPlanId) {
-    selectedPlanId.value = savedPlanId;
-    selectedCategoryId.value = null;
-    return;
-  }
-
-  // 加载选中的分类
   const savedCategoryId = uni.getStorageSync('selected_category_id');
   if (savedCategoryId && savedCategoryId !== 'all' && savedCategoryId !== 'none') {
     selectedCategoryId.value = savedCategoryId;
-    selectedPlanId.value = null;
   } else {
     // 默认为无分类
     selectedCategoryId.value = null;
-    selectedPlanId.value = null;
   }
 }
 </script>

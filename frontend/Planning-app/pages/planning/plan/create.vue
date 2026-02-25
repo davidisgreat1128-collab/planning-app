@@ -149,10 +149,6 @@ import { ref, computed, onMounted } from 'vue';
 import { getRandomBuff } from '@/utils/buffLibrary.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
 import PlanIconDialog from '@/components/planning/PlanIconDialog.vue';
-import { usePlanStore } from '@/store/plan.js';
-
-// 获取 plan store
-const planStore = usePlanStore();
 
 // 图标选择弹窗状态
 const showIconDialog = ref(false);
@@ -357,30 +353,51 @@ function createPlan() {
     return;
   }
 
-  // 保存到 store
-  const newPlan = planStore.addPlan({
-    title: planForm.value.title,
-    buff: planForm.value.buff,
+  // 创建规划（作为特殊类型的分类保存到 user_categories）
+  const newPlan = {
+    id: Date.now().toString(),
+    type: 'plan',  // 标记为规划类型
+    name: planForm.value.title,
     icon: planForm.value.icon,
-    iconEmoji: planForm.value.iconEmoji,
+    iconEmoji: planForm.value.iconEmoji || '🔔',
+    createTime: new Date().toISOString(),
+    // 规划特有字段
+    buff: planForm.value.buff,
     startDate: planForm.value.startDate,
     endDate: planForm.value.endDate,
     duration: planForm.value.duration,
-    milestones: planForm.value.milestones
-  });
+    milestones: planForm.value.milestones || [],
+    stats: {
+      totalMilestones: planForm.value.milestones?.length || 0,
+      completedMilestones: 0
+    }
+  };
 
-  console.log('[CreatePlan] 规划已保存:', newPlan);
+  // 加载现有分类
+  const savedCategories = uni.getStorageSync('user_categories');
+  let categories = [];
+  if (savedCategories) {
+    try {
+      categories = JSON.parse(savedCategories);
+    } catch (e) {
+      console.error('[CreatePlan] 解析分类失败:', e);
+    }
+  }
+
+  // 添加新规划到分类列表
+  categories.push(newPlan);
+  uni.setStorageSync('user_categories', JSON.stringify(categories));
+
+  console.log('[CreatePlan] 规划已保存到分类列表:', newPlan);
 
   uni.showToast({
     title: '创建成功',
     icon: 'success'
   });
 
-  // 跳转到规划详情页，传递规划ID
+  // 返回分类页面
   setTimeout(() => {
-    uni.navigateTo({
-      url: `/pages/planning/plan/detail?planId=${newPlan.id}`
-    });
+    uni.navigateBack();
   }, 1500);
 }
 
