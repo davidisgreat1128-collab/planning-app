@@ -648,11 +648,11 @@ function onCategorySave(data) {
 
 /** 新建规划 */
 function createNewPlan() {
-  console.log('[AddTaskPanel] 新建规划');
+  console.log('[AddTaskPanel] 新建目标');
   showCategoryPicker.value = false;
-  // 跳转到新规划页面
+  // 跳转到规划模板页面
   uni.navigateTo({
-    url: '/pages/planning/plan/create'
+    url: '/pages/planning/template/index'
   });
 }
 
