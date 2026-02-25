@@ -22,6 +22,30 @@
         <view class="section">
           <text class="section-title">我的规划</text>
 
+          <!-- 规划列表 -->
+          <view v-if="activePlans.length > 0" class="plans-list">
+            <view
+              v-for="plan in activePlans"
+              :key="plan.id"
+              class="plan-card"
+            >
+              <text class="plan-icon">🔔</text>
+              <view class="plan-content">
+                <text class="plan-title">{{ plan.title }}</text>
+                <text class="plan-buff">{{ plan.buff }}</text>
+                <text class="plan-stats">
+                  里程碑：{{ plan.stats.completedMilestones }}/{{ plan.stats.totalMilestones }}
+                  已进行{{ plan.stats.progressDays }}天
+                </text>
+              </view>
+              <view class="plan-checkbox" @tap="togglePlanSelection(plan.id)">
+                <view v-if="plan.isSelected" class="checkbox-checked">✓</view>
+                <view v-else class="checkbox-unchecked"></view>
+              </view>
+            </view>
+          </view>
+
+          <!-- 创建规划卡片 -->
           <view class="create-goal-card" @tap="handleCreateGoal">
             <text class="create-icon">🔭</text>
             <view class="create-text-wrapper">
@@ -133,8 +157,9 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
+import { usePlanStore } from '@/store/plan.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
 
@@ -151,6 +176,7 @@ const emit = defineEmits(['update:visible', 'create-goal']);
 // Store
 // ============================================================
 const userStore = useUserStore();
+const planStore = usePlanStore();
 
 // ============================================================
 // 状态变量
@@ -174,6 +200,13 @@ const touchStartY = ref(0); // 触摸开始的 Y 坐标
 // ============================================================
 const userNickname = computed(() => userStore.userInfo?.nickname || userStore.userInfo?.username || '用户');
 const userAvatar = computed(() => userStore.userInfo?.avatar || '🐣');
+
+/**
+ * 获取所有激活的规划
+ */
+const activePlans = computed(() => {
+  return planStore.activePlans || [];
+});
 
 /**
  * 计算坚持天数
@@ -202,6 +235,7 @@ const persistDays = computed(() => {
 watch(() => props.visible, (newVal) => {
   if (newVal) {
     loadCategories();
+    planStore.loadPlans(); // 加载规划列表
     // 加载上次选中的分类
     const savedCategory = uni.getStorageSync('selected_category_id');
     if (savedCategory) {
@@ -211,6 +245,13 @@ watch(() => props.visible, (newVal) => {
     // 关闭所有左滑
     swipeOpenId.value = null;
   }
+});
+
+// ============================================================
+// 组件挂载时加载数据
+// ============================================================
+onMounted(() => {
+  planStore.loadPlans();
 });
 
 // ============================================================
@@ -261,6 +302,33 @@ function handleCreateGoal() {
   uni.navigateTo({
     url: '/pages/planning/template/index'
   });
+}
+
+/**
+ * 切换规划选中状态
+ */
+function togglePlanSelection(planId) {
+  console.log('[CategoryDrawer] 切换规划选中:', planId);
+
+  const plan = planStore.plans.find(p => p.id === planId);
+  if (!plan) return;
+
+  // 切换选中状态
+  planStore.togglePlanSelection(planId);
+
+  // 如果选中了规划，关闭抽屉
+  if (plan.isSelected) {
+    uni.showToast({
+      title: '已选择规划',
+      icon: 'success',
+      duration: 1500
+    });
+
+    // 关闭抽屉
+    setTimeout(() => {
+      emit('update:visible', false);
+    }, 500);
+  }
 }
 
 /**
@@ -552,6 +620,87 @@ function onTouchEnd(event, categoryId) {
   color: #333;
   margin-bottom: 20rpx;
   display: block;
+}
+
+/* 规划列表 */
+.plans-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15rpx;
+  margin-bottom: 20rpx;
+}
+
+.plan-card {
+  display: flex;
+  align-items: center;
+  gap: 15rpx;
+  background-color: #fff;
+  border: 2rpx solid #e0e0e0;
+  border-radius: 16rpx;
+  padding: 20rpx;
+  box-sizing: border-box;
+}
+
+.plan-icon {
+  font-size: 40rpx;
+  flex-shrink: 0;
+}
+
+.plan-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  min-width: 0;
+}
+
+.plan-title {
+  font-size: 28rpx;
+  font-weight: 600;
+  color: #333;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-buff {
+  font-size: 24rpx;
+  color: #666;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.plan-stats {
+  font-size: 22rpx;
+  color: #999;
+}
+
+.plan-checkbox {
+  flex-shrink: 0;
+  cursor: pointer;
+  padding: 5rpx;
+}
+
+.checkbox-unchecked {
+  width: 40rpx;
+  height: 40rpx;
+  border: 3rpx solid #ccc;
+  border-radius: 50%;
+  box-sizing: border-box;
+}
+
+.checkbox-checked {
+  width: 40rpx;
+  height: 40rpx;
+  background-color: #5B8CFF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24rpx;
+  color: #fff;
+  font-weight: 600;
 }
 
 /* 创建规划卡片 */

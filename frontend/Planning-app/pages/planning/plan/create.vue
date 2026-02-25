@@ -138,6 +138,10 @@
 import { ref, computed, onMounted } from 'vue';
 import { getRandomBuff } from '@/utils/buffLibrary.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
+import { usePlanStore } from '@/store/plan.js';
+
+// 获取 plan store
+const planStore = usePlanStore();
 
 // 表单数据
 const planForm = ref({
@@ -309,25 +313,44 @@ function handleMilestoneSave(milestoneData) {
 function createPlan() {
   console.log('[CreatePlan] 创建规划:', planForm.value);
 
-  // 将规划数据存储到全局或通过URL参数传递
-  const planData = encodeURIComponent(JSON.stringify({
+  // 验证必填项
+  if (!planForm.value.title.trim()) {
+    uni.showToast({
+      title: '请输入规划名称',
+      icon: 'none'
+    });
+    return;
+  }
+
+  if (!planForm.value.startDate || !planForm.value.endDate) {
+    uni.showToast({
+      title: '请选择规划期限',
+      icon: 'none'
+    });
+    return;
+  }
+
+  // 保存到 store
+  const newPlan = planStore.addPlan({
     title: planForm.value.title,
     buff: planForm.value.buff,
     startDate: planForm.value.startDate,
     endDate: planForm.value.endDate,
     duration: planForm.value.duration,
     milestones: planForm.value.milestones
-  }));
+  });
+
+  console.log('[CreatePlan] 规划已保存:', newPlan);
 
   uni.showToast({
     title: '创建成功',
     icon: 'success'
   });
 
+  // 跳转到日历页面（tabBar页面使用 switchTab）
   setTimeout(() => {
-    // 跳转到规划详情页，传递数据
-    uni.navigateTo({
-      url: `/pages/planning/plan/detail?planData=${planData}`
+    uni.switchTab({
+      url: '/pages/calendar/index'
     });
   }, 1500);
 }

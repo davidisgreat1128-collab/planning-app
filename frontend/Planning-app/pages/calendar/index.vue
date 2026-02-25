@@ -542,6 +542,7 @@ import { onShow } from '@dcloudio/uni-app';
 import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
 import { useUserStore } from '@/store/user.js';
+import { usePlanStore } from '@/store/plan.js';
 import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday.js';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 import CategoryDrawer from '@/components/category-drawer.vue';
@@ -552,6 +553,7 @@ import CategoryDrawer from '@/components/category-drawer.vue';
 const taskStore = useTaskStore();
 const logStore = useLogStore();
 const userStore = useUserStore();
+const planStore = usePlanStore();
 
 // ============================================================
 // 状态变量
@@ -675,6 +677,50 @@ const currentCategoryName = computed(() => {
 });
 
 /**
+ * 合并后的任务列表（后端任务 + 规划生成的任务）
+ */
+const mergedTasks = computed(() => {
+  // 获取选中日期的规划任务
+  const planTasks = planStore.getTasksByDate(selectedDate.value);
+
+  // 合并后端任务和规划任务
+  return [...taskStore.tasks, ...planTasks];
+});
+
+/**
+ * 合并后的四象限任务（用于替代 taskStore 的计算属性）
+ */
+const mergedUrgentImportant = computed(() =>
+  mergedTasks.value.filter(t => t.isUrgent && t.isImportant && t.status !== 'completed')
+);
+
+const mergedNotUrgentImportant = computed(() =>
+  mergedTasks.value.filter(t => !t.isUrgent && t.isImportant && t.status !== 'completed')
+);
+
+const mergedUrgentNotImportant = computed(() =>
+  mergedTasks.value.filter(t => t.isUrgent && !t.isImportant && t.status !== 'completed')
+);
+
+const mergedNotUrgentNotImportant = computed(() =>
+  mergedTasks.value.filter(t => !t.isUrgent && !t.isImportant && t.status !== 'completed')
+);
+
+const mergedDoneTasks = computed(() =>
+  mergedTasks.value.filter(t => t.status === 'completed')
+);
+
+const mergedTimelineTasks = computed(() => {
+  return [...mergedTasks.value]
+    .filter(t => !t.isAllDay && t.startTime && t.status !== 'completed')
+    .sort((a, b) => {
+      if (a.startTime < b.startTime) return -1;
+      if (a.startTime > b.startTime) return 1;
+      return 0;
+    });
+});
+
+/**
  * 根据选中的分类过滤任务
  */
 function filterTasksByCategory(tasks) {
@@ -682,11 +728,11 @@ function filterTasksByCategory(tasks) {
     // 显示所有任务
     return tasks;
   } else if (selectedCategoryId.value === 'none') {
-    // 只显示无分类的任务
-    return tasks.filter(t => !t.categoryId);
+    // 只显示无分类的任务（规划任务也视为无分类）
+    return tasks.filter(t => !t.categoryId || t.fromPlan);
   } else {
-    // 显示指定分类的任务
-    return tasks.filter(t => t.categoryId === selectedCategoryId.value);
+    // 显示指定分类的任务（不包括规划任务）
+    return tasks.filter(t => t.categoryId === selectedCategoryId.value && !t.fromPlan);
   }
 }
 
@@ -694,27 +740,27 @@ function filterTasksByCategory(tasks) {
  * 过滤后的四象限任务
  */
 const filteredUrgentImportant = computed(() =>
-  filterTasksByCategory(taskStore.urgentImportant)
+  filterTasksByCategory(mergedUrgentImportant.value)
 );
 
 const filteredNotUrgentImportant = computed(() =>
-  filterTasksByCategory(taskStore.notUrgentImportant)
+  filterTasksByCategory(mergedNotUrgentImportant.value)
 );
 
 const filteredUrgentNotImportant = computed(() =>
-  filterTasksByCategory(taskStore.urgentNotImportant)
+  filterTasksByCategory(mergedUrgentNotImportant.value)
 );
 
 const filteredNotUrgentNotImportant = computed(() =>
-  filterTasksByCategory(taskStore.notUrgentNotImportant)
+  filterTasksByCategory(mergedNotUrgentNotImportant.value)
 );
 
 const filteredDoneTasks = computed(() =>
-  filterTasksByCategory(taskStore.doneTasks)
+  filterTasksByCategory(mergedDoneTasks.value)
 );
 
 const filteredTimelineTasks = computed(() =>
-  filterTasksByCategory(taskStore.timelineTasks)
+  filterTasksByCategory(mergedTimelineTasks.value)
 );
 
 /**
@@ -722,10 +768,16 @@ const filteredTimelineTasks = computed(() =>
  * 颜色：q1=红 q2=蓝 q3=黄 q4=绿
  */
 function getTaskDots(dateStr) {
-  const allTasks = taskStore.tasks;
+  // 获取该日期的所有任务（包括规划任务）
+  const planTasks = planStore.getTasksByDate(dateStr);
+  const allTasks = [...taskStore.tasks, ...planTasks];
+
   const dotsSet = new Set();
   allTasks.forEach(t => {
-    if (!(t.taskDate || '').startsWith(dateStr)) return;
+    // 注意：规划任务的date字段已经是YYYY-MM-DD格式
+    const taskDate = t.date || t.taskDate || '';
+    if (!taskDate.startsWith(dateStr)) return;
+
     if (t.isUrgent && t.isImportant) dotsSet.add('q1');
     else if (!t.isUrgent && t.isImportant) dotsSet.add('q2');
     else if (t.isUrgent && !t.isImportant) dotsSet.add('q3');
@@ -742,7 +794,14 @@ const currentWeekDates = computed(() => {
     const d = new Date(currentWeekStart.value);
     d.setDate(d.getDate() + i);
     const dateStr = formatDate(d);
-    const dateTasks = taskStore.tasks.filter(t => (t.taskDate || '').startsWith(dateStr));
+
+    // 合并后端任务和规划任务
+    const planTasks = planStore.getTasksByDate(dateStr);
+    const dateTasks = [...taskStore.tasks, ...planTasks].filter(t => {
+      const taskDate = t.date || t.taskDate || '';
+      return taskDate.startsWith(dateStr);
+    });
+
     const hasTask = dateTasks.length > 0;
     return {
       dateStr,
@@ -772,7 +831,14 @@ const monthRows = computed(() => {
       const d = new Date(gridStart);
       d.setDate(gridStart.getDate() + r * 7 + c);
       const dateStr = formatDate(d);
-      const hasTask = taskStore.tasks.some(t => (t.taskDate || '').startsWith(dateStr));
+
+      // 合并后端任务和规划任务
+      const planTasks = planStore.getTasksByDate(dateStr);
+      const hasTask = [...taskStore.tasks, ...planTasks].some(t => {
+        const taskDate = t.date || t.taskDate || '';
+        return taskDate.startsWith(dateStr);
+      });
+
       row.push({
         dateStr,
         day: d.getDate(),
@@ -807,12 +873,12 @@ const currentTimeTop = computed(() => {
 
 /** 全天任务 - 未完成（时间轴彩色bar） */
 const allDayTasksPending = computed(() =>
-  taskStore.tasks.filter(t => t.isAllDay && t.status !== 'completed')
+  mergedTasks.value.filter(t => t.isAllDay && t.status !== 'completed')
 );
 
 /** 全天任务 - 已完成（时间轴淡色+删除线） */
 const allDayTasksDone = computed(() =>
-  taskStore.doneTasks.filter(t => t.isAllDay)
+  mergedDoneTasks.value.filter(t => t.isAllDay)
 );
 
 // ============================================================
@@ -1282,6 +1348,9 @@ onMounted(async () => {
   currentMonthFirst.value = getMonthFirst(new Date());
   selectedDate.value = todayStr;
   taskStore.selectedDate = todayStr;
+
+  // 加载规划数据
+  planStore.loadPlans();
 
   // 加载选中的分类
   loadCategorySelection();
