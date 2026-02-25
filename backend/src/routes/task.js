@@ -31,7 +31,7 @@ const createTaskSchema = Joi.object({
   isRecurring:  Joi.boolean().default(false),
   rrule:        Joi.string().max(500).allow('', null),
   rruleUntil:   dateStr.allow(null),
-  planId:       Joi.number().integer().positive().allow(null),
+  planId:       Joi.string().max(50).allow(null),  // 修改：前端规划ID是字符串类型
   categoryId:   Joi.string().max(50).allow(null),  // 添加：分类ID字段
   reminderTime: Joi.string().allow(null),  // 添加：提醒时间字段
   reminderPersistent: Joi.boolean().allow(null)  // 添加：持久提醒字段
@@ -65,7 +65,7 @@ const idParamSchema = Joi.object({
 });
 
 const planIdParamSchema = Joi.object({
-  planId: Joi.number().integer().positive().required()
+  planId: Joi.string().max(50).required()  // 修改：前端规划ID是字符串类型
 });
 
 const categoryIdParamSchema = Joi.object({

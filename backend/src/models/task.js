@@ -160,9 +160,10 @@ function initTaskModel(sequelize) {
         defaultValue: null
       },
       planId: {
-        type: DataTypes.INTEGER.UNSIGNED,
+        type: DataTypes.STRING(50),  // 修改：前端规划ID是字符串类型
         allowNull: true,
-        defaultValue: null
+        defaultValue: null,
+        comment: '关联规划ID（前端localStorage存储，字符串类型）'
       },
       // 分类ID（关联用户创建的分类）
       categoryId: {
