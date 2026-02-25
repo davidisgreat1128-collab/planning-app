@@ -328,6 +328,16 @@ export const usePlanStore = defineStore('plan', {
         const savedSelectedPlanId = uni.getStorageSync('selected_plan_id');
         if (savedSelectedPlanId) {
           this.selectedPlanId = savedSelectedPlanId;
+
+          // 恢复规划的选中状态
+          this.plans.forEach(p => {
+            p.isSelected = (p.id === savedSelectedPlanId);
+          });
+        } else {
+          // 如果没有选中的规划，清除所有选中状态
+          this.plans.forEach(p => {
+            p.isSelected = false;
+          });
         }
 
         // 更新进度天数

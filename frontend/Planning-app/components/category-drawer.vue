@@ -273,17 +273,37 @@ watch(() => props.visible, (newVal) => {
   if (newVal) {
     loadCategories();
     planStore.loadPlans(); // 加载规划列表
-    // 加载上次选中的分类
-    const savedCategory = uni.getStorageSync('selected_category_id');
-    if (savedCategory) {
-      selectedCategory.value = savedCategory;
-    }
+
+    // 加载选中状态（规划优先）
+    loadContainerSelection();
   } else {
     // 关闭所有左滑
     swipeOpenId.value = null;
     swipeOpenPlanId.value = null;
   }
 });
+
+/**
+ * 加载容器选中状态（规划或分类）
+ */
+function loadContainerSelection() {
+  // 优先检查是否有选中的规划
+  const savedPlanId = uni.getStorageSync('selected_plan_id');
+  if (savedPlanId) {
+    // 选中规划时，清除分类选中
+    selectedCategory.value = '';
+    // 规划的选中状态由 planStore 管理，这里不需要设置
+    return;
+  }
+
+  // 如果没有选中规划，则加载分类选中状态
+  const savedCategory = uni.getStorageSync('selected_category_id');
+  if (savedCategory) {
+    selectedCategory.value = savedCategory;
+  } else {
+    selectedCategory.value = 'all'; // 默认为"全部"
+  }
+}
 
 // ============================================================
 // 组件挂载时加载数据
