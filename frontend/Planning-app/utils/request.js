@@ -35,16 +35,29 @@ function request({ url, method = 'GET', data = {}, auth = true } = {}) {
     }
 
     const fullUrl = `${config.BASE_URL}${url}`;
-    console.log(`[Request] ${method} ${fullUrl}`, data);
+    // console.log(`[Request] ${method} ${fullUrl}`, data);
+
+    // 🔧 修复：过滤掉值为 undefined 的字段
+    // uni.request 在某些平台上会自动过滤 undefined 值，可能导致其他字段也丢失
+    // 因此在发送前手动过滤，确保只发送有效数据
+    let cleanData = data;
+    if (data && typeof data === 'object' && !Array.isArray(data)) {
+      cleanData = {};
+      Object.keys(data).forEach(key => {
+        if (data[key] !== undefined) {
+          cleanData[key] = data[key];
+        }
+      });
+    }
 
     uni.request({
       url: fullUrl,
       method,
-      data,
+      data: cleanData,
       header,
       timeout: config.REQUEST_TIMEOUT,
       success: (res) => {
-        console.log(`[Response] ${method} ${fullUrl} → ${res.statusCode}`, res.data);
+        // console.log(`[Response] ${method} ${fullUrl} → ${res.statusCode}`, res.data);
         if (res.statusCode === 200 || res.statusCode === 201) {
           if (res.data && res.data.success) {
             resolve(res.data.data);

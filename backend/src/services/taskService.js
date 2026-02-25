@@ -22,7 +22,8 @@ async function createTask(userId, data) {
     isAllDay = true, dateType = 'single',
     taskDate, startDate, endDate, startTime, endTime,
     isRecurring = false, rrule, rruleUntil,
-    planId = null
+    planId = null,
+    categoryId = null  // 添加：分类ID
   } = data;
 
   // 校验日期逻辑
@@ -56,6 +57,7 @@ async function createTask(userId, data) {
     rrule: isRecurring ? rrule : null,
     rruleUntil: isRecurring ? rruleUntil : null,
     planId,
+    categoryId,  // 保存分类ID到数据库
     sourceType: planId ? 'from_plan' : 'manual'
   });
 
@@ -320,6 +322,46 @@ async function generateOccurrences(task, days = 90) {
   }
 }
 
+/**
+ * 批量更新指定分类下的所有任务的 categoryId 为 null（移到"无分类"）
+ * @param {number} userId - 用户ID
+ * @param {string} categoryId - 分类ID
+ * @returns {Promise<number>} 更新的任务数量
+ */
+async function updateCategoryTasksToUncategorized(userId, categoryId) {
+  const result = await Task.update(
+    { categoryId: null },
+    {
+      where: {
+        userId,
+        categoryId,
+        deletedAt: null  // 只更新未删除的任务
+      }
+    }
+  );
+
+  // result[0] 是更新的行数
+  return result[0];
+}
+
+/**
+ * 批量删除指定分类下的所有任务（软删除）
+ * @param {number} userId - 用户ID
+ * @param {string} categoryId - 分类ID
+ * @returns {Promise<number>} 删除的任务数量
+ */
+async function deleteCategoryTasks(userId, categoryId) {
+  const result = await Task.destroy({
+    where: {
+      userId,
+      categoryId
+    }
+  });
+
+  // result 是删除的行数
+  return result;
+}
+
 module.exports = {
   createTask,
   getTasksByDate,
@@ -328,5 +370,7 @@ module.exports = {
   updateOccurrence,
   deleteTask,
   getSubtasksByPlan,
-  generateOccurrences
+  generateOccurrences,
+  updateCategoryTasksToUncategorized,
+  deleteCategoryTasks
 };

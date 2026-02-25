@@ -13,6 +13,7 @@ async function createTask(req, res, next) {
     const task = await taskService.createTask(req.user.id, req.body);
     return created(res, task, '任务创建成功');
   } catch (err) {
+    console.error('[TaskController] 创建任务失败:', err);
     next(err);
   }
 }
@@ -118,11 +119,49 @@ async function getSubtasksByPlan(req, res, next) {
   }
 }
 
+/**
+ * PUT /api/v1/tasks/category/:categoryId/uncategorize
+ * 将指定分类下的所有任务移到"无分类"（设置 categoryId 为 null）
+ */
+async function uncategorizeTasks(req, res, next) {
+  try {
+    const categoryId = req.params.categoryId;
+    const userId = req.user.id;
+
+    const count = await taskService.updateCategoryTasksToUncategorized(userId, categoryId);
+
+    return success(res, { count }, `已将 ${count} 个任务移到无分类`);
+  } catch (err) {
+    console.error('[TaskController] 移除分类失败:', err);
+    next(err);
+  }
+}
+
+/**
+ * DELETE /api/v1/tasks/category/:categoryId
+ * 删除指定分类下的所有任务
+ */
+async function deleteCategoryTasks(req, res, next) {
+  try {
+    const categoryId = req.params.categoryId;
+    const userId = req.user.id;
+
+    const count = await taskService.deleteCategoryTasks(userId, categoryId);
+
+    return success(res, { count }, `已删除 ${count} 个任务`);
+  } catch (err) {
+    console.error('[TaskController] 删除分类任务失败:', err);
+    next(err);
+  }
+}
+
 module.exports = {
   createTask,
   getTasks,
   updateTask,
   updateOccurrence,
   deleteTask,
-  getSubtasksByPlan
+  getSubtasksByPlan,
+  uncategorizeTasks,
+  deleteCategoryTasks
 };

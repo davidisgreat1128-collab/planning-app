@@ -424,6 +424,11 @@ const props = defineProps({
   presetDate: {
     type: String,
     default: ''
+  },
+  /** 当前选中的分类ID（用于创建任务时自动关联分类） */
+  categoryId: {
+    type: String,
+    default: null
   }
 });
 
@@ -1126,6 +1131,11 @@ async function submit() {
       reminderTime:       reminderData.value.enabled && reminderData.value.time ? reminderData.value.time : undefined,
       reminderPersistent: reminderData.value.enabled ? reminderData.value.persistent : undefined
     };
+
+    // 分类字段：只有当 categoryId 是有效字符串时才添加该字段
+    if (props.categoryId && typeof props.categoryId === 'string') {
+      payload.categoryId = props.categoryId;
+    }
 
     if (hasDayRange) {
       // range 模式：startDate + endDate（后端不接受 taskDate）

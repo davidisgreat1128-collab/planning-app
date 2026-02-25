@@ -57,6 +57,13 @@
 			}
 		},
 		{
+			"path": "pages/planning/category/index",
+			"style": {
+				"navigationBarTitleText": "规划和分类",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/planning/life/index",
 			"style": {
 				"navigationBarTitleText": "人生规划"
@@ -108,6 +115,41 @@
 			"path": "pages/planning/habit/index",
 			"style": {
 				"navigationBarTitleText": "习惯规划"
+			}
+		},
+		{
+			"path": "pages/planning/template/index",
+			"style": {
+				"navigationBarTitleText": "规划模板",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/planning/template/detail",
+			"style": {
+				"navigationBarTitleText": "规划详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/planning/plan/detail",
+			"style": {
+				"navigationBarTitleText": "规划详情",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/planning/plan/create",
+			"style": {
+				"navigationBarTitleText": "新规划",
+				"navigationStyle": "custom"
+			}
+		},
+		{
+			"path": "pages/planning/plan/guide",
+			"style": {
+				"navigationBarTitleText": "如何正确分配规划",
+				"navigationStyle": "custom"
 			}
 		},
 		{

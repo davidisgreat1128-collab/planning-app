@@ -31,7 +31,10 @@ const createTaskSchema = Joi.object({
   isRecurring:  Joi.boolean().default(false),
   rrule:        Joi.string().max(500).allow('', null),
   rruleUntil:   dateStr.allow(null),
-  planId:       Joi.number().integer().positive().allow(null)
+  planId:       Joi.number().integer().positive().allow(null),
+  categoryId:   Joi.string().max(50).allow(null),  // 添加：分类ID字段
+  reminderTime: Joi.string().allow(null),  // 添加：提醒时间字段
+  reminderPersistent: Joi.boolean().allow(null)  // 添加：持久提醒字段
 });
 
 const updateTaskSchema = Joi.object({
@@ -46,7 +49,8 @@ const updateTaskSchema = Joi.object({
   endDate:      dateStr.allow(null),
   startTime:    timeStr.allow(null),
   endTime:      timeStr.allow(null),
-  status:       Joi.string().valid('pending', 'completed', 'skipped')
+  status:       Joi.string().valid('pending', 'completed', 'skipped'),
+  categoryId:   Joi.string().max(50).allow(null)  // 添加：分类ID字段
 }).min(1);
 
 const getTasksQuerySchema = Joi.object({
@@ -62,6 +66,10 @@ const idParamSchema = Joi.object({
 
 const planIdParamSchema = Joi.object({
   planId: Joi.number().integer().positive().required()
+});
+
+const categoryIdParamSchema = Joi.object({
+  categoryId: Joi.string().max(50).required()
 });
 
 // ---- Routes ----
@@ -85,5 +93,11 @@ router.patch('/occurrences/:id', validateParams(idParamSchema), taskController.u
 
 // DELETE /api/v1/tasks/:id - 软删除任务
 router.delete('/:id', validateParams(idParamSchema), taskController.deleteTask);
+
+// PUT /api/v1/tasks/category/:categoryId/uncategorize - 将分类下的任务移到"无分类"
+router.put('/category/:categoryId/uncategorize', validateParams(categoryIdParamSchema), taskController.uncategorizeTasks);
+
+// DELETE /api/v1/tasks/category/:categoryId - 删除分类下的所有任务
+router.delete('/category/:categoryId', validateParams(categoryIdParamSchema), taskController.deleteCategoryTasks);
 
 module.exports = router;

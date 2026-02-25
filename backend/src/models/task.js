@@ -163,6 +163,13 @@ function initTaskModel(sequelize) {
         type: DataTypes.INTEGER.UNSIGNED,
         allowNull: true,
         defaultValue: null
+      },
+      // 分类ID（关联用户创建的分类）
+      categoryId: {
+        type: DataTypes.STRING(50),
+        allowNull: true,
+        defaultValue: null,
+        comment: '任务所属分类ID（前端localStorage存储的分类ID）'
       }
     },
     {

@@ -100,3 +100,19 @@ export const updateOccurrence = (occurrenceId, status) =>
  */
 export const deleteTask = (id) =>
   del(`/tasks/${id}`);
+
+/**
+ * 将指定分类下的所有任务移到"无分类"（设置 categoryId 为 null）
+ * @param {string} categoryId - 分类ID
+ * @returns {Promise<object>} { count }
+ */
+export const uncategorizeTasks = (categoryId) =>
+  put(`/tasks/category/${categoryId}/uncategorize`);
+
+/**
+ * 删除指定分类下的所有任务
+ * @param {string} categoryId - 分类ID
+ * @returns {Promise<object>} { count }
+ */
+export const deleteCategoryTasks = (categoryId) =>
+  del(`/tasks/category/${categoryId}`);

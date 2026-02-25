@@ -13,6 +13,14 @@ export default {
     //   console.warn('[App] 清除缓存失败:', e);
     // }
 
+    // 记录首次安装日期（用于计算坚持天数）
+    const firstInstallDate = uni.getStorageSync('first_install_date');
+    if (!firstInstallDate) {
+      const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+      uni.setStorageSync('first_install_date', today);
+      console.log('[App] 首次安装日期已记录:', today);
+    }
+
     // 启动时从本地存储恢复登录状态到 store
     const token = getToken();
     const userInfo = getUserInfo();

@@ -125,10 +125,10 @@
       <!-- 时间轴视图 -->
       <view v-if="currentView === 'timeline'" class="timeline-view">
 
-        <!-- 顶部栏：目标和分类 + 时间轴标签 -->
+        <!-- 顶部栏：规划和分类 + 时间轴标签 -->
         <view class="tl-top-bar">
-          <view class="tl-filter-tab">
-            <text class="tl-filter-text">目标和分类</text>
+          <view class="tl-filter-tab" @tap="goToPlanningCategory">
+            <text class="tl-filter-text">{{ currentCategoryName }}</text>
             <text class="tl-filter-icon">≡</text>
             <view class="tl-filter-tab-ear"></view>
           </view>
@@ -211,10 +211,10 @@
 
       <!-- 四象限视图 -->
       <view v-if="currentView === 'quadrant'" class="quadrant-view">
-        <!-- 顶部栏：目标和分类 + 四象限切换标签 -->
+        <!-- 顶部栏：规划和分类 + 四象限切换标签 -->
         <view class="quad-top-bar">
-          <view class="quad-filter-btn">
-            <text class="quad-filter-text">目标和分类</text>
+          <view class="quad-filter-btn" @tap="goToPlanningCategory">
+            <text class="quad-filter-text">{{ currentCategoryName }}</text>
             <text class="quad-filter-icon">≡</text>
           </view>
           <view class="quad-mode-btn">
@@ -239,14 +239,14 @@
             </view>
             <!-- 任务内容 -->
             <view class="nb-body">
-              <view v-if="taskStore.urgentNotImportant.length === 0 && urgentNotImportantDone.length === 0" class="nb-empty">
+              <view v-if="filteredUrgentNotImportant.length === 0 && urgentNotImportantDone.length === 0" class="nb-empty">
                 <view class="nb-empty-icon-wrap">
                   <text class="nb-empty-icon">🚫</text>
                 </view>
                 <text class="nb-empty-tip">无益象限 快速做</text>
               </view>
               <view
-                v-for="task in taskStore.urgentNotImportant"
+                v-for="task in filteredUrgentNotImportant"
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
@@ -290,14 +290,14 @@
               <text class="nb-title-text">重要且紧急</text>
             </view>
             <view class="nb-body">
-              <view v-if="taskStore.urgentImportant.length === 0 && urgentImportantDone.length === 0" class="nb-empty">
+              <view v-if="filteredUrgentImportant.length === 0 && urgentImportantDone.length === 0" class="nb-empty">
                 <view class="nb-empty-icon-wrap">
                   <text class="nb-empty-icon">✨</text>
                 </view>
                 <text class="nb-empty-tip">重要优先做</text>
               </view>
               <view
-                v-for="task in taskStore.urgentImportant"
+                v-for="task in filteredUrgentImportant"
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
@@ -344,14 +344,14 @@
               <text class="nb-title-text">不重要不紧急</text>
             </view>
             <view class="nb-body">
-              <view v-if="taskStore.notUrgentNotImportant.length === 0 && notUrgentNotImportantDone.length === 0" class="nb-empty">
+              <view v-if="filteredNotUrgentNotImportant.length === 0 && notUrgentNotImportantDone.length === 0" class="nb-empty">
                 <view class="nb-empty-icon-wrap">
                   <text class="nb-empty-icon">📋</text>
                 </view>
                 <text class="nb-empty-tip">琐事象限 减少做</text>
               </view>
               <view
-                v-for="task in taskStore.notUrgentNotImportant"
+                v-for="task in filteredNotUrgentNotImportant"
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
@@ -394,14 +394,14 @@
               <text class="nb-title-text">重要不紧急</text>
             </view>
             <view class="nb-body">
-              <view v-if="taskStore.notUrgentImportant.length === 0 && notUrgentImportantDone.length === 0" class="nb-empty">
+              <view v-if="filteredNotUrgentImportant.length === 0 && notUrgentImportantDone.length === 0" class="nb-empty">
                 <view class="nb-empty-icon-wrap">
                   <text class="nb-empty-icon">🎯</text>
                 </view>
                 <text class="nb-empty-tip">计划时间做</text>
               </view>
               <view
-                v-for="task in taskStore.notUrgentImportant"
+                v-for="task in filteredNotUrgentImportant"
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
@@ -492,6 +492,7 @@
     <AddTaskPanel
       :visible="showAddPanel"
       :presetDate="selectedDate"
+      :categoryId="selectedCategoryId === 'all' || selectedCategoryId === 'none' ? null : selectedCategoryId"
       @close="showAddPanel = false"
       @submitted="onTaskSubmitted"
     />
@@ -529,16 +530,21 @@
         </view>
       </view>
     </view>
+
+    <!-- 规划和分类抽屉 -->
+    <CategoryDrawer v-model:visible="showCategoryDrawer" />
   </view>
 </template>
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
 import { useUserStore } from '@/store/user.js';
 import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday.js';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
+import CategoryDrawer from '@/components/category-drawer.vue';
 
 // ============================================================
 // Store
@@ -555,9 +561,14 @@ const tabBarHeight = ref(50);
 const currentView = ref('quadrant');
 const fabOpen = ref(false);
 const selectedDate = ref('');
+const selectedCategoryId = ref('all'); // 当前选中的分类ID：'all', 'none', 或具体分类ID
+const userCategories = ref([]); // 用户创建的分类列表
 
 // 快速新建任务底部面板
 const showAddPanel = ref(false);
+
+// 规划和分类抽屉
+const showCategoryDrawer = ref(false);
 
 // 子任务弹窗状态
 const subtaskPopup = ref({
@@ -652,6 +663,59 @@ function getMonthFirst(date) {
 // ============================================================
 // 计算属性
 // ============================================================
+
+/**
+ * 获取当前选中分类的显示名称
+ */
+const currentCategoryName = computed(() => {
+  if (selectedCategoryId.value === 'all') return '规划和分类';
+  if (selectedCategoryId.value === 'none') return '无分类';
+  const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
+  return category ? category.name : '规划和分类';
+});
+
+/**
+ * 根据选中的分类过滤任务
+ */
+function filterTasksByCategory(tasks) {
+  if (selectedCategoryId.value === 'all') {
+    // 显示所有任务
+    return tasks;
+  } else if (selectedCategoryId.value === 'none') {
+    // 只显示无分类的任务
+    return tasks.filter(t => !t.categoryId);
+  } else {
+    // 显示指定分类的任务
+    return tasks.filter(t => t.categoryId === selectedCategoryId.value);
+  }
+}
+
+/**
+ * 过滤后的四象限任务
+ */
+const filteredUrgentImportant = computed(() =>
+  filterTasksByCategory(taskStore.urgentImportant)
+);
+
+const filteredNotUrgentImportant = computed(() =>
+  filterTasksByCategory(taskStore.notUrgentImportant)
+);
+
+const filteredUrgentNotImportant = computed(() =>
+  filterTasksByCategory(taskStore.urgentNotImportant)
+);
+
+const filteredNotUrgentNotImportant = computed(() =>
+  filterTasksByCategory(taskStore.notUrgentNotImportant)
+);
+
+const filteredDoneTasks = computed(() =>
+  filterTasksByCategory(taskStore.doneTasks)
+);
+
+const filteredTimelineTasks = computed(() =>
+  filterTasksByCategory(taskStore.timelineTasks)
+);
 
 /**
  * 获取某日期的任务象限色点（最多2个，不重复）
@@ -755,16 +819,16 @@ const allDayTasksDone = computed(() =>
 // 四象限：各象限已完成任务（用于同象限内显示删除线效果）
 // ============================================================
 const urgentImportantDone = computed(() =>
-  taskStore.doneTasks.filter(t => t.isUrgent && t.isImportant)
+  filteredDoneTasks.value.filter(t => t.isUrgent && t.isImportant)
 );
 const notUrgentImportantDone = computed(() =>
-  taskStore.doneTasks.filter(t => !t.isUrgent && t.isImportant)
+  filteredDoneTasks.value.filter(t => !t.isUrgent && t.isImportant)
 );
 const urgentNotImportantDone = computed(() =>
-  taskStore.doneTasks.filter(t => t.isUrgent && !t.isImportant)
+  filteredDoneTasks.value.filter(t => t.isUrgent && !t.isImportant)
 );
 const notUrgentNotImportantDone = computed(() =>
-  taskStore.doneTasks.filter(t => !t.isUrgent && !t.isImportant)
+  filteredDoneTasks.value.filter(t => !t.isUrgent && !t.isImportant)
 );
 
 // ============================================================
@@ -933,7 +997,7 @@ function quadrantLabel(task) {
 }
 
 function getTasksAtHour(hour) {
-  return taskStore.timelineTasks.filter(t => {
+  return filteredTimelineTasks.value.filter(t => {
     if (!t.startTime) return false;
     return parseInt(t.startTime.split(':')[0]) === hour;
   });
@@ -1219,6 +1283,9 @@ onMounted(async () => {
   selectedDate.value = todayStr;
   taskStore.selectedDate = todayStr;
 
+  // 加载选中的分类
+  loadCategorySelection();
+
   updateCurrentTime();
 
   // 访客模式：跳过网络请求，使用演示数据
@@ -1295,6 +1362,52 @@ onMounted(async () => {
   // #ifdef H5
   h5BindMouseEvents();
   // #endif
+});
+
+// ============================================================
+// 页面跳转
+// ============================================================
+
+/**
+ * 打开规划和分类抽屉
+ */
+function goToPlanningCategory() {
+  showCategoryDrawer.value = true;
+}
+
+// ============================================================
+// 页面显示生命周期
+// ============================================================
+
+/**
+ * 加载分类数据（包括分类列表和选中的分类）
+ */
+function loadCategorySelection() {
+  // 加载用户创建的分类列表
+  const savedCategories = uni.getStorageSync('user_categories');
+  if (savedCategories) {
+    try {
+      userCategories.value = JSON.parse(savedCategories);
+    } catch (e) {
+      console.error('[Calendar] 加载分类列表失败:', e);
+      userCategories.value = [];
+    }
+  } else {
+    userCategories.value = [];
+  }
+
+  // 加载选中的分类ID
+  const savedCategoryId = uni.getStorageSync('selected_category_id');
+  if (savedCategoryId) {
+    selectedCategoryId.value = savedCategoryId;
+  }
+}
+
+/**
+ * 页面显示时触发（从分类页面返回时会触发）
+ */
+onShow(() => {
+  loadCategorySelection();
 });
 
 onUnmounted(() => {
