@@ -680,7 +680,7 @@ const currentCategoryIcon = computed(() => {
   // 如果选中了规划容器
   if (selectedPlanId.value) {
     const plan = planStore.plans.find(p => p.id === selectedPlanId.value);
-    return plan ? '🔔' : '';
+    return plan ? (plan.iconEmoji || '🔔') : '';
   }
 
   // 如果选中了分类容器

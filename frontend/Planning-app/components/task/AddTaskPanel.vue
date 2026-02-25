@@ -566,8 +566,8 @@ const activePlans = computed(() => planStore.activePlans || []);
 const currentCategoryIcon = computed(() => {
   // 如果选中了规划容器
   if (selectedPlanId.value) {
-    // 规划统一使用 🔔 图标
-    return '🔔';
+    const plan = planStore.getPlanById(selectedPlanId.value);
+    return plan ? (plan.iconEmoji || '🔔') : '无';
   }
 
   // 如果选中了分类容器

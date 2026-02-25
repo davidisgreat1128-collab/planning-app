@@ -58,6 +58,8 @@ export const usePlanStore = defineStore('plan', {
         id: Date.now().toString(),
         title: planData.title,
         buff: planData.buff,
+        icon: planData.icon || '', // 图标ID
+        iconEmoji: planData.iconEmoji || '🔔', // 图标emoji，默认铃铛
         startDate: planData.startDate,
         endDate: planData.endDate,
         duration: planData.duration,

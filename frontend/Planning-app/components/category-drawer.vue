@@ -39,7 +39,7 @@
               >
                 <!-- 前景：规划卡片内容 -->
                 <view class="plan-card" :class="{ active: plan.isSelected }" @tap="togglePlanSelection(plan.id)">
-                  <text class="plan-icon">🔔</text>
+                  <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
                   <view class="plan-content">
                     <text class="plan-title">{{ plan.title }}</text>
                     <text class="plan-buff">{{ plan.buff }}</text>

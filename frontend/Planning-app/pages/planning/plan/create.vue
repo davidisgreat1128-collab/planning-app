@@ -15,12 +15,15 @@
       <view class="form-section">
         <text class="form-label">规划名称</text>
         <view class="input-wrapper">
-          <text class="input-icon">🔔</text>
+          <view class="input-icon-clickable" @tap="openIconDialog">
+            <text class="input-icon">{{ planForm.iconEmoji || '🔔' }}</text>
+          </view>
           <input
             class="form-input"
             v-model="planForm.title"
             placeholder="循序渐进养成良好作息"
             placeholder-class="input-placeholder"
+            maxlength="20"
           />
           <text class="char-count">{{ planForm.title.length }}/20</text>
         </view>
@@ -131,6 +134,13 @@
       :edit-data="editingMilestone"
       @save="handleMilestoneSave"
     />
+
+    <!-- 图标选择弹窗 -->
+    <plan-icon-dialog
+      v-model:visible="showIconDialog"
+      :initial-icon="planForm.icon"
+      @save="handleIconSave"
+    />
   </view>
 </template>
 
@@ -138,15 +148,21 @@
 import { ref, computed, onMounted } from 'vue';
 import { getRandomBuff } from '@/utils/buffLibrary.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
+import PlanIconDialog from '@/components/planning/PlanIconDialog.vue';
 import { usePlanStore } from '@/store/plan.js';
 
 // 获取 plan store
 const planStore = usePlanStore();
 
+// 图标选择弹窗状态
+const showIconDialog = ref(false);
+
 // 表单数据
 const planForm = ref({
   title: '循序渐进养成良好作息',
   buff: getRandomBuff(),
+  icon: '', // 图标ID
+  iconEmoji: '🔔', // 图标emoji（默认铃铛）
   startDate: '2026/02/24',
   startWeekday: '周二',
   startHint: '今天',
@@ -184,6 +200,17 @@ const showMilestoneModal = ref(false);
 // 正在编辑的里程碑
 const editingMilestone = ref(null);
 const editingMilestoneIndex = ref(-1);
+
+// 打开图标选择弹窗
+function openIconDialog() {
+  showIconDialog.value = true;
+}
+
+// 保存图标
+function handleIconSave(iconData) {
+  planForm.value.icon = iconData.icon;
+  planForm.value.iconEmoji = iconData.iconEmoji;
+}
 
 // 换一个Buff
 function changeBuff() {
@@ -334,6 +361,8 @@ function createPlan() {
   const newPlan = planStore.addPlan({
     title: planForm.value.title,
     buff: planForm.value.buff,
+    icon: planForm.value.icon,
+    iconEmoji: planForm.value.iconEmoji,
     startDate: planForm.value.startDate,
     endDate: planForm.value.endDate,
     duration: planForm.value.duration,
@@ -456,6 +485,15 @@ onMounted(() => {
   gap: 15rpx;
   width: 100%;
   box-sizing: border-box;
+}
+
+.input-icon-clickable {
+  cursor: pointer;
+  transition: transform 0.2s;
+}
+
+.input-icon-clickable:active {
+  transform: scale(1.1);
 }
 
 .input-icon {
