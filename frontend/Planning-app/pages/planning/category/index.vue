@@ -29,6 +29,46 @@
           <text class="create-desc">收获触手可及的成果</text>
         </view>
       </view>
+
+      <!-- 规划列表 -->
+      <view class="category-list" v-if="userPlans.length > 0">
+        <view
+          v-for="plan in userPlans"
+          :key="plan.id"
+          class="category-item-wrapper"
+        >
+          <view
+            class="category-item-swipe"
+            :class="{ 'swipe-open': swipeOpenId === plan.id }"
+            @touchstart="onTouchStart($event, plan.id)"
+            @touchmove="onTouchMove($event, plan.id)"
+            @touchend="onTouchEnd($event, plan.id)"
+          >
+            <!-- 前景：规划内容 -->
+            <view
+              class="category-item"
+              :class="{ active: selectedCategory === plan.id }"
+              @tap="selectCategory(plan.id)"
+            >
+              <view class="category-name-wrapper">
+                <text class="category-icon">{{ plan.iconEmoji || '🔔' }}</text>
+                <text class="category-text">{{ plan.name }}</text>
+              </view>
+              <text v-if="selectedCategory === plan.id" class="category-check">✓</text>
+            </view>
+
+            <!-- 背景：操作按钮 -->
+            <view class="swipe-actions">
+              <view class="swipe-btn edit-btn" @tap.stop="editCategory(plan)">
+                <text class="swipe-icon">✏️</text>
+              </view>
+              <view class="swipe-btn delete-btn" @tap.stop="deleteCategory(plan)">
+                <text class="swipe-icon">🗑️</text>
+              </view>
+            </view>
+          </view>
+        </view>
+      </view>
     </view>
 
     <!-- 我的分类 -->
@@ -54,9 +94,9 @@
           <text v-if="selectedCategory === 'none'" class="category-check">✓</text>
         </view>
 
-        <!-- 用户创建的分类（支持左滑操作） -->
+        <!-- 用户创建的普通分类（不包含规划，支持左滑操作） -->
         <view
-          v-for="category in userCategories"
+          v-for="category in normalCategories"
           :key="category.id"
           class="category-item-wrapper"
         >
@@ -163,6 +203,20 @@ const touchStartY = ref(0); // 触摸开始的 Y 坐标
 // ============================================================
 const userNickname = computed(() => userStore.userInfo?.nickname || userStore.userInfo?.username || '用户');
 const userAvatar = computed(() => userStore.userInfo?.avatar || '🐣');
+
+/**
+ * 规划列表（type 为 'plan' 的分类）
+ */
+const userPlans = computed(() => {
+  return userCategories.value.filter(cat => cat.type === 'plan');
+});
+
+/**
+ * 普通分类列表（type 不为 'plan' 或没有 type 字段的分类）
+ */
+const normalCategories = computed(() => {
+  return userCategories.value.filter(cat => cat.type !== 'plan');
+});
 
 /**
  * 计算坚持天数
