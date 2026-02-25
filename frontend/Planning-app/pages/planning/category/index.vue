@@ -39,14 +39,19 @@
           :class="{ active: selectedCategory === plan.id }"
           @tap="selectCategory(plan.id)"
         >
-          <view class="plan-header">
-            <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
-            <text class="plan-name">{{ plan.name }}</text>
+          <!-- 左侧内容区域 -->
+          <view class="plan-content">
+            <view class="plan-header">
+              <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
+              <text class="plan-name">{{ plan.name }}</text>
+            </view>
+            <view class="plan-stats">
+              <text class="plan-milestone">里程碑：{{ getPlanCompletedMilestones(plan) }}/{{ getPlanTotalMilestones(plan) }}</text>
+              <text class="plan-days">已进行{{ getPlanProgressDays(plan) }}天</text>
+            </view>
           </view>
-          <view class="plan-stats">
-            <text class="plan-milestone">里程碑：{{ getPlanCompletedMilestones(plan) }}/{{ getPlanTotalMilestones(plan) }}</text>
-            <text class="plan-days">已进行{{ getPlanProgressDays(plan) }}天</text>
-          </view>
+
+          <!-- 右侧操作按钮区域 -->
           <view class="plan-actions">
             <view class="plan-action-btn" @tap.stop="editCategory(plan)">
               <text class="action-icon">✏️</text>
@@ -701,7 +706,10 @@ function onTouchEnd(e, categoryId) {
   padding: 20rpx;
   cursor: pointer;
   transition: all 0.2s;
-  position: relative;
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 20rpx;
 }
 
 .plan-item.active {
@@ -713,17 +721,24 @@ function onTouchEnd(e, categoryId) {
   opacity: 0.8;
 }
 
+/* 左侧内容区域 */
+.plan-content {
+  flex: 1;
+  min-width: 0; /* 允许内容缩小 */
+  display: flex;
+  flex-direction: column;
+  gap: 10rpx;
+}
+
 .plan-header {
   display: flex;
   align-items: center;
   gap: 15rpx;
-  margin-bottom: 15rpx;
-  padding-right: 150rpx; /* 为右侧操作按钮留出空间 */
 }
 
 .plan-icon {
   font-size: 40rpx;
-  flex-shrink: 0; /* 图标不缩小 */
+  flex-shrink: 0;
 }
 
 .plan-name {
@@ -731,9 +746,9 @@ function onTouchEnd(e, categoryId) {
   font-size: 30rpx;
   font-weight: 600;
   color: #333;
-  word-wrap: break-word; /* 长文字换行 */
+  word-wrap: break-word;
   word-break: break-all;
-  overflow: hidden;
+  line-height: 1.4;
 }
 
 .plan-stats {
@@ -742,7 +757,6 @@ function onTouchEnd(e, categoryId) {
   gap: 20rpx;
   font-size: 24rpx;
   color: #666;
-  margin-bottom: 10rpx;
 }
 
 .plan-milestone {
@@ -753,12 +767,12 @@ function onTouchEnd(e, categoryId) {
   color: #999;
 }
 
+/* 右侧操作按钮区域 */
 .plan-actions {
-  position: absolute;
-  top: 20rpx;
-  right: 20rpx;
   display: flex;
+  flex-direction: row;
   gap: 15rpx;
+  flex-shrink: 0;
 }
 
 .plan-action-btn {
