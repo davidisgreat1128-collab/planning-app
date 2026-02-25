@@ -1573,9 +1573,12 @@ function loadCategorySelection() {
   if (savedCategoryId) {
     console.log('[Calendar] 设置 selectedCategoryId =', savedCategoryId);
     selectedCategoryId.value = savedCategoryId;
+    selectedPlanId.value = ''; // 清除规划选中
+    console.log('[Calendar] 清除规划选中，selectedPlanId = ""');
   } else {
     console.log('[Calendar] 使用默认值 selectedCategoryId = "all"');
     selectedCategoryId.value = 'all'; // 默认为"全部"
+    selectedPlanId.value = ''; // 清除规划选中
   }
 
   console.log('[Calendar] 最终状态:');
