@@ -1388,10 +1388,8 @@ function onMaskTap() {
 
 /** 组件挂载时加载数据 */
 onMounted(() => {
-  // 加载用户分类列表
+  // 加载用户分类列表（包含规划）
   loadUserCategories();
-  // 加载规划列表
-  planStore.loadPlans();
 });
 
 /** 监听面板显示状态 */
@@ -1399,9 +1397,8 @@ watch(() => props.visible, (newVal) => {
   if (newVal) {
     // 每次打开面板时重新加载数据
     loadUserCategories();
-    planStore.loadPlans();
 
-    // 加载全局选中的容器（规划或分类）
+    // 加载全局选中的容器（分类，包含规划）
     loadSelectedContainer();
   }
 });
