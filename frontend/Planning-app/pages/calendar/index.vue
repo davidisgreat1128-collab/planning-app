@@ -749,15 +749,22 @@ const mergedTimelineTasks = computed(() => {
 });
 
 /**
- * 根据选中的分类过滤任务
+ * 根据选中的容器（规划或分类）过滤任务
  */
 function filterTasksByCategory(tasks) {
+  // 优先检查是否选中了规划
+  if (selectedPlanId.value) {
+    // 只显示该规划下的任务
+    return tasks.filter(t => t.fromPlan && t.planId === selectedPlanId.value);
+  }
+
+  // 检查分类过滤
   if (selectedCategoryId.value === 'all') {
     // 显示所有任务
     return tasks;
   } else if (selectedCategoryId.value === 'none') {
-    // 只显示无分类的任务（规划任务也视为无分类）
-    return tasks.filter(t => !t.categoryId || t.fromPlan);
+    // 只显示无分类的任务（不包括规划任务）
+    return tasks.filter(t => !t.categoryId && !t.fromPlan);
   } else {
     // 显示指定分类的任务（不包括规划任务）
     return tasks.filter(t => t.categoryId === selectedCategoryId.value && !t.fromPlan);

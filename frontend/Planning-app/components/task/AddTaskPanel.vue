@@ -1444,8 +1444,35 @@ watch(() => props.visible, (newVal) => {
     // 每次打开面板时重新加载数据
     loadUserCategories();
     planStore.loadPlans();
+
+    // 加载全局选中的容器（规划或分类）
+    loadSelectedContainer();
   }
 });
+
+/**
+ * 加载全局选中的容器（规划或分类）
+ */
+function loadSelectedContainer() {
+  // 优先加载选中的规划
+  const savedPlanId = uni.getStorageSync('selected_plan_id');
+  if (savedPlanId) {
+    selectedPlanId.value = savedPlanId;
+    selectedCategoryId.value = null;
+    return;
+  }
+
+  // 加载选中的分类
+  const savedCategoryId = uni.getStorageSync('selected_category_id');
+  if (savedCategoryId && savedCategoryId !== 'all' && savedCategoryId !== 'none') {
+    selectedCategoryId.value = savedCategoryId;
+    selectedPlanId.value = null;
+  } else {
+    // 默认为无分类
+    selectedCategoryId.value = null;
+    selectedPlanId.value = null;
+  }
+}
 </script>
 
 <style scoped>
