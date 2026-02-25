@@ -677,35 +677,23 @@ function getMonthFirst(date) {
  * 规划和分类是平级的容器概念，互斥选中
  */
 const currentCategoryIcon = computed(() => {
-  console.log('[Calendar] 计算 currentCategoryIcon');
-  console.log('  - selectedPlanId.value:', selectedPlanId.value);
-  console.log('  - selectedCategoryId.value:', selectedCategoryId.value);
-
   // 如果选中了规划容器
   if (selectedPlanId.value) {
-    console.log('  - 当前容器类型: 规划');
     const plan = planStore.plans.find(p => p.id === selectedPlanId.value);
-    const icon = plan ? '🔔' : '';
-    console.log('  - 找到规划?', !!plan, ', 返回图标:', icon);
-    return icon;
+    return plan ? '🔔' : '';
   }
 
   // 如果选中了分类容器
   if (selectedCategoryId.value === 'all' || selectedCategoryId.value === 'none') {
-    console.log('  - 当前容器类型: 分类 (', selectedCategoryId.value, ')，返回空图标');
     return '';
   }
 
   if (selectedCategoryId.value) {
-    console.log('  - 当前容器类型: 分类');
     const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
-    const icon = category?.iconEmoji || '';
-    console.log('  - 找到分类?', !!category, ', 返回图标:', icon);
-    return icon;
+    return category?.iconEmoji || '';
   }
 
-  // 默认情况（理论上不应该到达这里）
-  console.log('  - 无选中容器，返回空图标');
+  // 默认情况
   return '';
 });
 
@@ -714,39 +702,26 @@ const currentCategoryIcon = computed(() => {
  * 规划和分类是平级的容器概念，互斥选中
  */
 const currentCategoryName = computed(() => {
-  console.log('[Calendar] 计算 currentCategoryName');
-  console.log('  - selectedPlanId.value:', selectedPlanId.value);
-  console.log('  - selectedCategoryId.value:', selectedCategoryId.value);
-
   // 如果选中了规划容器
   if (selectedPlanId.value) {
-    console.log('  - 当前容器类型: 规划');
     const plan = planStore.plans.find(p => p.id === selectedPlanId.value);
-    const name = plan ? plan.title : '规划和分类';
-    console.log('  - 规划名称:', name);
-    return name;
+    return plan ? plan.title : '规划和分类';
   }
 
   // 如果选中了分类容器
   if (selectedCategoryId.value === 'all') {
-    console.log('  - 当前容器类型: 分类 (all)');
     return '规划和分类';
   }
   if (selectedCategoryId.value === 'none') {
-    console.log('  - 当前容器类型: 分类 (none)');
     return '无分类';
   }
 
   if (selectedCategoryId.value) {
-    console.log('  - 当前容器类型: 分类');
     const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
-    const name = category ? category.name : '规划和分类';
-    console.log('  - 分类名称:', name);
-    return name;
+    return category ? category.name : '规划和分类';
   }
 
-  // 默认情况（理论上不应该到达这里）
-  console.log('  - 无选中容器，返回默认名称');
+  // 默认情况
   return '规划和分类';
 });
 
@@ -1529,17 +1504,8 @@ function goToPlanningCategory() {
  * 容器变更事件处理
  */
 function onContainerChanged(data) {
-  console.log('[Calendar] ========== 接收到 container-changed 事件 ==========');
-  console.log('[Calendar] 事件数据:', data);
-
   // 重新加载容器选中状态
   loadCategorySelection();
-
-  console.log('[Calendar] 容器变更后的状态:');
-  console.log('  - selectedPlanId:', selectedPlanId.value);
-  console.log('  - selectedCategoryId:', selectedCategoryId.value);
-  console.log('  - currentCategoryIcon:', currentCategoryIcon.value);
-  console.log('  - currentCategoryName:', currentCategoryName.value);
 }
 
 // ============================================================
@@ -1550,14 +1516,11 @@ function onContainerChanged(data) {
  * 加载分类和规划的选中状态
  */
 function loadCategorySelection() {
-  console.log('[Calendar] ========== 加载容器选中状态 ==========');
-
   // 加载用户创建的分类列表
   const savedCategories = uni.getStorageSync('user_categories');
   if (savedCategories) {
     try {
       userCategories.value = JSON.parse(savedCategories);
-      console.log('[Calendar] 已加载分类列表，数量:', userCategories.value.length);
     } catch (e) {
       console.error('[Calendar] 加载分类列表失败:', e);
       userCategories.value = [];
@@ -1566,56 +1529,30 @@ function loadCategorySelection() {
     userCategories.value = [];
   }
 
-  // 优先加载选中的规划ID
+  // 加载选中的规划ID
   const savedPlanId = uni.getStorageSync('selected_plan_id');
-  console.log('[Calendar] localStorage 中的 selected_plan_id:', savedPlanId);
-
   if (savedPlanId) {
-    console.log('[Calendar] 检测到选中的规划，设置 selectedPlanId =', savedPlanId);
     selectedPlanId.value = savedPlanId;
     selectedCategoryId.value = ''; // 清除分类选中
-    console.log('[Calendar] 清除分类选中，selectedCategoryId = ""');
-
-    const plan = planStore.plans.find(p => p.id === savedPlanId);
-    if (plan) {
-      console.log('[Calendar] 找到规划:', { id: plan.id, title: plan.title });
-    } else {
-      console.log('[Calendar] 警告：规划ID在planStore中找不到');
-    }
     return;
   }
 
   // 如果没有选中规划，则加载选中的分类ID
   const savedCategoryId = uni.getStorageSync('selected_category_id');
-  console.log('[Calendar] localStorage 中的 selected_category_id:', savedCategoryId);
-
   if (savedCategoryId) {
-    console.log('[Calendar] 设置 selectedCategoryId =', savedCategoryId);
     selectedCategoryId.value = savedCategoryId;
     selectedPlanId.value = ''; // 清除规划选中
-    console.log('[Calendar] 清除规划选中，selectedPlanId = ""');
   } else {
-    console.log('[Calendar] 使用默认值 selectedCategoryId = "all"');
     selectedCategoryId.value = 'all'; // 默认为"全部"
     selectedPlanId.value = ''; // 清除规划选中
   }
-
-  console.log('[Calendar] 最终状态:');
-  console.log('  - selectedPlanId:', selectedPlanId.value);
-  console.log('  - selectedCategoryId:', selectedCategoryId.value);
 }
 
 /**
  * 页面显示时触发（从分类页面返回时会触发）
  */
 onShow(() => {
-  console.log('[Calendar] ========== onShow 触发 ==========');
   loadCategorySelection();
-  console.log('[Calendar] onShow 完成后的状态:');
-  console.log('  - selectedPlanId:', selectedPlanId.value);
-  console.log('  - selectedCategoryId:', selectedCategoryId.value);
-  console.log('  - currentCategoryIcon:', currentCategoryIcon.value);
-  console.log('  - currentCategoryName:', currentCategoryName.value);
 });
 
 onUnmounted(() => {
