@@ -138,8 +138,9 @@
 
     <!-- 任务创建面板 -->
     <add-task-panel
-      v-model:visible="showTaskPanel"
+      :visible="showTaskPanel"
       :category-id="currentPlanId"
+      @close="showTaskPanel = false"
     />
 
     <!-- 菜单弹窗 -->
