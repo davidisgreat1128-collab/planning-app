@@ -869,23 +869,23 @@ function onDeletePlanConfirm(deleteWithTasks) {
 
 .plan-card {
   display: flex;
-  align-items: flex-start;  /* 改为顶部对齐，支持文字换行 */
+  align-items: flex-start;
   gap: 15rpx;
   background-color: #fff;
-  border: 5rpx solid #ff0000 !important;  /* 🔴 调试：红色粗边框 */
+  border: 2rpx solid #e0e0e0;
   border-radius: 16rpx;
   padding: 20rpx;
   box-sizing: border-box;
   cursor: pointer;
   transition: all 0.2s;
-  height: auto;  /* 高度自适应 */
+  height: auto;
   min-height: auto;
-  justify-content: space-between;  /* 左右两侧分布 */
+  justify-content: space-between;
 }
 
 .plan-card.active {
   background-color: #7CA1FF;
-  border-color: #ff0000 !important;  /* 🔴 调试：激活状态也保持红色边框 */
+  border-color: #7CA1FF;
 }
 
 .plan-icon {
@@ -893,8 +893,6 @@ function onDeletePlanConfirm(deleteWithTasks) {
   flex-shrink: 0;
   line-height: 1;
   height: auto;
-  background-color: yellow !important;  /* 🟡 调试：黄色背景 */
-  padding: 5rpx;
 }
 
 .plan-content {
@@ -902,44 +900,36 @@ function onDeletePlanConfirm(deleteWithTasks) {
   display: flex;
   flex-direction: column;
   gap: 8rpx;
-  min-width: 0;  /* 允许内容缩小，实现换行 */
+  min-width: 0;
   height: auto;
-  background-color: rgba(0, 255, 0, 0.2) !important;  /* 🟢 调试：绿色半透明背景 */
-  border: 3rpx dashed blue !important;  /* 🔵 调试：蓝色虚线边框 */
-  padding: 5rpx;
 }
 
 .plan-title {
   font-size: 28rpx;
   font-weight: 600;
   color: #333;
-  word-wrap: break-word;  /* 允许单词内换行 */
-  word-break: break-all;  /* 允许任意位置换行 */
+  word-wrap: break-word;
+  word-break: break-all;
   line-height: 1.4;
   height: auto;
-  background-color: rgba(0, 255, 255, 0.3) !important;  /* 💠 调试：青色背景 */
-  padding: 3rpx;
 }
 
 .plan-card.active .plan-title {
-  color: #333 !important;  /* 调试时保持深色文字 */
+  color: #fff;
 }
 
 .plan-buff {
   font-size: 24rpx;
   color: #666;
-  word-wrap: break-word;  /* 允许单词内换行 */
-  word-break: break-all;  /* 允许任意位置换行 */
+  word-wrap: break-word;
+  word-break: break-all;
   line-height: 1.5;
-  white-space: normal;  /* 允许正常换行 */
+  white-space: normal;
   height: auto;
-  background-color: rgba(255, 0, 255, 0.3) !important;  /* 🟣 调试：紫色背景 */
-  border: 2rpx solid purple !important;  /* 🟣 调试：紫色边框 */
-  padding: 3rpx;
 }
 
 .plan-card.active .plan-buff {
-  color: #666 !important;  /* 调试时保持深色文字 */
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .plan-stats {
@@ -947,33 +937,25 @@ function onDeletePlanConfirm(deleteWithTasks) {
   color: #999;
   word-wrap: break-word;
   height: auto;
-  background-color: rgba(255, 165, 0, 0.3) !important;  /* 🟠 调试：橙色背景 */
-  border: 2rpx solid orange !important;  /* 🟠 调试：橙色边框 */
-  padding: 3rpx;
 }
 
 .plan-card.active .plan-stats {
-  color: #999 !important;  /* 调试时保持深色文字 */
+  color: rgba(255, 255, 255, 0.8);
 }
 
 .plan-check {
   font-size: 32rpx;
   color: #fff;
   flex-shrink: 0;
-  margin-top: 4rpx;  /* 稍微向下偏移，视觉上更平衡 */
-  background-color: red !important;  /* 🔴 调试：红色背景 */
-  padding: 5rpx;
+  margin-top: 4rpx;
 }
 
 /* 规划卡片右侧操作按钮：垂直排列 */
 .plan-actions-vertical {
   display: flex;
-  flex-direction: column;  /* 垂直排列 */
+  flex-direction: column;
   gap: 10rpx;
-  flex-shrink: 0;  /* 不缩小 */
-  background-color: rgba(255, 192, 203, 0.5) !important;  /* 🎀 调试：粉色半透明背景 */
-  padding: 5rpx;
-  border: 2rpx solid hotpink !important;  /* 🎀 调试：粉色边框 */
+  flex-shrink: 0;
 }
 
 .plan-action-btn {
@@ -986,7 +968,6 @@ function onDeletePlanConfirm(deleteWithTasks) {
   border-radius: 8rpx;
   cursor: pointer;
   transition: all 0.2s;
-  border: 2rpx solid brown !important;  /* 🟤 调试：棕色边框 */
 }
 
 .plan-action-btn:active {
