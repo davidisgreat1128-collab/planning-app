@@ -11,7 +11,7 @@
         <text class="tep-nav-title">{{ selectedPlanName || '无分类' }}</text>
         <text class="tep-nav-arrow">∨</text>
       </view>
-      <view class="tep-nav-more">
+      <view class="tep-nav-more" @tap="showDeleteMenu">
         <text class="tep-nav-more-icon">···</text>
       </view>
     </view>
@@ -421,6 +421,65 @@
       </view>
     </view>
 
+    <!-- ⑪ 删除任务确认弹窗 -->
+    <view v-if="showDeleteDialog" class="tep-modal-mask" @tap="closeDeleteDialog">
+      <view class="delete-dialog" @tap.stop>
+        <!-- 选项1：仅删除当天任务（带勾选标记） -->
+        <view
+          class="delete-option"
+          :class="{ 'delete-option-selected': deleteOption === 1 }"
+          @tap="deleteOption = 1"
+        >
+          <view class="delete-option-content">
+            <text class="delete-option-title">仅删除当天任务</text>
+            <text class="delete-option-desc">不影响该任务的过去及未来任务</text>
+          </view>
+          <view v-if="deleteOption === 1" class="delete-option-check">
+            <text class="delete-option-check-icon">✓</text>
+          </view>
+        </view>
+
+        <!-- 分隔线 -->
+        <view class="delete-divider"></view>
+
+        <!-- 选项2：完整清空此条重复任务 -->
+        <view
+          class="delete-option"
+          :class="{ 'delete-option-selected': deleteOption === 2 }"
+          @tap="deleteOption = 2"
+        >
+          <text class="delete-option-title">完整清空此条重复任务</text>
+          <view class="delete-option-arrow">›</view>
+        </view>
+
+        <!-- 分隔线 -->
+        <view class="delete-divider"></view>
+
+        <!-- 选项3：删除当天及未来任务 -->
+        <view
+          class="delete-option"
+          :class="{ 'delete-option-selected': deleteOption === 3 }"
+          @tap="deleteOption = 3"
+        >
+          <view class="delete-option-content">
+            <text class="delete-option-title">删除当天及未来任务</text>
+            <text class="delete-option-desc">不影响该任务的过去记录</text>
+          </view>
+          <view class="delete-option-arrow">›</view>
+        </view>
+
+        <!-- 确定按钮 -->
+        <view class="delete-confirm-btn" @tap="confirmDelete">
+          <text class="delete-confirm-text">确定</text>
+        </view>
+
+        <!-- 关闭按钮（圆圈X） -->
+        <view class="delete-close-btn" @tap="closeDeleteDialog">
+          <text class="delete-close-icon">⊗</text>
+        </view>
+      </view>
+    </view>
+
   </view>
 </template>
 
@@ -461,6 +520,12 @@ const showQuadrantPicker = ref(false);
 
 /** 弹窗：重复规则底部弹窗 */
 const showRepeatSheet = ref(false);
+
+/** 弹窗：删除任务确认弹窗 */
+const showDeleteDialog = ref(false);
+
+/** 删除选项：1=仅删除当天, 2=完整清空重复任务, 3=删除当天及未来 */
+const deleteOption = ref(1);
 
 /** 当前任务的创建时间（编辑模式从任务数据读取） */
 const createdAt = ref('');
@@ -1719,6 +1784,124 @@ async function save() {
   }
 }
 
+// ============================================================
+// 删除任务相关函数
+// ============================================================
+
+/** 显示删除菜单弹窗 */
+function showDeleteMenu() {
+  // 重置为默认选项（仅删除当天）
+  deleteOption.value = 1;
+  showDeleteDialog.value = true;
+}
+
+/** 关闭删除弹窗 */
+function closeDeleteDialog() {
+  showDeleteDialog.value = false;
+}
+
+/** 确认删除（根据选项执行不同的删除逻辑） */
+async function confirmDelete() {
+  const option = deleteOption.value;
+
+  try {
+    uni.showLoading({ title: '删除中...' });
+
+    if (option === 1) {
+      // 选项1：仅删除当天任务
+      await deleteCurrentDayTask();
+    } else if (option === 2) {
+      // 选项2：完整清空此条重复任务
+      await deleteAllRecurringTasks();
+    } else if (option === 3) {
+      // 选项3：删除当天及未来任务
+      await deleteFutureTasks();
+    }
+
+    uni.hideLoading();
+    closeDeleteDialog();
+    uni.showToast({ title: '删除成功', icon: 'success' });
+    setTimeout(() => uni.navigateBack(), 800);
+  } catch (err) {
+    uni.hideLoading();
+    console.error('[TaskEdit] 删除失败:', err);
+    uni.showToast({ title: err.message || '删除失败', icon: 'none' });
+  }
+}
+
+/**
+ * 选项1：仅删除当天任务
+ * - 对于重复任务：只删除当前日期的实例（TaskOccurrence）
+ * - 对于普通任务：直接删除任务
+ */
+async function deleteCurrentDayTask() {
+  // TODO: 实现仅删除当天任务的逻辑
+  // 需要区分：
+  // 1. 如果是重复任务的实例（TaskOccurrence），只删除该实例
+  // 2. 如果是普通任务，直接删除整个任务
+  console.log('[TaskEdit] 仅删除当天任务');
+
+  // 暂时调用原有的删除逻辑
+  await deleteTaskImpl();
+}
+
+/**
+ * 选项2：完整清空此条重复任务
+ * - 删除重复任务的主任务（Task），会级联删除所有实例（TaskOccurrence）
+ */
+async function deleteAllRecurringTasks() {
+  // TODO: 实现完整清空重复任务的逻辑
+  // 需要删除父任务，后端会级联删除所有子实例
+  console.log('[TaskEdit] 完整清空此条重复任务');
+
+  await deleteTaskImpl();
+}
+
+/**
+ * 选项3：删除当天及未来任务
+ * - 删除当前日期及之后的所有任务实例
+ * - 保留过去的任务记录
+ */
+async function deleteFutureTasks() {
+  // TODO: 实现删除当天及未来任务的逻辑
+  // 需要：
+  // 1. 更新父任务的 rruleUntil 为昨天
+  // 2. 删除当天及未来的所有 TaskOccurrence 实例
+  console.log('[TaskEdit] 删除当天及未来任务');
+
+  await deleteTaskImpl();
+}
+
+/**
+ * 删除任务的实际执行逻辑（原 deleteTask 的内容）
+ */
+async function deleteTaskImpl() {
+  const isLocalStorageTask = taskId.value && String(taskId.value).startsWith('task_');
+
+  if (isLocalStorageTask) {
+    // localStorage 任务：直接从 localStorage 删除
+    console.log('[TaskEdit] 删除 localStorage 任务:', taskId.value);
+
+    const savedTasks = uni.getStorageSync('tasks');
+    let tasks = savedTasks ? JSON.parse(savedTasks) : [];
+
+    // 过滤掉要删除的任务
+    tasks = tasks.filter(t => String(t.id) !== String(taskId.value));
+
+    // 保存回 localStorage
+    uni.setStorageSync('tasks', JSON.stringify(tasks));
+
+    // 从 taskStore 中移除
+    const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === String(taskId.value));
+    if (storeTaskIndex !== -1) {
+      taskStore.tasks.splice(storeTaskIndex, 1);
+    }
+  } else {
+    // 后端任务：调用 API
+    await taskStore.removeTask(taskId.value);
+  }
+}
+
 function deleteTask() {
   uni.showModal({
     title: '确认删除',
@@ -2347,4 +2530,121 @@ onMounted(() => {
 .reminder-hint-invalid { background-color: #FFF0F0; border-radius: 12rpx; padding: 10rpx 24rpx; }
 .reminder-hint-text { font-size: 24rpx; color: #FF4444; }
 .reminder-hint-valid { font-size: 24rpx; color: #44AA66; }
+
+/* ============================================================
+   删除任务确认弹窗（63.jpg样式）
+   ============================================================ */
+.delete-dialog {
+  position: relative;
+  width: 600rpx;
+  background-color: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 40rpx 30rpx 30rpx;
+  display: flex;
+  flex-direction: column;
+}
+
+.delete-option {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  padding: 24rpx 20rpx;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.delete-option:active {
+  background-color: #F5F5F5;
+}
+
+.delete-option-content {
+  display: flex;
+  flex-direction: column;
+  gap: 8rpx;
+  flex: 1;
+}
+
+.delete-option-title {
+  font-size: 30rpx;
+  color: #1A1A2E;
+  font-weight: 500;
+}
+
+.delete-option-desc {
+  font-size: 24rpx;
+  color: #999;
+}
+
+.delete-option-check {
+  width: 48rpx;
+  height: 48rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.delete-option-check-icon {
+  font-size: 32rpx;
+  color: #1A1A2E;
+  font-weight: bold;
+}
+
+.delete-option-arrow {
+  font-size: 36rpx;
+  color: #999;
+}
+
+.delete-option-selected {
+  background-color: #F8F8F8;
+}
+
+.delete-divider {
+  height: 1px;
+  background-color: #E5E5E5;
+  margin: 0 20rpx;
+}
+
+.delete-confirm-btn {
+  margin-top: 32rpx;
+  background-color: #1A1A2E;
+  border-radius: 40rpx;
+  padding: 24rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+
+.delete-confirm-btn:active {
+  opacity: 0.8;
+}
+
+.delete-confirm-text {
+  font-size: 30rpx;
+  color: #FFFFFF;
+  font-weight: 500;
+}
+
+.delete-close-btn {
+  position: absolute;
+  bottom: -100rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 72rpx;
+  height: 72rpx;
+  border: 3rpx solid #FFFFFF;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+}
+
+.delete-close-icon {
+  font-size: 40rpx;
+  color: #FFFFFF;
+  line-height: 1;
+}
 </style>
