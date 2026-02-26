@@ -549,52 +549,51 @@ async function loadPlanData(planId) {
       console.log('[GoalDetail] ⚠️  localStorage无任务数据');
     }
 
-    // 2. 从后端API加载用户创建的任务
-    // 临时方案：由于范围查询存在问题,改为加载今天的任务
-    // TODO: 后端修复范围查询后,改回使用 start/end 参数
+    // 2. 从后端API加载用户创建的任务（查询规划的日期范围）
     let apiTasks = [];
+    if (plan.startDate && plan.endDate) {
+      // 将日期格式从 yyyy/MM/dd 转为 yyyy-MM-dd
+      const startStr = plan.startDate.replace(/\//g, '-');
+      const endStr = plan.endDate.replace(/\//g, '-');
 
-    console.log('[GoalDetail] 📡 准备调用API加载任务');
+      console.log('[GoalDetail] 📡 准备调用API加载任务');
+      console.log('[GoalDetail] API请求参数: start=' + startStr + ', end=' + endStr);
 
-    try {
-      // 临时使用单日查询（只加载今天）
-      const today = new Date();
-      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+      try {
+        const result = await getTasks({ start: startStr, end: endStr });
+        console.log('[GoalDetail] 📥 API响应结果:', result);
 
-      console.log('[GoalDetail] API请求参数: date=' + todayStr + ' (临时方案:仅今天)');
+        if (result && result.taskMap) {
+          console.log('[GoalDetail] taskMap键值:', Object.keys(result.taskMap));
 
-      const result = await getTasks({ date: todayStr });
-      console.log('[GoalDetail] 📥 API响应结果:', result);
+          // 后端返回格式: taskMap[date] = [task1, task2, ...] (每个task带_type字段)
+          // 需要提取所有日期的所有任务
+          apiTasks = Object.values(result.taskMap).flatMap(dayTasks => {
+            if (Array.isArray(dayTasks) && dayTasks.length > 0) {
+              console.log('[GoalDetail] 提取任务:', dayTasks.length, '个');
+              return dayTasks;
+            }
+            return [];
+          });
 
-      // 单日查询返回: { date, single: [], range: [], recurring: [] }
-      if (result) {
-        if (result.single && result.single.length > 0) {
-          console.log('[GoalDetail] 单日任务:', result.single.length, '个');
-          apiTasks.push(...result.single);
+          console.log('[GoalDetail] ✅ API加载: 共', apiTasks.length, '个任务');
+          console.log('[GoalDetail] API任务详情:', apiTasks.map(t => ({
+            id: t.id,
+            title: t.title,
+            categoryId: t.categoryId,
+            planId: t.planId,
+            date: t.taskDate || t.occurDate,
+            _type: t._type
+          })));
+        } else {
+          console.log('[GoalDetail] ⚠️  API响应无taskMap');
         }
-        if (result.range && result.range.length > 0) {
-          console.log('[GoalDetail] 范围任务:', result.range.length, '个');
-          apiTasks.push(...result.range);
-        }
-        if (result.recurring && result.recurring.length > 0) {
-          console.log('[GoalDetail] 重复任务:', result.recurring.length, '个');
-          apiTasks.push(...result.recurring);
-        }
-
-        console.log('[GoalDetail] ✅ API加载: 共', apiTasks.length, '个任务');
-        console.log('[GoalDetail] API任务详情:', apiTasks.map(t => ({
-          id: t.id,
-          title: t.title,
-          categoryId: t.categoryId,
-          planId: t.planId,
-          date: t.taskDate || t.occurDate
-        })));
-      } else {
-        console.log('[GoalDetail] ⚠️  API响应为空');
+      } catch (apiError) {
+        console.error('[GoalDetail] ❌ API加载任务失败:', apiError);
+        // 继续执行，只使用localStorage的任务
       }
-    } catch (apiError) {
-      console.error('[GoalDetail] ❌ API加载任务失败:', apiError);
-      // 继续执行，只使用localStorage的任务
+    } else {
+      console.log('[GoalDetail] ⚠️  规划无日期范围，跳过API加载');
     }
 
     // 3. 合并两个来源的任务（避免重复）
