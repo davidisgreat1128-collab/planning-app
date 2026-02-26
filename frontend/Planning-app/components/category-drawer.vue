@@ -882,6 +882,8 @@ function onDeletePlanConfirm(deleteWithTasks) {
   transition: all 0.2s;
   height: auto;  /* 高度自适应 */
   min-height: auto;
+  position: relative;  /* 设置为相对定位，建立层叠上下文 */
+  z-index: 10;  /* 前景层，在背景按钮之上 */
 }
 
 .plan-card.active {
@@ -1119,6 +1121,8 @@ function onDeletePlanConfirm(deleteWithTasks) {
   bottom: 0;
   display: flex;
   gap: 10rpx;
+  z-index: 1;  /* 背景层，在前景卡片之下 */
+  background-color: pink !important;  /* 🎀 调试：粉色背景，查看背景层位置 */
 }
 
 .bottom-spacer {
