@@ -296,17 +296,36 @@ const completedTasks = computed(() => {
 
 // 计算属性：按日期分组的未完成任务
 const tasksByDate = computed(() => {
+  console.log('[tasksByDate] 🗓️  开始分组任务，未完成任务数:', incompleteTasks.value.length);
+
   const grouped = {};
 
   incompleteTasks.value.forEach(task => {
-    const date = task.date || task.occurDate;
-    if (!date) return;
+    // 兼容多种日期字段: taskDate(API) / occurDate(重复任务) / date(localStorage)
+    const date = task.taskDate || task.occurDate || task.date;
 
-    if (!grouped[date]) {
-      grouped[date] = [];
+    if (!date) {
+      console.log('[tasksByDate] ⚠️  任务无日期，跳过:', {
+        id: task.id,
+        title: task.title,
+        taskDate: task.taskDate,
+        occurDate: task.occurDate,
+        date: task.date
+      });
+      return;
     }
-    grouped[date].push(task);
+
+    // 日期格式统一转换为 yyyy-MM-dd 或 yyyy/MM/dd
+    const normalizedDate = date.replace(/\//g, '-');
+
+    if (!grouped[normalizedDate]) {
+      grouped[normalizedDate] = [];
+    }
+    grouped[normalizedDate].push(task);
   });
+
+  console.log('[tasksByDate] 📊 分组完成，日期数:', Object.keys(grouped).length);
+  console.log('[tasksByDate] 日期列表:', Object.keys(grouped));
 
   // 转换为数组并按日期排序
   return Object.keys(grouped)
@@ -334,8 +353,8 @@ const tasksByDate = computed(() => {
 
 // 格式化日期显示
 function formatDateDisplay(dateStr) {
-  // dateStr格式: 2026/02/27
-  const parts = dateStr.split('/');
+  // 兼容格式: 2026/02/27 或 2026-02-27
+  const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
   if (parts.length !== 3) return dateStr;
 
   const month = parseInt(parts[1]);
