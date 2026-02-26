@@ -1593,7 +1593,9 @@ async function save() {
     uni.showLoading({ title: '保存中...' });
 
     // 检查是否是 localStorage 任务（ID 以 task_ 开头）
+    console.log('[TaskEdit] save() 调用 - taskId:', taskId.value, 'isEdit:', isEdit.value);
     const isLocalStorageTask = isEdit.value && taskId.value && String(taskId.value).startsWith('task_');
+    console.log('[TaskEdit] isLocalStorageTask:', isLocalStorageTask);
 
     if (isLocalStorageTask) {
       // localStorage 任务：直接更新 localStorage，不调用后端 API
