@@ -88,8 +88,8 @@
         </view>
 
         <view class="plan-status">
-          <text class="status-item">已完成{{ goalData.completedPlans }}</text>
-          <text class="status-item">未完成{{ goalData.uncompletedPlans }}</text>
+          <text class="status-item">已完成{{ completedTasks.length }}</text>
+          <text class="status-item">未完成{{ incompleteTasks.length }}</text>
         </view>
 
         <view class="plan-category">
@@ -98,20 +98,20 @@
 
         <view class="plan-list">
           <view
-            v-for="(plan, index) in goalData.plans"
-            :key="index"
+            v-for="task in incompleteTasks"
+            :key="task.id"
             class="plan-item"
-            :class="[`priority-${plan.priority}`]"
+            :class="getTaskPriorityClass(task)"
           >
             <view class="plan-icon-wrapper">
               <text class="plan-icon">⭕</text>
-              <text class="plan-emoji">{{ plan.emoji }}</text>
+              <text class="plan-emoji">{{ task.iconEmoji || '🔔' }}</text>
             </view>
             <view class="plan-content">
-              <text class="plan-title">{{ plan.title }}</text>
+              <text class="plan-title">{{ task.title }}</text>
               <view class="plan-meta">
-                <text class="plan-date">今天</text>
-                <text class="plan-repeat">重复事件</text>
+                <text class="plan-date">{{ getTaskDateText(task) }}</text>
+                <text v-if="task.isRecurring" class="plan-repeat">重复事件</text>
               </view>
             </view>
           </view>
@@ -169,13 +169,15 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue';
+import { ref, reactive, onMounted, computed } from 'vue';
 import { usePlanStore } from '@/store/plan.js';
+import { useTaskStore } from '@/store/task.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 
-// 获取 planStore
+// 获取 stores
 const planStore = usePlanStore();
+const taskStore = useTaskStore();
 
 // 当前规划ID
 const currentPlanId = ref(null);
@@ -244,6 +246,24 @@ const goalData = ref({
   ]
 });
 
+// 计算属性：获取属于当前规划的任务
+const planTasks = computed(() => {
+  if (!currentPlanId.value) return [];
+
+  // 从 taskStore 获取所有任务，筛选出属于当前规划的任务
+  return taskStore.tasks.filter(task => task.categoryId === currentPlanId.value);
+});
+
+// 计算属性：未完成的任务
+const incompleteTasks = computed(() => {
+  return planTasks.value.filter(task => task.status !== 'completed');
+});
+
+// 计算属性：已完成的任务
+const completedTasks = computed(() => {
+  return planTasks.value.filter(task => task.status === 'completed');
+});
+
 // 切换里程碑展开/折叠
 function toggleMilestone(index) {
   expandedMilestones[index] = !expandedMilestones[index];
@@ -308,6 +328,45 @@ function handleMenuAction(action) {
   // TODO: 实现具体的菜单操作
 }
 
+// 获取任务优先级样式类
+function getTaskPriorityClass(task) {
+  if (task.isUrgent && task.isImportant) {
+    return 'priority-high'; // 红色 - 紧急且重要
+  } else if (!task.isUrgent && task.isImportant) {
+    return 'priority-medium'; // 蓝色 - 重要不紧急
+  } else if (task.isUrgent && !task.isImportant) {
+    return 'priority-low'; // 黄色 - 紧急不重要
+  } else {
+    return ''; // 绿色 - 不紧急不重要
+  }
+}
+
+// 获取任务日期显示文本
+function getTaskDateText(task) {
+  // 如果是今天的任务
+  const today = new Date().toISOString().split('T')[0];
+  if (task.date === today || task.occurDate === today) {
+    return '今天';
+  }
+
+  // 如果是明天的任务
+  const tomorrow = new Date();
+  tomorrow.setDate(tomorrow.getDate() + 1);
+  const tomorrowStr = tomorrow.toISOString().split('T')[0];
+  if (task.date === tomorrowStr || task.occurDate === tomorrowStr) {
+    return '明天';
+  }
+
+  // 其他日期显示具体日期
+  const taskDate = task.occurDate || task.date;
+  if (taskDate) {
+    const date = new Date(taskDate);
+    return `${date.getMonth() + 1}/${date.getDate()}`;
+  }
+
+  return '未设置';
+}
+
 // 返回
 function goBack() {
   uni.navigateBack();
@@ -316,7 +375,7 @@ function goBack() {
 /**
  * 从 planStore 加载规划数据
  */
-function loadPlanData(planId) {
+async function loadPlanData(planId) {
   console.log('[GoalDetail] 加载规划数据:', planId);
 
   // 先加载所有规划
@@ -357,7 +416,12 @@ function loadPlanData(planId) {
     goalData.value.milestones = plan.milestones;
   }
 
+  // 加载当前日期的任务（包括属于该规划的任务）
+  const today = new Date().toISOString().split('T')[0];
+  await taskStore.fetchTasksByDate(today);
+
   console.log('[GoalDetail] 显示数据:', goalData.value);
+  console.log('[GoalDetail] 任务数据:', planTasks.value);
 }
 
 // 页面加载时接收传递的数据
