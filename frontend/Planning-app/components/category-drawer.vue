@@ -552,11 +552,20 @@ function onDeleteConfirm(deleteMode) {
 
   const categoryId = deletingCategory.value.id;
 
+  // 检查是否删除的是当前选中的分类
+  const isDeletingSelected = selectedCategory.value === categoryId;
+
   // 从列表中删除分类
   const index = userCategories.value.findIndex(c => c.id === categoryId);
   if (index !== -1) {
     userCategories.value.splice(index, 1);
     saveCategories();
+  }
+
+  // 如果删除的是当前选中的分类，自动切换到"全部"
+  if (isDeletingSelected) {
+    console.log('[CategoryDrawer] 删除了当前选中的分类，自动切换到"全部"');
+    selectCategory('all');
   }
 
   // TODO: 根据 deleteMode 处理关联任务
@@ -703,11 +712,22 @@ function onDeletePlanConfirm(deleteWithTasks) {
 
   console.log('[CategoryDrawer] 确认删除规划:', deletingPlan.value.name, '是否同时删除任务:', deleteWithTasks);
 
+  const planId = deletingPlan.value.id;
+
+  // 检查是否删除的是当前选中的规划
+  const isDeletingSelected = selectedCategory.value === planId;
+
   // 从 userCategories 中删除规划
-  const index = userCategories.value.findIndex(c => c.id === deletingPlan.value.id);
+  const index = userCategories.value.findIndex(c => c.id === planId);
   if (index !== -1) {
     userCategories.value.splice(index, 1);
     saveCategories();
+  }
+
+  // 如果删除的是当前选中的规划，自动切换到"全部"
+  if (isDeletingSelected) {
+    console.log('[CategoryDrawer] 删除了当前选中的规划，自动切换到"全部"');
+    selectCategory('all');
   }
 
   // TODO: 如果 deleteWithTasks 为 true，还需要删除关联的任务
