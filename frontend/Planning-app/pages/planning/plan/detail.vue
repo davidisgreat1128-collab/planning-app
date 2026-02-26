@@ -565,20 +565,22 @@ async function loadPlanData(planId) {
 
         if (result && result.taskMap) {
           console.log('[GoalDetail] taskMap键值:', Object.keys(result.taskMap));
+          console.log('[GoalDetail] taskMap完整数据:', result.taskMap);
 
           // 提取所有日期的任务
           apiTasks = Object.values(result.taskMap).flatMap(dayData => {
+            console.log('[GoalDetail] 处理日期数据:', dayData);
             const tasks = [];
-            if (dayData.single) {
-              console.log('[GoalDetail] 单日任务:', dayData.single.length, '个');
+            if (dayData.single && dayData.single.length > 0) {
+              console.log('[GoalDetail] 单日任务:', dayData.single.length, '个', dayData.single);
               tasks.push(...dayData.single);
             }
-            if (dayData.range) {
-              console.log('[GoalDetail] 范围任务:', dayData.range.length, '个');
+            if (dayData.range && dayData.range.length > 0) {
+              console.log('[GoalDetail] 范围任务:', dayData.range.length, '个', dayData.range);
               tasks.push(...dayData.range);
             }
-            if (dayData.recurring) {
-              console.log('[GoalDetail] 重复任务:', dayData.recurring.length, '个');
+            if (dayData.recurring && dayData.recurring.length > 0) {
+              console.log('[GoalDetail] 重复任务:', dayData.recurring.length, '个', dayData.recurring);
               tasks.push(...dayData.recurring);
             }
             return tasks;
