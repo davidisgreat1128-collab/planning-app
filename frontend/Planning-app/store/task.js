@@ -134,25 +134,99 @@ export const useTaskStore = defineStore('task', () => {
 
   /**
    * 切换任务完成状态
-   * @param {number} id - 任务ID
+   * @param {number|string} id - 任务ID
    * @param {string} currentStatus - 当前状态 ('pending' | 'completed' | 'skipped')
    */
   async function toggleDone(id, currentStatus) {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
-    await updateTask(id, { status: newStatus });
-    const idx = tasks.value.findIndex(t => t.id === id);
-    if (idx !== -1) {
-      tasks.value[idx].status = newStatus;
+
+    // 检查是否是 localStorage 任务（ID 以 task_ 开头）
+    const isLocalStorageTask = id && String(id).startsWith('task_');
+
+    if (isLocalStorageTask) {
+      // localStorage 任务：直接更新 localStorage
+      console.log('[TaskStore] toggleDone - localStorage 任务:', id);
+
+      try {
+        const savedTasks = uni.getStorageSync('tasks');
+        let allTasks = savedTasks ? JSON.parse(savedTasks) : [];
+
+        // 查找并更新任务状态
+        const taskIndex = allTasks.findIndex(t => String(t.id) === String(id));
+        if (taskIndex !== -1) {
+          allTasks[taskIndex].status = newStatus;
+          allTasks[taskIndex].updateTime = new Date().toISOString();
+
+          // 记录完成时间
+          if (newStatus === 'completed' && !allTasks[taskIndex].completedAt) {
+            allTasks[taskIndex].completedAt = new Date().toISOString();
+          } else if (newStatus === 'pending') {
+            // 取消完成时，清除完成时间
+            delete allTasks[taskIndex].completedAt;
+          }
+
+          // 保存回 localStorage
+          uni.setStorageSync('tasks', JSON.stringify(allTasks));
+
+          // 同步更新 taskStore 中的状态
+          const idx = tasks.value.findIndex(t => String(t.id) === String(id));
+          if (idx !== -1) {
+            tasks.value[idx].status = newStatus;
+            tasks.value[idx].updateTime = allTasks[taskIndex].updateTime;
+            if (allTasks[taskIndex].completedAt) {
+              tasks.value[idx].completedAt = allTasks[taskIndex].completedAt;
+            } else {
+              delete tasks.value[idx].completedAt;
+            }
+          }
+        }
+      } catch (e) {
+        console.error('[TaskStore] toggleDone - 更新 localStorage 失败:', e);
+        throw e;
+      }
+    } else {
+      // 后端任务：调用 API
+      await updateTask(id, { status: newStatus });
+      const idx = tasks.value.findIndex(t => t.id === id);
+      if (idx !== -1) {
+        tasks.value[idx].status = newStatus;
+      }
     }
   }
 
   /**
    * 删除任务
-   * @param {number} id - 任务ID
+   * @param {number|string} id - 任务ID
    */
   async function removeTask(id) {
-    await deleteTask(id);
-    tasks.value = tasks.value.filter(t => t.id !== id);
+    // 检查是否是 localStorage 任务
+    const isLocalStorageTask = id && String(id).startsWith('task_');
+
+    if (isLocalStorageTask) {
+      // localStorage 任务：直接从 localStorage 删除
+      console.log('[TaskStore] removeTask - localStorage 任务:', id);
+
+      try {
+        const savedTasks = uni.getStorageSync('tasks');
+        let allTasks = savedTasks ? JSON.parse(savedTasks) : [];
+
+        // 过滤掉要删除的任务
+        allTasks = allTasks.filter(t => String(t.id) !== String(id));
+
+        // 保存回 localStorage
+        uni.setStorageSync('tasks', JSON.stringify(allTasks));
+
+        // 从 taskStore 中移除
+        tasks.value = tasks.value.filter(t => String(t.id) !== String(id));
+      } catch (e) {
+        console.error('[TaskStore] removeTask - 删除 localStorage 任务失败:', e);
+        throw e;
+      }
+    } else {
+      // 后端任务：调用 API
+      await deleteTask(id);
+      tasks.value = tasks.value.filter(t => t.id !== id);
+    }
   }
 
   /**
