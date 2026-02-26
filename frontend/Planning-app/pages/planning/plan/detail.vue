@@ -175,6 +175,7 @@
 import { ref, reactive, onMounted, computed } from 'vue';
 import { usePlanStore } from '@/store/plan.js';
 import { useTaskStore } from '@/store/task.js';
+import { getTasks } from '@/api/task.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 
@@ -251,10 +252,36 @@ const goalData = ref({
 
 // 计算属性：获取属于当前规划的任务
 const planTasks = computed(() => {
-  if (!currentPlanId.value) return [];
+  if (!currentPlanId.value) {
+    console.log('[planTasks] ⚠️  currentPlanId为空');
+    return [];
+  }
+
+  console.log('[planTasks] 🔍 开始筛选任务，规划ID:', currentPlanId.value);
+  console.log('[planTasks] taskStore总任务数:', taskStore.tasks.length);
 
   // 从 taskStore 获取所有任务，筛选出属于当前规划的任务
-  return taskStore.tasks.filter(task => task.categoryId === currentPlanId.value);
+  // 支持 categoryId 或 planId 匹配
+  const filtered = taskStore.tasks.filter(task => {
+    const matchesCategoryId = task.categoryId === currentPlanId.value;
+    const matchesPlanId = task.planId === currentPlanId.value;
+    const matches = matchesCategoryId || matchesPlanId;
+
+    if (matches) {
+      console.log('[planTasks] ✅ 匹配任务:', {
+        id: task.id,
+        title: task.title,
+        categoryId: task.categoryId,
+        planId: task.planId,
+        匹配方式: matchesCategoryId ? 'categoryId' : 'planId'
+      });
+    }
+
+    return matches;
+  });
+
+  console.log('[planTasks] 📊 筛选结果:', filtered.length, '个任务');
+  return filtered;
 });
 
 // 计算属性：未完成的任务
@@ -364,34 +391,35 @@ function createNewTask() {
 
 // 任务创建成功后的回调
 async function onTaskCreated() {
-  console.log('[GoalDetail] 任务创建成功，刷新任务列表');
+  console.log('========================================');
+  console.log('[GoalDetail] 📝 任务创建成功回调触发');
+  console.log('[GoalDetail] 当前规划ID:', currentPlanId.value);
+  console.log('[GoalDetail] 刷新前 - taskStore总任务数:', taskStore.tasks.length);
+  console.log('[GoalDetail] 刷新前 - 规划任务数(planTasks):', planTasks.value.length);
+  console.log('[GoalDetail] 刷新前 - planTasks列表:', planTasks.value.map(t => ({
+    id: t.id,
+    title: t.title,
+    categoryId: t.categoryId,
+    planId: t.planId,
+    date: t.date || t.occurDate || t.taskDate
+  })));
 
-  // 重新加载当前日期的任务数据（包括新创建的任务）
-  const today = new Date();
-  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
-
+  // 重新加载整个规划容器的数据（包括所有日期的任务）
   try {
-    await taskStore.fetchTasksByDate(dateStr);
+    await loadPlanData(currentPlanId.value);
 
-    // 同时加载 localStorage 中的任务（模板创建的任务）
-    const savedTasks = uni.getStorageSync('tasks');
-    if (savedTasks) {
-      const allLocalTasks = JSON.parse(savedTasks);
-      // 筛选出当前规划的任务
-      const planLocalTasks = allLocalTasks.filter(t => t.categoryId === currentPlanId.value);
-
-      // 合并到 taskStore（避免重复）
-      const existingIds = new Set(taskStore.tasks.map(t => t.id));
-      const newTasks = planLocalTasks.filter(t => !existingIds.has(t.id));
-
-      if (newTasks.length > 0) {
-        taskStore.tasks = [...taskStore.tasks, ...newTasks];
-      }
-    }
-
-    console.log('[GoalDetail] 任务列表已刷新，当前任务数:', planTasks.value.length);
+    console.log('[GoalDetail] 刷新后 - taskStore总任务数:', taskStore.tasks.length);
+    console.log('[GoalDetail] 刷新后 - 规划任务数(planTasks):', planTasks.value.length);
+    console.log('[GoalDetail] 刷新后 - planTasks列表:', planTasks.value.map(t => ({
+      id: t.id,
+      title: t.title,
+      categoryId: t.categoryId,
+      planId: t.planId,
+      date: t.date || t.occurDate || t.taskDate
+    })));
+    console.log('========================================');
   } catch (err) {
-    console.error('[GoalDetail] 刷新任务列表失败:', err);
+    console.error('[GoalDetail] ❌ 刷新容器任务列表失败:', err);
   }
 }
 
@@ -501,18 +529,113 @@ async function loadPlanData(planId) {
     goalData.value.milestones = plan.milestones;
   }
 
-  // 直接从localStorage加载所有任务（包括属于该规划的所有任务）
+  // 加载任务数据：从localStorage和后端API两个来源
   try {
+    console.log('[GoalDetail] 🔄 开始加载任务数据...');
+
+    // 1. 从localStorage加载模板生成的任务
+    let localTasks = [];
     const savedTasks = uni.getStorageSync('tasks');
     if (savedTasks) {
-      const allTasks = JSON.parse(savedTasks);
-      // 手动更新taskStore的tasks
-      taskStore.tasks = allTasks;
-      console.log('[GoalDetail] 从localStorage加载了', allTasks.length, '个任务');
-      console.log('[GoalDetail] 属于当前规划的任务:', planTasks.value.length, '个');
+      localTasks = JSON.parse(savedTasks);
+      console.log('[GoalDetail] ✅ localStorage加载: 共', localTasks.length, '个任务');
+      console.log('[GoalDetail] localStorage任务详情:', localTasks.map(t => ({
+        id: t.id,
+        title: t.title,
+        categoryId: t.categoryId,
+        planId: t.planId
+      })));
+    } else {
+      console.log('[GoalDetail] ⚠️  localStorage无任务数据');
     }
+
+    // 2. 从后端API加载用户创建的任务（查询规划的日期范围）
+    let apiTasks = [];
+    if (plan.startDate && plan.endDate) {
+      // 将日期格式从 yyyy/MM/dd 转为 yyyy-MM-dd
+      const startStr = plan.startDate.replace(/\//g, '-');
+      const endStr = plan.endDate.replace(/\//g, '-');
+
+      console.log('[GoalDetail] 📡 准备调用API加载任务');
+      console.log('[GoalDetail] API请求参数: start=' + startStr + ', end=' + endStr);
+
+      try {
+        const result = await getTasks({ start: startStr, end: endStr });
+        console.log('[GoalDetail] 📥 API响应结果:', result);
+
+        if (result && result.taskMap) {
+          console.log('[GoalDetail] taskMap键值:', Object.keys(result.taskMap));
+
+          // 提取所有日期的任务
+          apiTasks = Object.values(result.taskMap).flatMap(dayData => {
+            const tasks = [];
+            if (dayData.single) {
+              console.log('[GoalDetail] 单日任务:', dayData.single.length, '个');
+              tasks.push(...dayData.single);
+            }
+            if (dayData.range) {
+              console.log('[GoalDetail] 范围任务:', dayData.range.length, '个');
+              tasks.push(...dayData.range);
+            }
+            if (dayData.recurring) {
+              console.log('[GoalDetail] 重复任务:', dayData.recurring.length, '个');
+              tasks.push(...dayData.recurring);
+            }
+            return tasks;
+          });
+
+          console.log('[GoalDetail] ✅ API加载: 共', apiTasks.length, '个任务');
+          console.log('[GoalDetail] API任务详情:', apiTasks.map(t => ({
+            id: t.id,
+            title: t.title,
+            categoryId: t.categoryId,
+            planId: t.planId,
+            date: t.taskDate || t.occurDate
+          })));
+        } else {
+          console.log('[GoalDetail] ⚠️  API响应无taskMap');
+        }
+      } catch (apiError) {
+        console.error('[GoalDetail] ❌ API加载任务失败:', apiError);
+        // 继续执行，只使用localStorage的任务
+      }
+    } else {
+      console.log('[GoalDetail] ⚠️  规划无日期范围，跳过API加载');
+    }
+
+    // 3. 合并两个来源的任务（避免重复）
+    console.log('[GoalDetail] 🔀 开始合并任务...');
+    const allTasks = [...localTasks];
+    const localIds = new Set(localTasks.map(t => String(t.id)));
+
+    console.log('[GoalDetail] localStorage任务ID集合:', Array.from(localIds));
+
+    for (const apiTask of apiTasks) {
+      const taskId = String(apiTask.id);
+      if (!localIds.has(taskId)) {
+        console.log('[GoalDetail] ➕ 添加API任务:', taskId, apiTask.title);
+        allTasks.push(apiTask);
+      } else {
+        console.log('[GoalDetail] ⏭️  跳过重复任务:', taskId, apiTask.title);
+      }
+    }
+
+    // 更新taskStore
+    taskStore.tasks = allTasks;
+    console.log('[GoalDetail] ✅ taskStore更新完成: 总任务数', allTasks.length);
+    console.log('[GoalDetail] 📊 筛选规划任务中...');
+    console.log('[GoalDetail] 当前规划ID:', planId);
+    console.log('[GoalDetail] planTasks计算属性结果:', planTasks.value.length, '个任务');
+    console.log('[GoalDetail] planTasks详情:', planTasks.value.map(t => ({
+      id: t.id,
+      title: t.title,
+      categoryId: t.categoryId,
+      planId: t.planId,
+      匹配字段: t.categoryId === planId ? 'categoryId' : (t.planId === planId ? 'planId' : '不匹配')
+    })));
   } catch (e) {
-    console.error('[GoalDetail] 加载任务失败:', e);
+    console.error('[GoalDetail] ❌ 加载任务失败:', e);
+    console.error('[GoalDetail] 错误堆栈:', e.stack);
   }
 
   console.log('[GoalDetail] 显示数据:', goalData.value);
