@@ -124,10 +124,10 @@
       <view class="bottom-spacer"></view>
     </scroll-view>
 
-    <!-- 底部新建计划按钮 -->
+    <!-- 底部新建任务按钮 -->
     <view class="bottom-action">
       <view class="new-plan-btn" @tap="createNewTask">
-        <text class="btn-text">+新建计划</text>
+        <text class="btn-text">+新建任务</text>
       </view>
     </view>
 
@@ -143,6 +143,7 @@
       :visible="showTaskPanel"
       :category-id="currentPlanId"
       @close="showTaskPanel = false"
+      @submitted="onTaskCreated"
     />
 
     <!-- 菜单弹窗 -->
@@ -282,11 +283,25 @@ const tasksByDate = computed(() => {
 
   // 转换为数组并按日期排序
   return Object.keys(grouped)
-    .sort()
+    .sort() // 日期升序排序
     .map(date => ({
       date,
       dateDisplay: formatDateDisplay(date),
-      tasks: grouped[date]
+      // 每个日期内的任务也按时间排序（有startTime的在前，按时间升序；无时间的在后）
+      tasks: grouped[date].sort((a, b) => {
+        const aHasTime = !!a.startTime;
+        const bHasTime = !!b.startTime;
+
+        // 都有时间：按时间排序
+        if (aHasTime && bHasTime) {
+          return a.startTime.localeCompare(b.startTime);
+        }
+        // 有时间的排在前面
+        if (aHasTime) return -1;
+        if (bHasTime) return 1;
+        // 都没有时间：保持原顺序（或按创建时间）
+        return 0;
+      })
     }));
 });
 
@@ -345,6 +360,39 @@ function showPlanHelp() {
 function createNewTask() {
   console.log('[GoalDetail] 创建新任务');
   showTaskPanel.value = true;
+}
+
+// 任务创建成功后的回调
+async function onTaskCreated() {
+  console.log('[GoalDetail] 任务创建成功，刷新任务列表');
+
+  // 重新加载当前日期的任务数据（包括新创建的任务）
+  const today = new Date();
+  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
+
+  try {
+    await taskStore.fetchTasksByDate(dateStr);
+
+    // 同时加载 localStorage 中的任务（模板创建的任务）
+    const savedTasks = uni.getStorageSync('tasks');
+    if (savedTasks) {
+      const allLocalTasks = JSON.parse(savedTasks);
+      // 筛选出当前规划的任务
+      const planLocalTasks = allLocalTasks.filter(t => t.categoryId === currentPlanId.value);
+
+      // 合并到 taskStore（避免重复）
+      const existingIds = new Set(taskStore.tasks.map(t => t.id));
+      const newTasks = planLocalTasks.filter(t => !existingIds.has(t.id));
+
+      if (newTasks.length > 0) {
+        taskStore.tasks = [...taskStore.tasks, ...newTasks];
+      }
+    }
+
+    console.log('[GoalDetail] 任务列表已刷新，当前任务数:', planTasks.value.length);
+  } catch (err) {
+    console.error('[GoalDetail] 刷新任务列表失败:', err);
+  }
 }
 
 // 显示菜单
