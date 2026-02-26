@@ -549,60 +549,52 @@ async function loadPlanData(planId) {
       console.log('[GoalDetail] ⚠️  localStorage无任务数据');
     }
 
-    // 2. 从后端API加载用户创建的任务（查询规划的日期范围）
+    // 2. 从后端API加载用户创建的任务
+    // 临时方案：由于范围查询存在问题,改为加载今天的任务
+    // TODO: 后端修复范围查询后,改回使用 start/end 参数
     let apiTasks = [];
-    if (plan.startDate && plan.endDate) {
-      // 将日期格式从 yyyy/MM/dd 转为 yyyy-MM-dd
-      const startStr = plan.startDate.replace(/\//g, '-');
-      const endStr = plan.endDate.replace(/\//g, '-');
 
-      console.log('[GoalDetail] 📡 准备调用API加载任务');
-      console.log('[GoalDetail] API请求参数: start=' + startStr + ', end=' + endStr);
+    console.log('[GoalDetail] 📡 准备调用API加载任务');
 
-      try {
-        const result = await getTasks({ start: startStr, end: endStr });
-        console.log('[GoalDetail] 📥 API响应结果:', result);
+    try {
+      // 临时使用单日查询（只加载今天）
+      const today = new Date();
+      const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`;
 
-        if (result && result.taskMap) {
-          console.log('[GoalDetail] taskMap键值:', Object.keys(result.taskMap));
-          console.log('[GoalDetail] taskMap完整数据:', result.taskMap);
+      console.log('[GoalDetail] API请求参数: date=' + todayStr + ' (临时方案:仅今天)');
 
-          // 提取所有日期的任务
-          apiTasks = Object.values(result.taskMap).flatMap(dayData => {
-            console.log('[GoalDetail] 处理日期数据:', dayData);
-            const tasks = [];
-            if (dayData.single && dayData.single.length > 0) {
-              console.log('[GoalDetail] 单日任务:', dayData.single.length, '个', dayData.single);
-              tasks.push(...dayData.single);
-            }
-            if (dayData.range && dayData.range.length > 0) {
-              console.log('[GoalDetail] 范围任务:', dayData.range.length, '个', dayData.range);
-              tasks.push(...dayData.range);
-            }
-            if (dayData.recurring && dayData.recurring.length > 0) {
-              console.log('[GoalDetail] 重复任务:', dayData.recurring.length, '个', dayData.recurring);
-              tasks.push(...dayData.recurring);
-            }
-            return tasks;
-          });
+      const result = await getTasks({ date: todayStr });
+      console.log('[GoalDetail] 📥 API响应结果:', result);
 
-          console.log('[GoalDetail] ✅ API加载: 共', apiTasks.length, '个任务');
-          console.log('[GoalDetail] API任务详情:', apiTasks.map(t => ({
-            id: t.id,
-            title: t.title,
-            categoryId: t.categoryId,
-            planId: t.planId,
-            date: t.taskDate || t.occurDate
-          })));
-        } else {
-          console.log('[GoalDetail] ⚠️  API响应无taskMap');
+      // 单日查询返回: { date, single: [], range: [], recurring: [] }
+      if (result) {
+        if (result.single && result.single.length > 0) {
+          console.log('[GoalDetail] 单日任务:', result.single.length, '个');
+          apiTasks.push(...result.single);
         }
-      } catch (apiError) {
-        console.error('[GoalDetail] ❌ API加载任务失败:', apiError);
-        // 继续执行，只使用localStorage的任务
+        if (result.range && result.range.length > 0) {
+          console.log('[GoalDetail] 范围任务:', result.range.length, '个');
+          apiTasks.push(...result.range);
+        }
+        if (result.recurring && result.recurring.length > 0) {
+          console.log('[GoalDetail] 重复任务:', result.recurring.length, '个');
+          apiTasks.push(...result.recurring);
+        }
+
+        console.log('[GoalDetail] ✅ API加载: 共', apiTasks.length, '个任务');
+        console.log('[GoalDetail] API任务详情:', apiTasks.map(t => ({
+          id: t.id,
+          title: t.title,
+          categoryId: t.categoryId,
+          planId: t.planId,
+          date: t.taskDate || t.occurDate
+        })));
+      } else {
+        console.log('[GoalDetail] ⚠️  API响应为空');
       }
-    } else {
-      console.log('[GoalDetail] ⚠️  规划无日期范围，跳过API加载');
+    } catch (apiError) {
+      console.error('[GoalDetail] ❌ API加载任务失败:', apiError);
+      // 继续执行，只使用localStorage的任务
     }
 
     // 3. 合并两个来源的任务（避免重复）
