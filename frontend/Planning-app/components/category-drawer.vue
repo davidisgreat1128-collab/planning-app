@@ -37,7 +37,7 @@
                 @touchmove="onPlanTouchMove($event, plan.id)"
                 @touchend="onPlanTouchEnd($event, plan.id)"
               >
-                <!-- 前景：规划卡片内容 -->
+                <!-- 规划卡片内容 -->
                 <view class="plan-card" :class="{ active: selectedCategory === plan.id }" @tap="togglePlanSelection(plan.id)">
                   <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
                   <view class="plan-content">
@@ -48,16 +48,14 @@
                       已进行{{ getPlanProgressDays(plan) }}天
                     </text>
                   </view>
-                  <text v-if="selectedCategory === plan.id" class="plan-check">✓</text>
-                </view>
-
-                <!-- 背景：操作按钮 -->
-                <view class="swipe-actions plan-swipe-actions">
-                  <view class="swipe-btn edit-btn" @tap.stop="editPlan(plan)">
-                    <text class="swipe-icon">✏️</text>
-                  </view>
-                  <view class="swipe-btn delete-btn" @tap.stop="deletePlan(plan)">
-                    <text class="swipe-icon">🗑️</text>
+                  <!-- 右侧操作按钮：垂直排列 -->
+                  <view class="plan-actions-vertical">
+                    <view class="plan-action-btn" @tap.stop="editPlan(plan)">
+                      <text class="action-icon">✏️</text>
+                    </view>
+                    <view class="plan-action-btn" @tap.stop="deletePlan(plan)">
+                      <text class="action-icon">🗑️</text>
+                    </view>
                   </view>
                 </view>
               </view>
@@ -882,8 +880,7 @@ function onDeletePlanConfirm(deleteWithTasks) {
   transition: all 0.2s;
   height: auto;  /* 高度自适应 */
   min-height: auto;
-  position: relative;  /* 设置为相对定位，建立层叠上下文 */
-  z-index: 10;  /* 前景层，在背景按钮之上 */
+  justify-content: space-between;  /* 左右两侧分布 */
 }
 
 .plan-card.active {
@@ -966,6 +963,39 @@ function onDeletePlanConfirm(deleteWithTasks) {
   margin-top: 4rpx;  /* 稍微向下偏移，视觉上更平衡 */
   background-color: red !important;  /* 🔴 调试：红色背景 */
   padding: 5rpx;
+}
+
+/* 规划卡片右侧操作按钮：垂直排列 */
+.plan-actions-vertical {
+  display: flex;
+  flex-direction: column;  /* 垂直排列 */
+  gap: 10rpx;
+  flex-shrink: 0;  /* 不缩小 */
+  background-color: rgba(255, 192, 203, 0.5) !important;  /* 🎀 调试：粉色半透明背景 */
+  padding: 5rpx;
+  border: 2rpx solid hotpink !important;  /* 🎀 调试：粉色边框 */
+}
+
+.plan-action-btn {
+  width: 50rpx;
+  height: 50rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #f5f5f5;
+  border-radius: 8rpx;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 2rpx solid brown !important;  /* 🟤 调试：棕色边框 */
+}
+
+.plan-action-btn:active {
+  background-color: #e0e0e0;
+  transform: scale(0.95);
+}
+
+.action-icon {
+  font-size: 28rpx;
 }
 
 /* 创建规划卡片 */
