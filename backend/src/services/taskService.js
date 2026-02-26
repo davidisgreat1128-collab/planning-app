@@ -181,7 +181,26 @@ async function getTasksByRange(userId, startDate, endDate) {
 
   for (const o of occurrences) {
     initDate(o.occurDate);
-    map[o.occurDate].push({ ...o.toJSON(), _type: 'recurring' });
+    const occurrenceData = o.toJSON();
+    const parentTask = occurrenceData.task || {};
+
+    // 合并父任务的关键字段到实例数据中
+    map[o.occurDate].push({
+      ...occurrenceData,
+      _type: 'recurring',
+      // 从父任务继承的字段
+      title: parentTask.title || occurrenceData.title,
+      description: parentTask.description,
+      isUrgent: parentTask.isUrgent,
+      isImportant: parentTask.isImportant,
+      isAllDay: parentTask.isAllDay,
+      startTime: parentTask.startTime,
+      endTime: parentTask.endTime,
+      isRecurring: true,  // 重复任务实例始终标记为重复任务
+      rrule: parentTask.rrule,
+      categoryId: parentTask.categoryId,
+      planId: parentTask.planId
+    });
   }
 
   return map;
