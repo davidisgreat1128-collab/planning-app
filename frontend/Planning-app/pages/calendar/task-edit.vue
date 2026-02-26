@@ -427,11 +427,13 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
+import { usePlanStore } from '@/store/plan.js';
 
 // ============================================================
 // Store
 // ============================================================
 const taskStore = useTaskStore();
+const planStore = usePlanStore();
 
 /** 任务ID（编辑模式时有值） */
 const taskId = ref(null);
@@ -1690,6 +1692,11 @@ function goBack() {
 // 生命周期
 // ============================================================
 onMounted(() => {
+  // 确保 planStore 已加载数据
+  if (planStore.plans.length === 0) {
+    planStore.loadPlans();
+  }
+
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1];
   const options = currentPage.$page?.options || currentPage.options || {};
@@ -1724,11 +1731,11 @@ onMounted(() => {
       form.value.isUrgent     = task.isUrgent     || false;
       form.value.isImportant  = task.isImportant  || false;
       form.value.isAllDay     = task.isAllDay     !== false;
-      form.value.taskDate     = task.taskDate     || '';
+      form.value.taskDate     = task.taskDate     || task.date || task.occurDate || '';
       form.value.startTime    = task.startTime    || '';
       form.value.endTime      = task.endTime      || '';
       form.value.rrule        = task.rrule        || '';
-      form.value.planId       = task.planId       || null;
+      form.value.planId       = task.planId       || task.categoryId || null;
       // 判断模式
       form.value.hasTimeRange = !task.isAllDay && !!task.startTime;
       // 解析 RRULE 到 UI 状态
@@ -1737,15 +1744,41 @@ onMounted(() => {
       }
       // 新增字段
       taskDone.value    = task.status === 'completed';
-      createdAt.value   = task.createdAt  || task.created_at  || '';
-      completedAt.value = task.completedAt || task.completed_at || '';
+      // 兼容多种时间字段格式：createdAt / created_at / createTime
+      createdAt.value   = task.createdAt  || task.created_at  || task.createTime || '';
+      // 兼容完成时间字段：completedAt / completed_at / updateTime (仅当任务已完成时)
+      completedAt.value = task.completedAt || task.completed_at || (task.status === 'completed' ? task.updateTime : '') || '';
       // 子计划
       if (task.subtasks && Array.isArray(task.subtasks)) {
         subtasks.value = task.subtasks.map(s => ({ title: s.title || s, done: s.done || false }));
       }
-      // 规划名称
+
+      // 规划名称：优先使用 planName，否则根据 planId/categoryId 查找
       if (task.planName) {
         selectedPlanName.value = task.planName;
+      } else {
+        const planId = task.planId || task.categoryId;
+        if (planId) {
+          // 从 planStore 查找规划
+          const plan = planStore.plans.find(p => p.id === String(planId));
+          if (plan) {
+            selectedPlanName.value = plan.title;
+          } else {
+            // 从 user_categories 查找（可能是规划存储为分类）
+            try {
+              const categories = uni.getStorageSync('user_categories');
+              if (categories) {
+                const cats = JSON.parse(categories);
+                const cat = cats.find(c => c.id === String(planId));
+                if (cat) {
+                  selectedPlanName.value = cat.name;
+                }
+              }
+            } catch (e) {
+              console.error('[TaskEdit] 查找分类失败:', e);
+            }
+          }
+        }
       }
     }
   }
