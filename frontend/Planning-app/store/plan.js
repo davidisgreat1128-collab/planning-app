@@ -1,4 +1,6 @@
 import { defineStore } from 'pinia';
+import { useTaskStore } from './task.js';
+import { deleteTask, updateTask } from '@/api/task.js';
 
 export const usePlanStore = defineStore('plan', {
   state: () => ({
@@ -102,7 +104,7 @@ export const usePlanStore = defineStore('plan', {
      * @param {string} planId - 规划ID
      * @param {boolean} deleteWithTasks - 是否同时删除关联的计划
      */
-    deletePlan(planId, deleteWithTasks = false) {
+    async deletePlan(planId, deleteWithTasks = false) {
       const index = this.plans.findIndex(p => p.id === planId);
       if (index !== -1) {
         this.plans[index].isDeleted = true;
@@ -117,16 +119,99 @@ export const usePlanStore = defineStore('plan', {
 
         this.savePlans();
 
-        // TODO: 处理关联的计划（任务）
+        // 处理关联的任务
+        const taskStore = useTaskStore();
+
+        // 1. 从 localStorage 中获取任务
+        let localTasks = [];
+        try {
+          const savedTasks = uni.getStorageSync('tasks');
+          if (savedTasks) {
+            localTasks = JSON.parse(savedTasks);
+          }
+        } catch (e) {
+          console.error('[PlanStore] 读取 localStorage 任务失败:', e);
+        }
+
+        // 2. 从 taskStore 中获取任务（包含 localStorage 和 API 任务）
+        const allTasks = taskStore.tasks;
+
+        // 3. 筛选出属于该规划的任务（支持 categoryId 和 planId）
+        const planTasks = allTasks.filter(t =>
+          t.categoryId === planId || t.planId === planId
+        );
+
         if (deleteWithTasks) {
-          // 删除该规划下的所有计划
-          // 这里需要从任务列表中删除 planId === planId 的任务
-          // 目前前端只有 generatedTasks，已在上面清空
-          console.log('[PlanStore] 需要删除规划下的所有计划');
+          // 删除该规划下的所有任务
+          console.log('[PlanStore] 删除规划下的所有任务，数量:', planTasks.length);
+
+          for (const task of planTasks) {
+            try {
+              const taskId = String(task.id);
+              const isLocalTask = taskId.startsWith('task_');
+
+              if (isLocalTask) {
+                // localStorage 任务：从 localStorage 中删除
+                localTasks = localTasks.filter(t => String(t.id) !== taskId);
+              } else {
+                // 后端任务：调用 API 删除
+                await deleteTask(taskId);
+              }
+
+              // 从 taskStore 中移除
+              taskStore.tasks = taskStore.tasks.filter(t => String(t.id) !== taskId);
+            } catch (e) {
+              console.error('[PlanStore] 删除任务失败:', task.id, e);
+            }
+          }
+
+          // 保存更新后的 localStorage
+          try {
+            uni.setStorageSync('tasks', JSON.stringify(localTasks));
+          } catch (e) {
+            console.error('[PlanStore] 保存 localStorage 失败:', e);
+          }
         } else {
-          // 将该规划下的计划改为无分类
-          // 这里需要将任务的 planId 设置为 null
-          console.log('[PlanStore] 需要将规划下的计划改为无分类');
+          // 将该规划下的任务改为无分类（移除 planId/categoryId）
+          console.log('[PlanStore] 将规划下的任务改为无分类，数量:', planTasks.length);
+
+          for (const task of planTasks) {
+            try {
+              const taskId = String(task.id);
+              const isLocalTask = taskId.startsWith('task_');
+
+              if (isLocalTask) {
+                // localStorage 任务：更新 categoryId/planId 为 null
+                const taskIndex = localTasks.findIndex(t => String(t.id) === taskId);
+                if (taskIndex !== -1) {
+                  localTasks[taskIndex].categoryId = null;
+                  localTasks[taskIndex].planId = null;
+                }
+              } else {
+                // 后端任务：调用 API 更新
+                await updateTask(taskId, {
+                  categoryId: null,
+                  planId: null
+                });
+              }
+
+              // 更新 taskStore 中的任务
+              const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === taskId);
+              if (storeTaskIndex !== -1) {
+                taskStore.tasks[storeTaskIndex].categoryId = null;
+                taskStore.tasks[storeTaskIndex].planId = null;
+              }
+            } catch (e) {
+              console.error('[PlanStore] 更新任务失败:', task.id, e);
+            }
+          }
+
+          // 保存更新后的 localStorage
+          try {
+            uni.setStorageSync('tasks', JSON.stringify(localTasks));
+          } catch (e) {
+            console.error('[PlanStore] 保存 localStorage 失败:', e);
+          }
         }
       }
     },

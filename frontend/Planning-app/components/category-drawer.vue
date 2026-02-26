@@ -184,6 +184,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
+import { usePlanStore } from '@/store/plan.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
 import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
@@ -707,7 +708,7 @@ function deletePlan(plan) {
 /**
  * 确认删除规划
  */
-function onDeletePlanConfirm(deleteWithTasks) {
+async function onDeletePlanConfirm(deleteWithTasks) {
   if (!deletingPlan.value) return;
 
   console.log('[CategoryDrawer] 确认删除规划:', deletingPlan.value.name, '是否同时删除任务:', deleteWithTasks);
@@ -717,29 +718,45 @@ function onDeletePlanConfirm(deleteWithTasks) {
   // 检查是否删除的是当前选中的规划
   const isDeletingSelected = selectedCategory.value === planId;
 
-  // 从 userCategories 中删除规划
-  const index = userCategories.value.findIndex(c => c.id === planId);
-  if (index !== -1) {
-    userCategories.value.splice(index, 1);
-    saveCategories();
+  try {
+    uni.showLoading({ title: '删除中...' });
+
+    // 从 userCategories 中删除规划
+    const index = userCategories.value.findIndex(c => c.id === planId);
+    if (index !== -1) {
+      userCategories.value.splice(index, 1);
+      saveCategories();
+    }
+
+    // 调用 planStore 删除规划及其关联任务
+    const planStore = usePlanStore();
+    await planStore.deletePlan(planId, deleteWithTasks);
+
+    // 如果删除的是当前选中的规划，自动切换到"全部"
+    if (isDeletingSelected) {
+      console.log('[CategoryDrawer] 删除了当前选中的规划，自动切换到"全部"');
+      selectCategory('all');
+    }
+
+    uni.hideLoading();
+    uni.showToast({
+      title: deleteWithTasks ? '规划和任务已删除' : '规划已删除',
+      icon: 'success'
+    });
+
+    showDeletePlanDialog.value = false;
+    deletingPlan.value = null;
+
+    // 通知父组件容器已改变，需要刷新任务列表
+    emit('container-changed');
+  } catch (error) {
+    uni.hideLoading();
+    console.error('[CategoryDrawer] 删除规划失败:', error);
+    uni.showToast({
+      title: '删除失败，请重试',
+      icon: 'none'
+    });
   }
-
-  // 如果删除的是当前选中的规划，自动切换到"全部"
-  if (isDeletingSelected) {
-    console.log('[CategoryDrawer] 删除了当前选中的规划，自动切换到"全部"');
-    selectCategory('all');
-  }
-
-  // TODO: 如果 deleteWithTasks 为 true，还需要删除关联的任务
-  // 这需要调用后端API或者更新本地任务列表
-
-  uni.showToast({
-    title: deleteWithTasks ? '规划和计划已删除' : '规划已删除',
-    icon: 'success'
-  });
-
-  showDeletePlanDialog.value = false;
-  deletingPlan.value = null;
 }
 </script>
 
