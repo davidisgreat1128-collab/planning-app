@@ -896,14 +896,19 @@ onMounted(() => {
   bottom: 0;
   width: 8rpx;
   border-radius: 16rpx 0 0 16rpx;
+  background-color: #6BCB77; /* 绿色 - 不紧急不重要（默认） */
 }
 
 .plan-item.priority-high::before {
-  background-color: #FF6B6B;
+  background-color: #FF6B6B; /* 红色 - 紧急且重要 */
 }
 
 .plan-item.priority-medium::before {
-  background-color: #5B8CFF;
+  background-color: #5B8CFF; /* 蓝色 - 重要不紧急 */
+}
+
+.plan-item.priority-low::before {
+  background-color: #FFD93D; /* 黄色 - 紧急不重要 */
 }
 
 .plan-icon-wrapper {
