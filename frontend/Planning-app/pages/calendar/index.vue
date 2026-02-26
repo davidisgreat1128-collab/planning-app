@@ -1612,10 +1612,20 @@ function loadCategorySelection() {
 }
 
 /**
- * 页面显示时触发（从分类页面返回时会触发）
+ * 页面显示时触发（从其他页面返回时会触发）
+ * 例如：从规划详情页、任务详情页返回
  */
 onShow(() => {
+  console.log('[Calendar] onShow - 重新加载分类和任务数据');
+
+  // 重新加载分类选择
   loadCategorySelection();
+
+  // 重新加载当前日期的任务（包括 localStorage 任务）
+  // 如果 selectedDate 还没初始化，使用今天
+  const currentDate = selectedDate.value || formatDate(new Date());
+  console.log('[Calendar] onShow - 重新加载日期:', currentDate);
+  selectDate(currentDate);
 });
 
 onUnmounted(() => {
