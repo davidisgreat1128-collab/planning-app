@@ -571,6 +571,7 @@ const selectedDate = ref('');
 const selectedCategoryId = ref('all'); // 当前选中的分类ID：'all', 'none', 或具体分类ID
 const selectedPlanId = ref(''); // 当前选中的规划ID
 const userCategories = ref([]); // 用户创建的分类列表
+const isFirstShow = ref(true); // 标记是否首次显示（防止onShow与onMounted重复加载）
 
 // 快速新建任务底部面板
 const showAddPanel = ref(false);
@@ -1616,7 +1617,14 @@ function loadCategorySelection() {
  * 例如：从规划详情页、任务详情页返回
  */
 onShow(() => {
-  console.log('[Calendar] onShow - 重新加载分类和任务数据');
+  // 首次显示跳过（onMounted 已经加载过数据）
+  if (isFirstShow.value) {
+    isFirstShow.value = false;
+    console.log('[Calendar] onShow - 首次显示，跳过加载');
+    return;
+  }
+
+  console.log('[Calendar] onShow - 从其他页面返回，重新加载数据');
 
   // 重新加载分类选择
   loadCategorySelection();
