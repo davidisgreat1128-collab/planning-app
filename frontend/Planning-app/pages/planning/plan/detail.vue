@@ -80,10 +80,10 @@
         </view>
       </view>
 
-      <!-- 规划计划 -->
+      <!-- 任务规划 -->
       <view class="plans-section">
         <view class="section-header">
-          <text class="section-title">规划计划</text>
+          <text class="section-title">任务规划</text>
           <text class="help-link" @tap="showPlanHelp">如何正确分配规划?</text>
         </view>
 
@@ -92,26 +92,28 @@
           <text class="status-item">未完成{{ incompleteTasks.length }}</text>
         </view>
 
-        <view class="plan-category">
-          <text class="category-title">未完成</text>
-        </view>
+        <!-- 按日期分组显示未完成任务 -->
+        <view v-for="dateGroup in tasksByDate" :key="dateGroup.date" class="date-group">
+          <view class="plan-category">
+            <text class="category-title">{{ dateGroup.dateDisplay }}</text>
+          </view>
 
-        <view class="plan-list">
-          <view
-            v-for="task in incompleteTasks"
-            :key="task.id"
-            class="plan-item"
-            :class="getTaskPriorityClass(task)"
-          >
-            <view class="plan-icon-wrapper">
-              <text class="plan-icon">⭕</text>
-              <text class="plan-emoji">{{ task.iconEmoji || '🔔' }}</text>
-            </view>
-            <view class="plan-content">
-              <text class="plan-title">{{ task.title }}</text>
-              <view class="plan-meta">
-                <text class="plan-date">{{ getTaskDateText(task) }}</text>
-                <text v-if="task.isRecurring" class="plan-repeat">重复事件</text>
+          <view class="plan-list">
+            <view
+              v-for="task in dateGroup.tasks"
+              :key="task.id"
+              class="plan-item"
+              :class="getTaskPriorityClass(task)"
+            >
+              <view class="plan-icon-wrapper">
+                <text class="plan-icon">⭕</text>
+                <text class="plan-emoji">{{ task.iconEmoji || '🔔' }}</text>
+              </view>
+              <view class="plan-content">
+                <text class="plan-title">{{ task.title }}</text>
+                <view class="plan-meta">
+                  <text v-if="task.isRecurring" class="plan-repeat">重复事件</text>
+                </view>
               </view>
             </view>
           </view>
@@ -263,6 +265,41 @@ const incompleteTasks = computed(() => {
 const completedTasks = computed(() => {
   return planTasks.value.filter(task => task.status === 'completed');
 });
+
+// 计算属性：按日期分组的未完成任务
+const tasksByDate = computed(() => {
+  const grouped = {};
+
+  incompleteTasks.value.forEach(task => {
+    const date = task.date || task.occurDate;
+    if (!date) return;
+
+    if (!grouped[date]) {
+      grouped[date] = [];
+    }
+    grouped[date].push(task);
+  });
+
+  // 转换为数组并按日期排序
+  return Object.keys(grouped)
+    .sort()
+    .map(date => ({
+      date,
+      dateDisplay: formatDateDisplay(date),
+      tasks: grouped[date]
+    }));
+});
+
+// 格式化日期显示
+function formatDateDisplay(dateStr) {
+  // dateStr格式: 2026/02/27
+  const parts = dateStr.split('/');
+  if (parts.length !== 3) return dateStr;
+
+  const month = parseInt(parts[1]);
+  const day = parseInt(parts[2]);
+  return `${month}月${day}日`;
+}
 
 // 切换里程碑展开/折叠
 function toggleMilestone(index) {
@@ -416,9 +453,19 @@ async function loadPlanData(planId) {
     goalData.value.milestones = plan.milestones;
   }
 
-  // 加载当前日期的任务（包括属于该规划的任务）
-  const today = new Date().toISOString().split('T')[0];
-  await taskStore.fetchTasksByDate(today);
+  // 直接从localStorage加载所有任务（包括属于该规划的所有任务）
+  try {
+    const savedTasks = uni.getStorageSync('tasks');
+    if (savedTasks) {
+      const allTasks = JSON.parse(savedTasks);
+      // 手动更新taskStore的tasks
+      taskStore.tasks = allTasks;
+      console.log('[GoalDetail] 从localStorage加载了', allTasks.length, '个任务');
+      console.log('[GoalDetail] 属于当前规划的任务:', planTasks.value.length, '个');
+    }
+  } catch (e) {
+    console.error('[GoalDetail] 加载任务失败:', e);
+  }
 
   console.log('[GoalDetail] 显示数据:', goalData.value);
   console.log('[GoalDetail] 任务数据:', planTasks.value);
@@ -433,10 +480,10 @@ onMounted(() => {
 
   console.log('[GoalDetail] onMounted 接收参数:', options);
 
-  // 优先使用 planId 从 store 加载
-  if (options.planId) {
-    currentPlanId.value = options.planId;
-    loadPlanData(options.planId);
+  // 优先使用 planId 或 id 从 store 加载
+  if (options.planId || options.id) {
+    currentPlanId.value = options.planId || options.id;
+    loadPlanData(currentPlanId.value);
   }
   // 兼容旧方式：通过 planData 参数传递（向后兼容）
   else if (options.planData) {

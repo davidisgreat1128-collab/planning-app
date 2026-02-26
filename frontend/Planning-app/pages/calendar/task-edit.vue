@@ -1695,8 +1695,29 @@ onMounted(() => {
   const options = currentPage.$page?.options || currentPage.options || {};
 
   if (options.id) {
-    taskId.value = parseInt(options.id);
-    const task = taskStore.tasks.find(t => t.id === taskId.value);
+    // 任务ID可能是数字或字符串，不要强制转换
+    taskId.value = options.id;
+
+    // 先从taskStore查找
+    let task = taskStore.tasks.find(t => String(t.id) === String(taskId.value));
+
+    // 如果taskStore中没有，尝试从localStorage加载
+    if (!task) {
+      console.log('[TaskEdit] taskStore中未找到任务，尝试从localStorage加载');
+      try {
+        const savedTasks = uni.getStorageSync('tasks');
+        if (savedTasks) {
+          const allTasks = JSON.parse(savedTasks);
+          task = allTasks.find(t => String(t.id) === String(taskId.value));
+          if (task) {
+            console.log('[TaskEdit] 从localStorage找到任务:', task);
+          }
+        }
+      } catch (e) {
+        console.error('[TaskEdit] 从localStorage加载任务失败:', e);
+      }
+    }
+
     if (task) {
       form.value.title        = task.title        || '';
       form.value.description  = task.description  || '';

@@ -147,38 +147,35 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { getRandomBuff } from '@/utils/buffLibrary.js';
+import { getTemplateById } from '@/utils/templateDatabase.js';
+import { usePlanStore } from '@/store/plan.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
 import PlanIconDialog from '@/components/planning/PlanIconDialog.vue';
+
+// 获取planStore
+const planStore = usePlanStore();
+
+// 模板ID（从URL参数获取）
+const templateId = ref(null);
+// 模板数据
+const templateData = ref(null);
 
 // 图标选择弹窗状态
 const showIconDialog = ref(false);
 
-// 表单数据
+// 表单数据（初始为空，等待模板数据或使用默认值）
 const planForm = ref({
-  title: '循序渐进养成良好作息',
-  buff: getRandomBuff(),
+  title: '',
+  buff: '',
   icon: '', // 图标ID
   iconEmoji: '🔔', // 图标emoji（默认铃铛）
-  startDate: '2026/02/24',
-  startWeekday: '周二',
-  startHint: '今天',
-  endDate: '2026/03/26',
-  endWeekday: '周四',
-  duration: '持续30天',
-  milestones: [
-    {
-      title: '建立健康观念，健康永远是第一位的',
-      description: '注意是要时刻记得。如果你希望养成良好作息，那么你先要做到的事，做任何选择时都不应该以牺牲健康为代价。',
-      date: '2026/03/05',
-      days: '第10天'
-    },
-    {
-      title: '锚定一日三餐的时间点',
-      description: '根据个人的实际生活和工作情况，确定每天的一日三餐时间点。一日三餐的时间往往是休息的时间，保持它尽可能不被客观环境所打破，在休息日吃早饭会帮助你完成早起，按时晚饭也可以让你拒绝夜宵。',
-      date: '2026/03/15',
-      days: '第20天'
-    }
-  ]
+  startDate: '',
+  startWeekday: '',
+  startHint: '',
+  endDate: '',
+  endWeekday: '',
+  duration: '',
+  milestones: []
 });
 
 // 日期格式转换：将 yyyy/MM/dd 转为 yyyy-MM-dd（用于picker组件）
@@ -353,27 +350,23 @@ function createPlan() {
     return;
   }
 
-  // 创建规划（作为特殊类型的分类保存到 user_categories）
-  const newPlan = {
-    id: Date.now().toString(),
-    type: 'plan',  // 标记为规划类型
-    name: planForm.value.title,
+  // 使用planStore创建规划
+  const newPlan = planStore.addPlan({
+    title: planForm.value.title,
+    buff: planForm.value.buff,
     icon: planForm.value.icon,
     iconEmoji: planForm.value.iconEmoji || '🔔',
-    createTime: new Date().toISOString(),
-    // 规划特有字段
-    buff: planForm.value.buff,
     startDate: planForm.value.startDate,
     endDate: planForm.value.endDate,
     duration: planForm.value.duration,
-    milestones: planForm.value.milestones || [],
-    stats: {
-      totalMilestones: planForm.value.milestones?.length || 0,
-      completedMilestones: 0
-    }
-  };
+    milestones: planForm.value.milestones || []
+  });
 
-  // 加载现有分类
+  const newPlanId = newPlan.id;
+
+  console.log('[CreatePlan] 规划已创建:', newPlan);
+
+  // 同时将规划作为分类保存到user_categories（用于分类选择器）
   const savedCategories = uni.getStorageSync('user_categories');
   let categories = [];
   if (savedCategories) {
@@ -384,21 +377,113 @@ function createPlan() {
     }
   }
 
-  // 添加新规划到分类列表
-  categories.push(newPlan);
+  // 添加到分类列表
+  categories.push({
+    id: newPlanId,
+    type: 'plan',
+    name: planForm.value.title,
+    iconEmoji: planForm.value.iconEmoji || '🔔',
+    createTime: new Date().toISOString(),
+    buff: planForm.value.buff,
+    startDate: planForm.value.startDate,
+    endDate: planForm.value.endDate,
+    milestones: planForm.value.milestones || []
+  });
   uni.setStorageSync('user_categories', JSON.stringify(categories));
 
-  console.log('[CreatePlan] 规划已保存到分类列表:', newPlan);
+  console.log('[CreatePlan] 规划已同步到分类列表');
+
+  // 如果是从模板创建，需要根据模板的tasksByDay创建对应的任务
+  if (templateId.value && templateData.value && templateData.value.tasksByDay) {
+    console.log('[CreatePlan] 从模板创建任务，模板ID:', templateId.value);
+    createTasksFromTemplate(newPlanId, templateData.value);
+  }
 
   uni.showToast({
     title: '创建成功',
     icon: 'success'
   });
 
-  // 返回分类页面
+  // 跳转到规划详情页
   setTimeout(() => {
-    uni.navigateBack();
+    uni.redirectTo({
+      url: `/pages/planning/plan/detail?id=${newPlanId}`
+    });
   }, 1500);
+}
+
+// 从模板创建任务
+function createTasksFromTemplate(planId, template) {
+  console.log('[CreatePlan] 开始从模板创建任务');
+
+  // 加载现有任务
+  const savedTasks = uni.getStorageSync('tasks');
+  let tasks = [];
+  if (savedTasks) {
+    try {
+      tasks = JSON.parse(savedTasks);
+    } catch (e) {
+      console.error('[CreatePlan] 解析任务失败:', e);
+    }
+  }
+
+  const startDate = new Date(planForm.value.startDate.replace(/\//g, '-'));
+  const endDate = new Date(planForm.value.endDate.replace(/\//g, '-'));
+  const totalDays = Math.floor((endDate - startDate) / (1000 * 60 * 60 * 24)) + 1;
+
+  let createdTaskCount = 0;
+  let currentDayTasks = []; // 当前使用的任务模板
+
+  // 为每一天创建任务（从第1天到最后一天）
+  for (let dayIndex = 1; dayIndex <= totalDays; dayIndex++) {
+    // 检查这一天是否有特定的任务定义
+    if (template.tasksByDay[dayIndex]) {
+      // 使用这一天的任务定义
+      currentDayTasks = template.tasksByDay[dayIndex];
+      console.log(`[CreatePlan] 第${dayIndex}天使用新任务模板:`, currentDayTasks.length, '个任务');
+    } else if (currentDayTasks.length === 0 && dayIndex === 1) {
+      // 如果第1天没有定义，尝试使用day1的任务，或者跳过
+      console.warn(`[CreatePlan] 模板没有定义第${dayIndex}天的任务，跳过`);
+      continue;
+    }
+    // 否则继续使用上一天的任务模板（延续重复任务）
+
+    // 计算该天的实际日期
+    const taskDate = new Date(startDate);
+    taskDate.setDate(taskDate.getDate() + (dayIndex - 1));
+    const taskDateStr = formatDate(taskDate);
+
+    // 为该天创建任务
+    currentDayTasks.forEach((taskTemplate, index) => {
+      const newTask = {
+        id: `task_${Date.now()}_${dayIndex}_${index}_${Math.random().toString(36).substr(2, 9)}`,
+        title: taskTemplate.title,
+        date: taskDateStr,
+        occurDate: taskDateStr,
+        categoryId: planId, // 关联到规划
+        iconEmoji: planForm.value.iconEmoji || '🔔',
+        status: 'pending',
+        isUrgent: taskTemplate.isUrgent !== undefined ? taskTemplate.isUrgent : false,
+        isImportant: taskTemplate.isImportant !== undefined ? taskTemplate.isImportant : true,
+        isRecurring: taskTemplate.isRepeat || false,
+        createTime: new Date().toISOString(),
+        updateTime: new Date().toISOString()
+      };
+
+      tasks.push(newTask);
+      createdTaskCount++;
+    });
+  }
+
+  // 保存任务
+  uni.setStorageSync('tasks', JSON.stringify(tasks));
+  console.log(`[CreatePlan] 成功创建 ${createdTaskCount} 个任务，共 ${totalDays} 天`);
+
+  uni.showToast({
+    title: `已创建${createdTaskCount}个任务`,
+    icon: 'success',
+    duration: 2000
+  });
 }
 
 // 返回
@@ -406,10 +491,100 @@ function goBack() {
   uni.navigateBack();
 }
 
-// 页面加载时计算日期信息
+// 页面加载时计算日期信息和加载模板数据
 onMounted(() => {
+  // 获取URL参数
+  const pages = getCurrentPages();
+  const currentPage = pages[pages.length - 1];
+  const options = currentPage.options || {};
+
+  // 检查是否从模板创建
+  if (options.templateId) {
+    templateId.value = options.templateId;
+    console.log('[CreatePlan] 从模板创建规划，模板ID:', templateId.value);
+
+    // 加载模板数据
+    templateData.value = getTemplateById(templateId.value);
+
+    if (templateData.value) {
+      console.log('[CreatePlan] 模板数据已加载:', templateData.value);
+
+      // 使用模板数据填充表单
+      planForm.value.title = templateData.value.title;
+      planForm.value.buff = templateData.value.buff;
+      planForm.value.iconEmoji = templateData.value.iconEmoji || '🔔';
+
+      // 计算日期：从今天开始，持续模板指定的天数
+      const today = new Date();
+      const startDate = new Date(today);
+      planForm.value.startDate = formatDate(startDate);
+
+      const endDate = new Date(today);
+      endDate.setDate(endDate.getDate() + (templateData.value.duration - 1));
+      planForm.value.endDate = formatDate(endDate);
+
+      // 加载里程碑
+      if (templateData.value.milestones && templateData.value.milestones.length > 0) {
+        planForm.value.milestones = templateData.value.milestones.map((milestone, index) => {
+          // 计算里程碑日期（基于模板的天数）
+          const dayMatch = milestone.days.match(/第(\d+)天/);
+          let milestoneDate = startDate;
+          if (dayMatch) {
+            const dayNumber = parseInt(dayMatch[1]);
+            milestoneDate = new Date(startDate);
+            milestoneDate.setDate(milestoneDate.getDate() + dayNumber);
+          }
+
+          return {
+            title: milestone.title,
+            description: milestone.description,
+            date: formatDate(milestoneDate),
+            days: milestone.days
+          };
+        });
+      }
+
+      uni.showToast({
+        title: '模板已加载',
+        icon: 'success',
+        duration: 1500
+      });
+    } else {
+      console.warn('[CreatePlan] 未找到模板数据');
+      uni.showToast({
+        title: '模板不存在',
+        icon: 'none'
+      });
+    }
+  } else {
+    // 非模板创建，使用默认值
+    console.log('[CreatePlan] 普通创建规划，使用默认值');
+
+    planForm.value.title = '新规划';
+    planForm.value.buff = getRandomBuff();
+    planForm.value.iconEmoji = '🔔';
+
+    // 默认日期：今天开始，持续30天
+    const today = new Date();
+    planForm.value.startDate = formatDate(today);
+
+    const endDate = new Date(today);
+    endDate.setDate(endDate.getDate() + 29); // 30天
+    planForm.value.endDate = formatDate(endDate);
+
+    planForm.value.milestones = [];
+  }
+
   calculateDateInfo();
 });
+
+// 格式化日期为 yyyy/MM/dd
+function formatDate(date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}/${month}/${day}`;
+}
 </script>
 
 <style scoped>

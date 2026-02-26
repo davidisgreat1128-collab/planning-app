@@ -1094,6 +1094,36 @@ async function selectDate(dateStr) {
     taskStore.fetchTasksByDate(dateStr),
     logStore.fetchLogsByDate(dateStr)
   ]);
+
+  // 从localStorage加载任务并合并（只加载选中日期的任务）
+  try {
+    const savedTasks = uni.getStorageSync('tasks');
+    if (savedTasks) {
+      const allLocalTasks = JSON.parse(savedTasks);
+
+      // 筛选出选中日期的任务
+      const selectedDateTasks = allLocalTasks.filter(t => {
+        const taskDate = t.date || t.occurDate;
+        if (!taskDate) return false;
+
+        // 将 yyyy/MM/dd 转换为 yyyy-MM-dd 进行比较
+        const normalizedDate = taskDate.replace(/\//g, '-');
+        return normalizedDate === dateStr;
+      });
+
+      console.log(`[Calendar] selectDate(${dateStr}) - 筛选出该日期的任务:`, selectedDateTasks.length, '个');
+
+      // 合并localStorage的任务到taskStore（避免重复）
+      const existingIds = new Set(taskStore.tasks.map(t => t.id));
+      const newTasks = selectedDateTasks.filter(t => !existingIds.has(t.id));
+
+      if (newTasks.length > 0) {
+        taskStore.tasks = [...taskStore.tasks, ...newTasks];
+      }
+    }
+  } catch (e) {
+    console.error('[Calendar] selectDate - 加载localStorage任务失败:', e);
+  }
 }
 
 /** 回到今天 */
@@ -1480,6 +1510,39 @@ onMounted(async () => {
       logStore.fetchLogsByDate(todayStr),
       loadHolidays()
     ]);
+  }
+
+  // 从localStorage加载任务（规划创建的任务），并合并到taskStore
+  // 注意：只加载今天的任务，不是所有任务
+  try {
+    const savedTasks = uni.getStorageSync('tasks');
+    if (savedTasks) {
+      const allLocalTasks = JSON.parse(savedTasks);
+      console.log('[Calendar] 从localStorage加载了', allLocalTasks.length, '个任务');
+
+      // 筛选出今天的任务（日期格式：yyyy/MM/dd）
+      const todayLocalTasks = allLocalTasks.filter(t => {
+        const taskDate = t.date || t.occurDate;
+        if (!taskDate) return false;
+
+        // 将 yyyy/MM/dd 转换为 yyyy-MM-dd 进行比较
+        const normalizedDate = taskDate.replace(/\//g, '-');
+        return normalizedDate === todayStr;
+      });
+
+      console.log('[Calendar] 筛选出今天的任务:', todayLocalTasks.length, '个');
+
+      // 合并localStorage的任务到taskStore（避免重复）
+      const existingIds = new Set(taskStore.tasks.map(t => t.id));
+      const newTasks = todayLocalTasks.filter(t => !existingIds.has(t.id));
+
+      if (newTasks.length > 0) {
+        taskStore.tasks = [...taskStore.tasks, ...newTasks];
+        console.log('[Calendar] 合并了', newTasks.length, '个新任务到taskStore');
+      }
+    }
+  } catch (e) {
+    console.error('[Calendar] 加载localStorage任务失败:', e);
   }
 
   timeTimer = setInterval(updateCurrentTime, 60000);
