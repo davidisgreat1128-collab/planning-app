@@ -367,13 +367,10 @@ function toggleShowCompleted() {
 function selectCategory(categoryId) {
   selectedCategory.value = categoryId;
 
-  // 取消所有规划的选中状态
-  planStore.deselectPlan();
-
   // 保存选中的分类到全局状态
   uni.setStorageSync('selected_category_id', categoryId);
 
-  // 清除选中的规划ID
+  // 清除选中的规划ID（规划现在也是分类的一种）
   uni.removeStorageSync('selected_plan_id');
 
   // 发出容器变更事件，通知父页面更新
