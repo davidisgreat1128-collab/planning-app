@@ -954,18 +954,18 @@ function onDeletePlanConfirm(deleteWithTasks) {
 .plan-actions-vertical {
   display: flex;
   flex-direction: column;
-  gap: 10rpx;
+  gap: 8rpx;
   flex-shrink: 0;
 }
 
 .plan-action-btn {
-  width: 50rpx;
-  height: 50rpx;
+  width: 60rpx;
+  height: 60rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: #f5f5f5;
-  border-radius: 8rpx;
+  border-radius: 10rpx;
   cursor: pointer;
   transition: all 0.2s;
 }
@@ -976,7 +976,7 @@ function onDeletePlanConfirm(deleteWithTasks) {
 }
 
 .action-icon {
-  font-size: 28rpx;
+  font-size: 36rpx;
 }
 
 /* 创建规划卡片 */
@@ -1070,7 +1070,7 @@ function onDeletePlanConfirm(deleteWithTasks) {
 }
 
 .category-icon {
-  font-size: 32rpx;
+  font-size: 40rpx;
   flex-shrink: 0;
 }
 
