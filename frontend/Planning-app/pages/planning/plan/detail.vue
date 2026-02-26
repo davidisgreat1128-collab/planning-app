@@ -122,10 +122,10 @@
       <view class="bottom-spacer"></view>
     </scroll-view>
 
-    <!-- 底部新建规划按钮 -->
+    <!-- 底部新建计划按钮 -->
     <view class="bottom-action">
-      <view class="new-plan-btn" @tap="createNewPlan">
-        <text class="btn-text">+新建规划</text>
+      <view class="new-plan-btn" @tap="createNewTask">
+        <text class="btn-text">+新建计划</text>
       </view>
     </view>
 
@@ -135,6 +135,35 @@
       :milestone-number="goalData.milestones.length + 1"
       @save="handleMilestoneSave"
     />
+
+    <!-- 任务创建面板 -->
+    <add-task-panel
+      v-model:visible="showTaskPanel"
+      :category-id="currentPlanId"
+    />
+
+    <!-- 菜单弹窗 -->
+    <view v-if="showMenuPopup" class="menu-overlay" @tap="closeMenu">
+      <view class="menu-popup" @tap.stop>
+        <view class="menu-header">
+          <text class="menu-title">规划</text>
+        </view>
+        <view class="menu-buttons">
+          <view class="menu-btn" @tap="handleMenuAction('action1')">
+            <text class="menu-btn-text">按钮1</text>
+          </view>
+          <view class="menu-btn" @tap="handleMenuAction('action2')">
+            <text class="menu-btn-text">按钮2</text>
+          </view>
+          <view class="menu-btn" @tap="handleMenuAction('action3')">
+            <text class="menu-btn-text">按钮3</text>
+          </view>
+          <view class="menu-btn" @tap="handleMenuAction('action4')">
+            <text class="menu-btn-text">按钮4</text>
+          </view>
+        </view>
+      </view>
+    </view>
   </view>
 </template>
 
@@ -142,6 +171,7 @@
 import { ref, reactive, onMounted } from 'vue';
 import { usePlanStore } from '@/store/plan.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
+import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 
 // 获取 planStore
 const planStore = usePlanStore();
@@ -154,6 +184,12 @@ const expandedMilestones = reactive({});
 
 // 里程碑弹窗显示状态
 const showMilestoneModal = ref(false);
+
+// 任务创建面板显示状态
+const showTaskPanel = ref(false);
+
+// 菜单弹窗显示状态
+const showMenuPopup = ref(false);
 
 // 目标数据
 const goalData = ref({
@@ -247,17 +283,28 @@ function showPlanHelp() {
   });
 }
 
-// 创建新计划
-function createNewPlan() {
-  console.log('[GoalDetail] 创建新计划');
-  uni.navigateTo({
-    url: '/pages/planning/goal/create-plan'
-  });
+// 创建新任务/计划
+function createNewTask() {
+  console.log('[GoalDetail] 创建新任务');
+  showTaskPanel.value = true;
 }
 
 // 显示菜单
 function showMenu() {
   console.log('[GoalDetail] 显示菜单');
+  showMenuPopup.value = true;
+}
+
+// 关闭菜单
+function closeMenu() {
+  showMenuPopup.value = false;
+}
+
+// 菜单按钮操作（待实现）
+function handleMenuAction(action) {
+  console.log('[GoalDetail] 菜单操作:', action);
+  closeMenu();
+  // TODO: 实现具体的菜单操作
 }
 
 // 返回
@@ -780,5 +827,66 @@ onMounted(() => {
   font-size: 32rpx;
   color: #fff;
   font-weight: 600;
+}
+
+/* ============================================================
+   菜单弹窗
+   ============================================================ */
+.menu-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: flex-end;
+  padding: 100rpx 30rpx 0 0;
+  z-index: 1000;
+}
+
+.menu-popup {
+  background-color: #fff;
+  border-radius: 16rpx;
+  padding: 30rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
+  min-width: 300rpx;
+}
+
+.menu-header {
+  margin-bottom: 20rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 2rpx solid #f0f0f0;
+}
+
+.menu-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+}
+
+.menu-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15rpx;
+}
+
+.menu-btn {
+  padding: 20rpx 30rpx;
+  background-color: #f5f5f5;
+  border-radius: 12rpx;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.menu-btn:active {
+  background-color: #e0e0e0;
+  transform: scale(0.98);
+}
+
+.menu-btn-text {
+  font-size: 28rpx;
+  color: #333;
 }
 </style>
