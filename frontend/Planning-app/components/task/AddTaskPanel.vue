@@ -280,8 +280,9 @@
     </teleport>
 
     <!-- ⑥ 天数日历弹窗（开关关闭时，选择结束天） -->
-    <view v-if="showDayPicker" class="tp-mask" @tap.stop="closeDayPicker">
-      <view class="tp-sheet" @tap.stop>
+    <teleport to="body">
+      <view v-if="showDayPicker" class="tp-mask" @tap.stop="closeDayPicker">
+        <view class="tp-sheet" @tap.stop>
         <!-- 顶部标题 -->
         <text class="dp-title">设置期限：在 <text class="dp-days">{{ endDayCount || 1 }}</text> 天内完成</text>
         <!-- 月份导航 -->
@@ -319,8 +320,9 @@
           <view class="tp-btn tp-cancel" @tap="closeDayPicker"><text class="tp-btn-text">取消</text></view>
           <view class="tp-btn tp-confirm" @tap="confirmDayPicker"><text class="tp-btn-text tp-confirm-text">确定</text></view>
         </view>
+        </view>
       </view>
-    </view>
+    </teleport>
 
     <!-- ⑦ 时间选择弹窗（开关开启时） -->
 
@@ -2144,21 +2146,21 @@ function loadSelectedContainer() {
   right: 0;
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
+  z-index: 9999;
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding-top: 15vh;
 }
 
 .tp-sheet {
-  width: 75%;
-  max-width: 520rpx;
+  width: 70%;
+  max-width: 500rpx;
   background-color: #FFFFFF;
   border-radius: 20rpx;
   padding: 20rpx 0 0;
-  max-height: 70vh;
+  max-height: 65vh;
   overflow: hidden;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
 }
 
 /* 底部按钮行 */
