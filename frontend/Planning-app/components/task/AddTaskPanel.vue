@@ -2151,12 +2151,17 @@ function loadSelectedContainer() {
 }
 
 .tp-sheet {
-  width: 100%;
+  width: 90%;
+  max-width: 680rpx;
   background-color: #FFFFFF;
-  border-radius: 32rpx 32rpx 0 0;
+  border-radius: 32rpx;
   padding: 32rpx 0 0;
-  max-height: 90vh;
+  max-height: 85vh;
   overflow: hidden;
+  position: fixed;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
 }
 
 /* 底部按钮行 */
@@ -2164,12 +2169,12 @@ function loadSelectedContainer() {
   display: flex;
   flex-direction: row;
   border-top: 1rpx solid #F0F0F0;
-  margin-top: 16rpx;
+  margin-top: 12rpx;
 }
 
 .tp-btn {
   flex: 1;
-  height: 100rpx;
+  height: 88rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2180,7 +2185,7 @@ function loadSelectedContainer() {
 }
 
 .tp-btn-text {
-  font-size: 32rpx;
+  font-size: 28rpx;
   color: #666;
 }
 
@@ -2195,15 +2200,15 @@ function loadSelectedContainer() {
 
 /* 顶部标题 */
 .dp-title {
-  font-size: 30rpx;
+  font-size: 26rpx;
   color: #333;
   text-align: center;
   display: block;
-  padding: 0 40rpx 24rpx;
+  padding: 0 32rpx 16rpx;
 }
 
 .dp-days {
-  font-size: 36rpx;
+  font-size: 30rpx;
   font-weight: bold;
   color: #333;
   text-decoration: underline;
@@ -2215,19 +2220,19 @@ function loadSelectedContainer() {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 0 32rpx 20rpx;
+  padding: 0 24rpx 16rpx;
 }
 
 .dp-nav-btn {
-  width: 60rpx;
-  height: 60rpx;
+  width: 48rpx;
+  height: 48rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .dp-nav-icon {
-  font-size: 40rpx;
+  font-size: 32rpx;
   color: #333;
   font-weight: bold;
 }
@@ -2235,13 +2240,13 @@ function loadSelectedContainer() {
 .dp-nav-title {
   flex: 1;
   text-align: center;
-  font-size: 32rpx;
+  font-size: 28rpx;
   color: #333;
   font-weight: bold;
 }
 
 .dp-lunar-toggle {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #999;
 }
 
@@ -2249,15 +2254,15 @@ function loadSelectedContainer() {
 .dp-weekrow {
   display: flex;
   flex-direction: row;
-  padding: 0 16rpx;
+  padding: 0 12rpx;
   border-bottom: 1rpx solid #F0F0F0;
-  padding-bottom: 12rpx;
+  padding-bottom: 8rpx;
 }
 
 .dp-weekcell {
   flex: 1;
   text-align: center;
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #999;
 }
 
@@ -2266,7 +2271,7 @@ function loadSelectedContainer() {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  padding: 8rpx 16rpx;
+  padding: 6rpx 12rpx;
 }
 
 .dp-cell {
@@ -2275,26 +2280,26 @@ function loadSelectedContainer() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 12rpx 0;
+  padding: 8rpx 0;
   border-radius: 50%;
   position: relative;
 }
 
 .dp-cell-num {
-  font-size: 30rpx;
+  font-size: 26rpx;
   color: #333;
-  width: 64rpx;
-  height: 64rpx;
+  width: 52rpx;
+  height: 52rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  line-height: 64rpx;
+  line-height: 52rpx;
   text-align: center;
 }
 
 .dp-cell-lunar {
-  font-size: 18rpx;
+  font-size: 16rpx;
   color: #999;
   margin-top: 2rpx;
 }
