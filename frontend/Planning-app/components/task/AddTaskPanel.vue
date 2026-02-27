@@ -327,38 +327,84 @@
     <!-- ⑦ 时间选择弹窗（开关开启时） -->
 
     <!-- #ifdef H5 -->
-    <!-- H5端：使用原生HTML5时间输入 -->
+    <!-- H5端：使用增减按钮选择时间 -->
     <teleport to="body">
       <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
         <view class="tp-sheet-h5" @tap.stop>
           <!-- 顶部日期标题 -->
           <text class="tp-date-title">{{ timePickerDateLabel }}</text>
 
-          <!-- 时间输入区域 -->
-          <view class="h5-time-inputs">
+          <!-- 时间选择区域 -->
+          <view class="h5-time-selectors">
             <!-- 开始时间 -->
-            <view class="h5-time-input-group">
+            <view class="h5-time-selector">
               <text class="h5-time-label">开始时间</text>
-              <input
-                class="h5-time-input"
-                type="time"
-                :value="h5StartTime"
-                @input="onH5StartTimeInput"
-              />
+              <view class="h5-time-picker">
+                <!-- 小时 -->
+                <view class="h5-time-column">
+                  <view class="h5-btn-up" @tap="adjustStartHour(1)">
+                    <text class="h5-btn-icon">▲</text>
+                  </view>
+                  <view class="h5-time-display">
+                    <text class="h5-time-value">{{ String(startHour).padStart(2, '0') }}</text>
+                  </view>
+                  <view class="h5-btn-down" @tap="adjustStartHour(-1)">
+                    <text class="h5-btn-icon">▼</text>
+                  </view>
+                </view>
+
+                <text class="h5-time-colon">:</text>
+
+                <!-- 分钟 -->
+                <view class="h5-time-column">
+                  <view class="h5-btn-up" @tap="adjustStartMin(1)">
+                    <text class="h5-btn-icon">▲</text>
+                  </view>
+                  <view class="h5-time-display">
+                    <text class="h5-time-value">{{ String(startMin).padStart(2, '0') }}</text>
+                  </view>
+                  <view class="h5-btn-down" @tap="adjustStartMin(-1)">
+                    <text class="h5-btn-icon">▼</text>
+                  </view>
+                </view>
+              </view>
             </view>
 
             <!-- 分隔符 -->
-            <text class="h5-time-separator">至</text>
+            <text class="h5-separator">至</text>
 
             <!-- 结束时间 -->
-            <view class="h5-time-input-group">
+            <view class="h5-time-selector">
               <text class="h5-time-label">结束时间</text>
-              <input
-                class="h5-time-input"
-                type="time"
-                :value="h5EndTime"
-                @input="onH5EndTimeInput"
-              />
+              <view class="h5-time-picker">
+                <!-- 小时 -->
+                <view class="h5-time-column">
+                  <view class="h5-btn-up" @tap="adjustEndHour(1)">
+                    <text class="h5-btn-icon">▲</text>
+                  </view>
+                  <view class="h5-time-display">
+                    <text class="h5-time-value">{{ String(endHour).padStart(2, '0') }}</text>
+                  </view>
+                  <view class="h5-btn-down" @tap="adjustEndHour(-1)">
+                    <text class="h5-btn-icon">▼</text>
+                  </view>
+                </view>
+
+                <text class="h5-time-colon">:</text>
+
+                <!-- 分钟 -->
+                <view class="h5-time-column">
+                  <view class="h5-btn-up" @tap="adjustEndMin(1)">
+                    <text class="h5-btn-icon">▲</text>
+                  </view>
+                  <view class="h5-time-display">
+                    <text class="h5-time-value">{{ String(endMin).padStart(2, '0') }}</text>
+                  </view>
+                  <view class="h5-btn-down" @tap="adjustEndMin(-1)">
+                    <text class="h5-btn-icon">▼</text>
+                  </view>
+                </view>
+              </view>
             </view>
           </view>
 
@@ -1080,22 +1126,8 @@ function confirmTimePicker() {
 }
 
 // ============================================================
-// H5端：原生HTML5时间输入专用
+// H5端：增减按钮时间选择器专用
 // ============================================================
-
-/** H5开始时间（HH:MM格式） */
-const h5StartTime = computed(() => {
-  const h = String(startHour.value).padStart(2, '0');
-  const m = String(startMin.value).padStart(2, '0');
-  return `${h}:${m}`;
-});
-
-/** H5结束时间（HH:MM格式） */
-const h5EndTime = computed(() => {
-  const h = String(endHour.value).padStart(2, '0');
-  const m = String(endMin.value).padStart(2, '0');
-  return `${h}:${m}`;
-});
 
 /** H5持续时间文本 */
 const h5DurationText = computed(() => {
@@ -1107,22 +1139,40 @@ const h5DurationText = computed(() => {
   return m > 0 ? `${h}小时${m}分钟` : `${h}小时`;
 });
 
-/** H5开始时间输入 */
-function onH5StartTimeInput(e) {
-  const value = e.detail.value; // "HH:MM"
-  if (!value) return;
-  const [h, m] = value.split(':').map(Number);
-  startHour.value = h;
-  startMin.value = m;
+/** 调整开始小时 */
+function adjustStartHour(delta) {
+  startHour.value = (startHour.value + delta + 24) % 24;
 }
 
-/** H5结束时间输入 */
-function onH5EndTimeInput(e) {
-  const value = e.detail.value; // "HH:MM"
-  if (!value) return;
-  const [h, m] = value.split(':').map(Number);
-  endHour.value = h;
-  endMin.value = m;
+/** 调整开始分钟 */
+function adjustStartMin(delta) {
+  let newMin = startMin.value + delta;
+  if (newMin < 0) {
+    newMin = 59;
+    adjustStartHour(-1);
+  } else if (newMin > 59) {
+    newMin = 0;
+    adjustStartHour(1);
+  }
+  startMin.value = newMin;
+}
+
+/** 调整结束小时 */
+function adjustEndHour(delta) {
+  endHour.value = (endHour.value + delta + 24) % 24;
+}
+
+/** 调整结束分钟 */
+function adjustEndMin(delta) {
+  let newMin = endMin.value + delta;
+  if (newMin < 0) {
+    newMin = 59;
+    adjustEndHour(-1);
+  } else if (newMin > 59) {
+    newMin = 0;
+    adjustEndHour(1);
+  }
+  endMin.value = newMin;
 }
 
 
@@ -2177,62 +2227,111 @@ function loadSelectedContainer() {
 
 /* H5端时间选择器样式 */
 .tp-sheet-h5 {
-  width: 85%;
-  max-width: 600rpx;
+  width: 90%;
+  max-width: 650rpx;
   background-color: #FFFFFF;
   border-radius: 20rpx;
   padding: 24rpx;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
 }
 
-.h5-time-inputs {
+.h5-time-selectors {
   display: flex;
   flex-direction: row;
   align-items: center;
-  justify-content: space-around;
+  justify-content: center;
   padding: 32rpx 0;
-  gap: 24rpx;
+  gap: 32rpx;
 }
 
-.h5-time-input-group {
+.h5-time-selector {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 16rpx;
+  gap: 20rpx;
 }
 
 .h5-time-label {
-  font-size: 26rpx;
+  font-size: 28rpx;
   color: #666;
   font-weight: 500;
 }
 
-.h5-time-input {
-  width: 100%;
-  height: 88rpx;
+.h5-time-picker {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.h5-time-column {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8rpx;
+}
+
+.h5-btn-up,
+.h5-btn-down {
+  width: 80rpx;
+  height: 60rpx;
   background-color: #F5F5F5;
+  border-radius: 8rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  user-select: none;
+}
+
+.h5-btn-up:active,
+.h5-btn-down:active {
+  background-color: #FFB300;
+  transform: scale(0.95);
+}
+
+.h5-btn-icon {
+  font-size: 24rpx;
+  color: #666;
+}
+
+.h5-btn-up:active .h5-btn-icon,
+.h5-btn-down:active .h5-btn-icon {
+  color: #FFF;
+}
+
+.h5-time-display {
+  width: 80rpx;
+  height: 100rpx;
+  background-color: #FFF;
+  border: 3rpx solid #FFB300;
   border-radius: 12rpx;
-  border: 2rpx solid #E0E0E0;
-  padding: 0 24rpx;
-  font-size: 40rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2rpx 8rpx rgba(255, 179, 0, 0.2);
+}
+
+.h5-time-value {
+  font-size: 48rpx;
   font-weight: bold;
   color: #222;
-  text-align: center;
-  transition: all 0.3s;
+  line-height: 1;
 }
 
-.h5-time-input:focus {
-  background-color: #FFF;
-  border-color: #FFB300;
-  outline: none;
-}
-
-.h5-time-separator {
-  font-size: 32rpx;
+.h5-time-colon {
+  font-size: 40rpx;
   color: #999;
-  padding: 0 12rpx;
-  margin-top: 40rpx;
+  font-weight: bold;
+  padding: 0 8rpx;
+}
+
+.h5-separator {
+  font-size: 28rpx;
+  color: #999;
+  padding: 0 8rpx;
 }
 
 .h5-duration-hint {
