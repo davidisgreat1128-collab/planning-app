@@ -786,16 +786,31 @@ const endDate = ref(null);
 
 // ----- 左卡片显示 -----
 const timeCardLeftMain = computed(() => {
-  const today = new Date();
-  const m = today.getMonth() + 1;
-  const d = today.getDate();
+  // 使用任务的实际日期，而不是今天
+  const taskDateStr = resolvedDate.value || getTodayStr();
+  const taskDate = new Date(taskDateStr);
+  const m = taskDate.getMonth() + 1;
+  const d = taskDate.getDate();
   const weekNames = ['周日','周一','周二','周三','周四','周五','周六'];
-  const w = weekNames[today.getDay()];
+  const w = weekNames[taskDate.getDay()];
   return `${m}月${d}日，${w}`;
 });
 
 const timeCardLeftSub = computed(() => {
-  // 判断是否为今天
+  // 判断任务日期是否为今天
+  const taskDateStr = resolvedDate.value || getTodayStr();
+  const todayStr = getTodayStr();
+  if (taskDateStr === todayStr) return '今天';
+
+  const tomorrowStr = getTomorrowStr();
+  if (taskDateStr === tomorrowStr) return '明天';
+
+  // 其他日期显示相对天数
+  const taskDate = new Date(taskDateStr);
+  const today = new Date(todayStr);
+  const diffDays = Math.floor((taskDate - today) / (1000 * 60 * 60 * 24));
+  if (diffDays > 0) return `${diffDays}天后`;
+  if (diffDays < 0) return `${Math.abs(diffDays)}天前`;
   return '今天';
 });
 
