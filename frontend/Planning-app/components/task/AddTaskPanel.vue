@@ -326,6 +326,59 @@
 
     <!-- ⑦ 时间选择弹窗（开关开启时） -->
 
+    <!-- #ifdef H5 -->
+    <!-- H5端：使用原生HTML5时间输入 -->
+    <teleport to="body">
+      <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
+        <view class="tp-sheet-h5" @tap.stop>
+          <!-- 顶部日期标题 -->
+          <text class="tp-date-title">{{ timePickerDateLabel }}</text>
+
+          <!-- 时间输入区域 -->
+          <view class="h5-time-inputs">
+            <!-- 开始时间 -->
+            <view class="h5-time-input-group">
+              <text class="h5-time-label">开始时间</text>
+              <input
+                class="h5-time-input"
+                type="time"
+                :value="h5StartTime"
+                @input="onH5StartTimeInput"
+              />
+            </view>
+
+            <!-- 分隔符 -->
+            <text class="h5-time-separator">至</text>
+
+            <!-- 结束时间 -->
+            <view class="h5-time-input-group">
+              <text class="h5-time-label">结束时间</text>
+              <input
+                class="h5-time-input"
+                type="time"
+                :value="h5EndTime"
+                @input="onH5EndTimeInput"
+              />
+            </view>
+          </view>
+
+          <!-- 持续时间提示 -->
+          <view class="h5-duration-hint" v-if="h5DurationText">
+            <text class="h5-duration-text">持续时间：{{ h5DurationText }}</text>
+          </view>
+
+          <!-- 底部按钮 -->
+          <view class="tp-btns">
+            <view class="tp-btn tp-cancel" @tap="closeTimePicker"><text class="tp-btn-text">取消</text></view>
+            <view class="tp-btn tp-confirm" @tap="confirmTimePicker"><text class="tp-btn-text tp-confirm-text">确定</text></view>
+          </view>
+        </view>
+      </view>
+    </teleport>
+    <!-- #endif -->
+
+    <!-- #ifndef H5 -->
+    <!-- App端：自定义滚轮选择器 -->
     <teleport to="body">
       <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
         <view class="tp-sheet" @tap.stop>
@@ -410,6 +463,7 @@
         </view>
       </view>
     </teleport>
+    <!-- #endif -->
 
   </view>
 </template>
@@ -1024,6 +1078,53 @@ function confirmTimePicker() {
   timeEnd.value   = `${eh}:${em}`;
   showTimePicker.value = false;
 }
+
+// ============================================================
+// H5端：原生HTML5时间输入专用
+// ============================================================
+
+/** H5开始时间（HH:MM格式） */
+const h5StartTime = computed(() => {
+  const h = String(startHour.value).padStart(2, '0');
+  const m = String(startMin.value).padStart(2, '0');
+  return `${h}:${m}`;
+});
+
+/** H5结束时间（HH:MM格式） */
+const h5EndTime = computed(() => {
+  const h = String(endHour.value).padStart(2, '0');
+  const m = String(endMin.value).padStart(2, '0');
+  return `${h}:${m}`;
+});
+
+/** H5持续时间文本 */
+const h5DurationText = computed(() => {
+  const totalMin = (endHour.value * 60 + endMin.value) - (startHour.value * 60 + startMin.value);
+  if (totalMin <= 0) return '';
+  if (totalMin < 60) return `${totalMin}分钟`;
+  const h = Math.floor(totalMin / 60);
+  const m = totalMin % 60;
+  return m > 0 ? `${h}小时${m}分钟` : `${h}小时`;
+});
+
+/** H5开始时间输入 */
+function onH5StartTimeInput(e) {
+  const value = e.detail.value; // "HH:MM"
+  if (!value) return;
+  const [h, m] = value.split(':').map(Number);
+  startHour.value = h;
+  startMin.value = m;
+}
+
+/** H5结束时间输入 */
+function onH5EndTimeInput(e) {
+  const value = e.detail.value; // "HH:MM"
+  if (!value) return;
+  const [h, m] = value.split(':').map(Number);
+  endHour.value = h;
+  endMin.value = m;
+}
+
 
 // ============================================================
 // App端：scroll-view 滚轮专用
@@ -2073,6 +2174,77 @@ function loadSelectedContainer() {
   overflow: hidden;
   box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
 }
+
+/* H5端时间选择器样式 */
+.tp-sheet-h5 {
+  width: 85%;
+  max-width: 600rpx;
+  background-color: #FFFFFF;
+  border-radius: 20rpx;
+  padding: 24rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+}
+
+.h5-time-inputs {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-around;
+  padding: 32rpx 0;
+  gap: 24rpx;
+}
+
+.h5-time-input-group {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16rpx;
+}
+
+.h5-time-label {
+  font-size: 26rpx;
+  color: #666;
+  font-weight: 500;
+}
+
+.h5-time-input {
+  width: 100%;
+  height: 88rpx;
+  background-color: #F5F5F5;
+  border-radius: 12rpx;
+  border: 2rpx solid #E0E0E0;
+  padding: 0 24rpx;
+  font-size: 40rpx;
+  font-weight: bold;
+  color: #222;
+  text-align: center;
+  transition: all 0.3s;
+}
+
+.h5-time-input:focus {
+  background-color: #FFF;
+  border-color: #FFB300;
+  outline: none;
+}
+
+.h5-time-separator {
+  font-size: 32rpx;
+  color: #999;
+  padding: 0 12rpx;
+  margin-top: 40rpx;
+}
+
+.h5-duration-hint {
+  text-align: center;
+  padding: 16rpx 0 24rpx;
+}
+
+.h5-duration-text {
+  font-size: 26rpx;
+  color: #888;
+}
+
 
 /* 底部按钮行 */
 .tp-btns {
