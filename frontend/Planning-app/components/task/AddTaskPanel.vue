@@ -328,9 +328,10 @@
 
     <!-- #ifdef H5 -->
     <!-- H5端：使用 picker mode="time"，两个原生时间选择器（兼容浏览器） -->
-    <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
-      <view class="tp-sheet" @tap.stop>
-        <text class="tp-date-title">{{ timePickerDateLabel }}</text>
+    <teleport to="body">
+      <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
+        <view class="tp-sheet" @tap.stop>
+          <text class="tp-date-title">{{ timePickerDateLabel }}</text>
         <!-- 双时间选择行 -->
         <view class="h5-time-row">
           <!-- 开始时间 -->
@@ -377,16 +378,18 @@
           <view class="tp-btn tp-cancel" @tap="closeTimePicker"><text class="tp-btn-text">取消</text></view>
           <view class="tp-btn tp-confirm" @tap="confirmTimePicker"><text class="tp-btn-text tp-confirm-text">确定</text></view>
         </view>
+        </view>
       </view>
-    </view>
+    </teleport>
     <!-- #endif -->
 
     <!-- #ifndef H5 -->
     <!-- App端：自定义 scroll-view 滚轮（原生效果） -->
-    <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
-      <view class="tp-sheet" @tap.stop>
-        <!-- 顶部日期标题 -->
-        <text class="tp-date-title">{{ timePickerDateLabel }}</text>
+    <teleport to="body">
+      <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
+        <view class="tp-sheet" @tap.stop>
+          <!-- 顶部日期标题 -->
+          <text class="tp-date-title">{{ timePickerDateLabel }}</text>
         <!-- 双列滚轮 -->
         <view class="tp-wheels">
           <!-- 开始时间列 -->
@@ -463,8 +466,9 @@
           <view class="tp-btn tp-cancel" @tap="closeTimePicker"><text class="tp-btn-text">取消</text></view>
           <view class="tp-btn tp-confirm" @tap="confirmTimePicker"><text class="tp-btn-text tp-confirm-text">确定</text></view>
         </view>
+        </view>
       </view>
-    </view>
+    </teleport>
     <!-- #endif -->
 
   </view>
