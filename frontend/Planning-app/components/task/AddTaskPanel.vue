@@ -2143,10 +2143,10 @@ function loadSelectedContainer() {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.4);
+  background-color: rgba(0, 0, 0, 0.5);
   z-index: 1000;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
 }
 
@@ -2158,10 +2158,6 @@ function loadSelectedContainer() {
   padding: 24rpx 0 0;
   max-height: 75vh;
   overflow: hidden;
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
 }
 
 /* 底部按钮行 */
