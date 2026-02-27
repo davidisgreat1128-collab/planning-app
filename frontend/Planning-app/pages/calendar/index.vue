@@ -255,7 +255,7 @@
                 @longpress="onTaskLongPress($event, task, 'q3')"
                 @touchmove="onTaskTouchMove"
                 @touchend="onTaskTouchEnd"
-                @mousedown="onTaskMouseDown($event, task, 'q3')"
+                @mousedown="(e) => onTaskMouseDown(e, task, 'q3')"
               >
                 <view
                   class="nb-check nb-check-q3"
@@ -310,7 +310,7 @@
                 @longpress="onTaskLongPress($event, task, 'q1')"
                 @touchmove="onTaskTouchMove"
                 @touchend="onTaskTouchEnd"
-                @mousedown="onTaskMouseDown($event, task, 'q1')"
+                @mousedown="(e) => onTaskMouseDown(e, task, 'q1')"
               >
                 <view
                   class="nb-check nb-check-q1"
@@ -368,7 +368,7 @@
                 @longpress="onTaskLongPress($event, task, 'q4')"
                 @touchmove="onTaskTouchMove"
                 @touchend="onTaskTouchEnd"
-                @mousedown="onTaskMouseDown($event, task, 'q4')"
+                @mousedown="(e) => onTaskMouseDown(e, task, 'q4')"
               >
                 <view
                   class="nb-check nb-check-q4"
@@ -422,7 +422,7 @@
                 @longpress="onTaskLongPress($event, task, 'q2')"
                 @touchmove="onTaskTouchMove"
                 @touchend="onTaskTouchEnd"
-                @mousedown="onTaskMouseDown($event, task, 'q2')"
+                @mousedown="(e) => onTaskMouseDown(e, task, 'q2')"
               >
                 <view
                   class="nb-check nb-check-q2"
