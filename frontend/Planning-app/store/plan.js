@@ -86,6 +86,9 @@ export const usePlanStore = defineStore('plan', {
 
     /**
      * 更新规划
+     * @param {string} planId - 规划ID
+     * @param {object} updates - 要更新的数据
+     * @returns {boolean} 是否更新成功
      */
     updatePlan(planId, updates) {
       const index = this.plans.findIndex(p => p.id === planId);
@@ -96,7 +99,9 @@ export const usePlanStore = defineStore('plan', {
           updateTime: new Date().toISOString()
         };
         this.savePlans();
+        return true;
       }
+      return false;
     },
 
     /**

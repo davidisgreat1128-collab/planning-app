@@ -449,7 +449,9 @@
           @tap="deleteOption = 2"
         >
           <text class="delete-option-title">完整清空此条重复任务</text>
-          <view class="delete-option-arrow">›</view>
+          <view v-if="deleteOption === 2" class="delete-option-check">
+            <text class="delete-option-check-icon">✓</text>
+          </view>
         </view>
 
         <!-- 分隔线 -->
@@ -465,17 +467,19 @@
             <text class="delete-option-title">删除当天及未来任务</text>
             <text class="delete-option-desc">不影响该任务的过去记录</text>
           </view>
-          <view class="delete-option-arrow">›</view>
+          <view v-if="deleteOption === 3" class="delete-option-check">
+            <text class="delete-option-check-icon">✓</text>
+          </view>
         </view>
 
-        <!-- 确定按钮 -->
-        <view class="delete-confirm-btn" @tap="confirmDelete">
-          <text class="delete-confirm-text">确定</text>
-        </view>
-
-        <!-- 关闭按钮（圆圈X） -->
-        <view class="delete-close-btn" @tap="closeDeleteDialog">
-          <text class="delete-close-icon">⊗</text>
+        <!-- 底部按钮区域：取消 + 确定 -->
+        <view class="delete-actions">
+          <view class="delete-cancel-btn" @tap="closeDeleteDialog">
+            <text class="delete-cancel-text">取消</text>
+          </view>
+          <view class="delete-confirm-btn" @tap="confirmDelete">
+            <text class="delete-confirm-text">确定</text>
+          </view>
         </view>
       </view>
     </view>
@@ -2407,7 +2411,7 @@ onMounted(() => {
   background-color: rgba(0,0,0,0.4);
   z-index: 300;
   display: flex;
-  align-items: flex-end;
+  align-items: center;
   justify-content: center;
 }
 .tep-modal-sheet {
@@ -2605,8 +2609,37 @@ onMounted(() => {
   margin: 0 20rpx;
 }
 
-.delete-confirm-btn {
+.delete-actions {
   margin-top: 32rpx;
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+}
+
+.delete-cancel-btn {
+  flex: 1;
+  background-color: #F5F5F5;
+  border-radius: 40rpx;
+  padding: 24rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.delete-cancel-btn:active {
+  background-color: #E5E5E5;
+}
+
+.delete-cancel-text {
+  font-size: 30rpx;
+  color: #666666;
+  font-weight: 500;
+}
+
+.delete-confirm-btn {
+  flex: 1;
   background-color: #1A1A2E;
   border-radius: 40rpx;
   padding: 24rpx 0;
@@ -2625,26 +2658,5 @@ onMounted(() => {
   font-size: 30rpx;
   color: #FFFFFF;
   font-weight: 500;
-}
-
-.delete-close-btn {
-  position: absolute;
-  bottom: -100rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 72rpx;
-  height: 72rpx;
-  border: 3rpx solid #FFFFFF;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-}
-
-.delete-close-icon {
-  font-size: 40rpx;
-  color: #FFFFFF;
-  line-height: 1;
 }
 </style>

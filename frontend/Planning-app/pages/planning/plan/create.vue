@@ -5,7 +5,7 @@
       <view class="nav-left" @tap="goBack">
         <text class="back-icon">←</text>
       </view>
-      <text class="nav-title">新规划</text>
+      <text class="nav-title">{{ isEditMode ? '编辑规划' : '新规划' }}</text>
       <view class="nav-right"></view>
     </view>
 
@@ -120,10 +120,10 @@
       <view class="bottom-spacer"></view>
     </scroll-view>
 
-    <!-- 底部创建按钮 -->
+    <!-- 底部创建/更新按钮 -->
     <view class="bottom-action">
-      <view class="create-btn" @tap="createPlan">
-        <text class="btn-text">创建规划</text>
+      <view class="create-btn" @tap="submitPlan">
+        <text class="btn-text">{{ submitButtonText }}</text>
       </view>
     </view>
 
@@ -145,7 +145,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { getRandomBuff } from '@/utils/buffLibrary.js';
 import { getTemplateById } from '@/utils/templateDatabase.js';
 import { usePlanStore } from '@/store/plan.js';
@@ -159,6 +159,12 @@ const planStore = usePlanStore();
 const templateId = ref(null);
 // 模板数据
 const templateData = ref(null);
+
+// 编辑模式相关
+const isEditMode = ref(false); // 是否为编辑模式
+const editingPlanId = ref(null); // 正在编辑的规划ID
+const originalFormData = ref(null); // 原始表单数据（用于检测变化）
+const hasFormChanged = ref(false); // 表单是否有变化
 
 // 图标选择弹窗状态
 const showIconDialog = ref(false);
@@ -185,6 +191,14 @@ const pickerStartDate = computed(() => {
 
 const pickerEndDate = computed(() => {
   return planForm.value.endDate.replace(/\//g, '-');
+});
+
+// 提交按钮文字（根据模式和表单变化动态显示）
+const submitButtonText = computed(() => {
+  if (isEditMode.value) {
+    return hasFormChanged.value ? '更新规划' : '编辑规划';
+  }
+  return '创建规划';
 });
 
 // 里程碑弹窗显示状态
@@ -327,6 +341,54 @@ function handleMilestoneSave(milestoneData) {
   // 重置编辑状态
   editingMilestone.value = null;
   editingMilestoneIndex.value = -1;
+}
+
+// 加载规划数据（编辑模式）
+function loadPlanData(planId) {
+  console.log('[CreatePlan] 加载规划数据，ID:', planId);
+
+  // 从planStore中获取规划数据
+  const plan = planStore.getPlanById(planId);
+
+  if (!plan) {
+    uni.showToast({
+      title: '规划不存在',
+      icon: 'error'
+    });
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 1500);
+    return;
+  }
+
+  // 填充表单数据
+  planForm.value = {
+    title: plan.title || '',
+    buff: plan.buff || '',
+    icon: plan.icon || '',
+    iconEmoji: plan.iconEmoji || '🔔',
+    startDate: plan.startDate || '',
+    startWeekday: plan.startWeekday || '',
+    startHint: plan.startHint || '',
+    endDate: plan.endDate || '',
+    endWeekday: plan.endWeekday || '',
+    duration: plan.duration || '',
+    milestones: plan.milestones ? JSON.parse(JSON.stringify(plan.milestones)) : []
+  };
+
+  // 保存原始数据（用于检测变化）
+  originalFormData.value = JSON.parse(JSON.stringify(planForm.value));
+
+  console.log('[CreatePlan] 规划数据已加载');
+}
+
+// 提交规划（创建或更新）
+function submitPlan() {
+  if (isEditMode.value) {
+    updatePlan();
+  } else {
+    createPlan();
+  }
 }
 
 // 创建规划
@@ -486,10 +548,99 @@ function createTasksFromTemplate(planId, template) {
   });
 }
 
+// 更新规划
+function updatePlan() {
+  console.log('[CreatePlan] 更新规划:', planForm.value);
+
+  // 验证必填项
+  if (!planForm.value.title.trim()) {
+    uni.showToast({
+      title: '请输入规划名称',
+      icon: 'none'
+    });
+    return;
+  }
+
+  if (!planForm.value.startDate || !planForm.value.endDate) {
+    uni.showToast({
+      title: '请选择规划期限',
+      icon: 'none'
+    });
+    return;
+  }
+
+  // 使用planStore更新规划
+  const success = planStore.updatePlan(editingPlanId.value, {
+    title: planForm.value.title,
+    buff: planForm.value.buff,
+    icon: planForm.value.icon,
+    iconEmoji: planForm.value.iconEmoji || '🔔',
+    startDate: planForm.value.startDate,
+    endDate: planForm.value.endDate,
+    duration: planForm.value.duration,
+    milestones: planForm.value.milestones || []
+  });
+
+  if (success) {
+    console.log('[CreatePlan] 规划已更新');
+
+    // 同步更新分类列表中的规划信息
+    const savedCategories = uni.getStorageSync('user_categories');
+    let categories = [];
+    if (savedCategories) {
+      try {
+        categories = JSON.parse(savedCategories);
+        const index = categories.findIndex(cat => cat.id === editingPlanId.value);
+        if (index !== -1) {
+          categories[index] = {
+            ...categories[index],
+            name: planForm.value.title,
+            iconEmoji: planForm.value.iconEmoji || '🔔',
+            buff: planForm.value.buff,
+            startDate: planForm.value.startDate,
+            endDate: planForm.value.endDate,
+            milestones: planForm.value.milestones || []
+          };
+          uni.setStorageSync('user_categories', JSON.stringify(categories));
+        }
+      } catch (e) {
+        console.error('[CreatePlan] 更新分类失败:', e);
+      }
+    }
+
+    uni.showToast({
+      title: '规划已更新',
+      icon: 'success',
+      duration: 1500
+    });
+
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 1500);
+  } else {
+    uni.showToast({
+      title: '更新失败',
+      icon: 'error'
+    });
+  }
+}
+
 // 返回
 function goBack() {
   uni.navigateBack();
 }
+
+// 监听表单变化（深度监听）
+watch(
+  () => planForm.value,
+  (newVal) => {
+    if (isEditMode.value && originalFormData.value) {
+      // 比较当前表单数据和原始数据
+      hasFormChanged.value = JSON.stringify(newVal) !== JSON.stringify(originalFormData.value);
+    }
+  },
+  { deep: true }
+);
 
 // 页面加载时计算日期信息和加载模板数据
 onMounted(() => {
@@ -497,6 +648,17 @@ onMounted(() => {
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1];
   const options = currentPage.options || {};
+
+  // 检查是否为编辑模式
+  if (options.mode === 'edit' && options.id) {
+    isEditMode.value = true;
+    editingPlanId.value = options.id;
+    console.log('[CreatePlan] 编辑模式，规划ID:', editingPlanId.value);
+
+    // 加载现有规划数据
+    loadPlanData(editingPlanId.value);
+    return; // 编辑模式下直接返回，不执行下面的模板创建逻辑
+  }
 
   // 检查是否从模板创建
   if (options.templateId) {
@@ -560,17 +722,14 @@ onMounted(() => {
     // 非模板创建，使用默认值
     console.log('[CreatePlan] 普通创建规划，使用默认值');
 
-    planForm.value.title = '新规划';
+    planForm.value.title = ''; // 空白标题
     planForm.value.buff = getRandomBuff();
     planForm.value.iconEmoji = '🔔';
 
-    // 默认日期：今天开始，持续30天
+    // 默认日期：开始日期为今天，结束日期为空
     const today = new Date();
     planForm.value.startDate = formatDate(today);
-
-    const endDate = new Date(today);
-    endDate.setDate(endDate.getDate() + 29); // 30天
-    planForm.value.endDate = formatDate(endDate);
+    planForm.value.endDate = ''; // 结束日期为空，需要用户选择
 
     planForm.value.milestones = [];
   }

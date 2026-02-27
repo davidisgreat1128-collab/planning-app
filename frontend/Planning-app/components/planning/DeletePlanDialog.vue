@@ -2,17 +2,17 @@
   <view v-if="visible" class="delete-dialog-mask" @tap="onMaskTap">
     <view class="delete-dialog" @tap.stop>
       <!-- 标题 -->
-      <text class="dialog-title">确认删除规划吗?</text>
+      <text class="dialog-title">确认删除规划吗？</text>
 
       <!-- 提示文字 -->
-      <text class="dialog-message">删除规划后,该规划下的计划将变为无分类</text>
+      <text class="dialog-message">删除规划后，该规划下的任务将变为无分类</text>
 
-      <!-- 复选框：同时删除规划下的计划 -->
+      <!-- 复选框：同时删除规划下的所有任务 -->
       <view class="checkbox-row" @tap="toggleDeleteTasks">
         <view class="checkbox" :class="{ checked: deleteWithTasks }">
           <text v-if="deleteWithTasks" class="check-icon">✓</text>
         </view>
-        <text class="checkbox-label">同时删除规划下的计划</text>
+        <text class="checkbox-label">同时删除该规划下的所有任务</text>
       </view>
 
       <!-- 按钮 -->

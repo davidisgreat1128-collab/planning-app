@@ -37,9 +37,17 @@
             <text class="stat-label">{{ goalData.endDate }}截止</text>
             <text class="stat-value">共{{ goalData.totalDays }}天</text>
           </view>
-          <view class="stat-item">
+          <view class="stat-item stat-item-completion">
             <text class="stat-label">计划完成率</text>
             <text class="stat-value">{{ goalData.completionRate }}%</text>
+            <!-- 规划完成印章 -->
+            <view v-if="goalData.isCompleted" class="completion-stamp">
+              <text class="stamp-text">目标完成</text>
+            </view>
+            <!-- 规划放弃印章 (72.jpg) -->
+            <view v-if="goalData.isAbandoned" class="abandon-stamp">
+              <text class="stamp-text">目标放弃</text>
+            </view>
           </view>
           <view class="stat-item">
             <text class="stat-label">完成计划</text>
@@ -153,31 +161,73 @@
           <text class="menu-title">规划</text>
         </view>
         <view class="menu-buttons">
-          <view class="menu-btn" @tap="handleMenuAction('action1')">
-            <text class="menu-btn-text">按钮1</text>
+          <!-- 未完成且未放弃状态：显示4个按钮 -->
+          <template v-if="!goalData.isCompleted && !goalData.isAbandoned">
+            <view class="menu-btn" @tap="handleCompleteGoal">
+              <text class="menu-btn-text">完成规划</text>
+            </view>
+            <view class="menu-btn" @tap="handleAdjustGoal">
+              <text class="menu-btn-text">调整规划</text>
+            </view>
+            <view class="menu-btn" @tap="handleAbandonGoal">
+              <text class="menu-btn-text">放弃规划</text>
+            </view>
+            <view class="menu-btn" @tap="handleDeleteGoal">
+              <text class="menu-btn-text">删除规划</text>
+            </view>
+          </template>
+
+          <!-- 已完成或已放弃状态：只显示删除按钮 -->
+          <template v-else>
+            <view class="menu-btn" @tap="handleDeleteGoal">
+              <text class="menu-btn-text">删除规划</text>
+            </view>
+          </template>
+        </view>
+      </view>
+    </view>
+
+    <!-- 放弃规划确认弹窗 (70.jpg/71.jpg) -->
+    <view v-if="showAbandonDialog" class="abandon-modal-mask" @tap="closeAbandonDialog">
+      <view class="abandon-dialog" @tap.stop>
+        <text class="abandon-title">确认放弃规划吗?</text>
+        <text class="abandon-hint">放弃规划后将不可恢复</text>
+
+        <view class="abandon-actions">
+          <view class="abandon-cancel-btn" @tap="closeAbandonDialog">
+            <text class="abandon-cancel-text">取消</text>
           </view>
-          <view class="menu-btn" @tap="handleMenuAction('action2')">
-            <text class="menu-btn-text">按钮2</text>
-          </view>
-          <view class="menu-btn" @tap="handleMenuAction('action3')">
-            <text class="menu-btn-text">按钮3</text>
-          </view>
-          <view class="menu-btn" @tap="handleMenuAction('action4')">
-            <text class="menu-btn-text">按钮4</text>
+          <view
+            class="abandon-confirm-btn"
+            :class="{ 'abandon-confirm-disabled': abandonCountdown > 0 }"
+            @tap="confirmAbandon"
+          >
+            <text class="abandon-confirm-text">
+              {{ abandonCountdown > 0 ? `确定（${abandonCountdown}）` : '确定' }}
+            </text>
           </view>
         </view>
       </view>
     </view>
+
+    <!-- 删除规划确认弹窗 (67.jpg/68.jpg/69.jpg) -->
+    <DeletePlanDialog
+      v-model:visible="showDeleteDialog"
+      :plan-title="goalData.title"
+      @confirm="onConfirmDelete"
+    />
   </view>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { usePlanStore } from '@/store/plan.js';
 import { useTaskStore } from '@/store/task.js';
 import { getTasks } from '@/api/task.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
+import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
 
 // 获取 stores
 const planStore = usePlanStore();
@@ -198,6 +248,18 @@ const showTaskPanel = ref(false);
 // 菜单弹窗显示状态
 const showMenuPopup = ref(false);
 
+// 放弃规划确认弹窗显示状态
+const showAbandonDialog = ref(false);
+
+// 放弃规划倒计时（秒）
+const abandonCountdown = ref(0);
+
+// 倒计时定时器
+let abandonTimer = null;
+
+// 删除规划确认弹窗显示状态
+const showDeleteDialog = ref(false);
+
 // 目标数据
 const goalData = ref({
   title: '循序渐进养成良好作息',
@@ -209,6 +271,8 @@ const goalData = ref({
   focusTime: 0,
   completedPlans: 0,
   uncompletedPlans: 5,
+  isCompleted: false,  // 规划是否完成
+  isAbandoned: false,  // 规划是否放弃
   milestones: [
     {
       title: '建立健康观念，健康永远是第一位的',
@@ -386,10 +450,103 @@ function closeMenu() {
   showMenuPopup.value = false;
 }
 
-// 菜单按钮操作（待实现）
-function handleMenuAction(action) {
+// 处理完成规划
+function handleCompleteGoal() {
   closeMenu();
-  // TODO: 实现具体的菜单操作
+  goalData.value.isCompleted = true;
+  uni.showToast({ title: '规划已完成', icon: 'success' });
+  // TODO: 调用API更新规划状态
+}
+
+// 处理调整规划
+function handleAdjustGoal() {
+  closeMenu();
+  // 跳转到编辑规划页面，传递当前规划ID
+  uni.navigateTo({
+    url: `/pages/planning/plan/create?id=${currentPlanId.value}&mode=edit`
+  });
+}
+
+// 处理放弃规划 - 显示二次确认弹窗
+function handleAbandonGoal() {
+  closeMenu();
+  showAbandonDialog.value = true;
+  // 启动3秒倒计时
+  abandonCountdown.value = 3;
+  startAbandonCountdown();
+}
+
+// 关闭放弃规划弹窗
+function closeAbandonDialog() {
+  showAbandonDialog.value = false;
+  abandonCountdown.value = 0;
+  if (abandonTimer) {
+    clearInterval(abandonTimer);
+    abandonTimer = null;
+  }
+}
+
+// 开始放弃规划倒计时
+function startAbandonCountdown() {
+  if (abandonTimer) {
+    clearInterval(abandonTimer);
+  }
+  abandonTimer = setInterval(() => {
+    if (abandonCountdown.value > 0) {
+      abandonCountdown.value--;
+    } else {
+      clearInterval(abandonTimer);
+      abandonTimer = null;
+    }
+  }, 1000);
+}
+
+// 确认放弃规划
+function confirmAbandon() {
+  // 倒计时未结束，不允许点击
+  if (abandonCountdown.value > 0) {
+    return;
+  }
+
+  // 设置规划为已放弃
+  goalData.value.isAbandoned = true;
+  uni.showToast({ title: '规划已放弃', icon: 'success' });
+  closeAbandonDialog();
+  // TODO: 调用API更新规划状态
+}
+
+// 处理删除规划
+function handleDeleteGoal() {
+  closeMenu();
+  showDeleteDialog.value = true;
+}
+
+// 确认删除规划
+async function onConfirmDelete(deleteWithTasks) {
+  try {
+    uni.showLoading({ title: '删除中...' });
+
+    if (deleteWithTasks) {
+      // 同时删除规划下的所有任务
+      console.log('[PlanDetail] 删除规划及所有任务');
+      // TODO: 调用API删除规划及其任务
+    } else {
+      // 只删除规划，任务变为无分类
+      console.log('[PlanDetail] 删除规划，任务变为无分类');
+      // TODO: 调用API删除规划，任务保留
+    }
+
+    uni.hideLoading();
+    uni.showToast({ title: '规划已删除', icon: 'success' });
+
+    setTimeout(() => {
+      uni.navigateBack();
+    }, 1500);
+  } catch (error) {
+    uni.hideLoading();
+    console.error('[PlanDetail] 删除规划失败:', error);
+    uni.showToast({ title: '删除失败', icon: 'error' });
+  }
 }
 
 // 获取任务优先级样式类
@@ -572,6 +729,14 @@ onMounted(() => {
     } catch (error) {
       console.error('[GoalDetail] 解析规划数据失败:', error);
     }
+  }
+});
+
+// 页面每次显示时重新加载数据（从编辑页面返回时会触发）
+onShow(() => {
+  if (currentPlanId.value) {
+    console.log('[PlanDetail] 页面显示，重新加载规划数据');
+    loadPlanData(currentPlanId.value);
   }
 });
 </script>
@@ -1060,5 +1225,160 @@ onMounted(() => {
 .menu-btn-text {
   font-size: 28rpx;
   color: #333;
+}
+
+/* ============================================================
+   规划完成印章样式
+   ============================================================ */
+.stat-item-completion {
+  position: relative;
+  overflow: visible;
+}
+
+.completion-stamp {
+  position: absolute;
+  top: 50%;
+  right: -30rpx;
+  transform: translate(0, -50%) rotate(15deg);
+  width: 140rpx;
+  height: 140rpx;
+  border: 8rpx solid #D32F2F;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(211, 47, 47, 0.1);
+  z-index: 10;
+}
+
+.stamp-text {
+  font-size: 28rpx;
+  color: #D32F2F;
+  font-weight: 700;
+  letter-spacing: 4rpx;
+}
+
+/* ============================================================
+   规划放弃印章样式 (72.jpg)
+   ============================================================ */
+.abandon-stamp {
+  position: absolute;
+  top: 50%;
+  right: -30rpx;
+  transform: translate(0, -50%) rotate(15deg);
+  width: 140rpx;
+  height: 140rpx;
+  border: 8rpx solid #999999;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: rgba(153, 153, 153, 0.1);
+  z-index: 10;
+}
+
+/* ============================================================
+   放弃规划确认弹窗样式 (70.jpg/71.jpg)
+   ============================================================ */
+.abandon-modal-mask {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.6);
+  z-index: 10000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.abandon-dialog {
+  position: relative;
+  width: 600rpx;
+  background-color: #FFFFFF;
+  border-radius: 24rpx;
+  padding: 50rpx 40rpx 40rpx;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.abandon-title {
+  font-size: 36rpx;
+  color: #333333;
+  font-weight: 600;
+  margin-bottom: 20rpx;
+  text-align: center;
+}
+
+.abandon-hint {
+  font-size: 28rpx;
+  color: #999999;
+  margin-bottom: 50rpx;
+  text-align: center;
+}
+
+.abandon-actions {
+  width: 100%;
+  display: flex;
+  flex-direction: row;
+  gap: 24rpx;
+}
+
+.abandon-cancel-btn {
+  flex: 1;
+  background-color: #FFFFFF;
+  border: 3rpx solid #333333;
+  border-radius: 60rpx;
+  padding: 24rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.abandon-cancel-btn:active {
+  background-color: #F5F5F5;
+}
+
+.abandon-cancel-text {
+  font-size: 30rpx;
+  color: #333333;
+  font-weight: 500;
+}
+
+.abandon-confirm-btn {
+  flex: 1;
+  background-color: #333333;
+  border-radius: 60rpx;
+  padding: 24rpx 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.abandon-confirm-btn:active {
+  opacity: 0.8;
+}
+
+/* 倒计时中的确定按钮（灰色禁用状态，70.jpg） */
+.abandon-confirm-disabled {
+  background-color: #CCCCCC;
+  cursor: not-allowed;
+  opacity: 1;
+}
+
+.abandon-confirm-disabled:active {
+  opacity: 1;
+}
+
+.abandon-confirm-text {
+  font-size: 30rpx;
+  color: #FFFFFF;
+  font-weight: 500;
 }
 </style>
