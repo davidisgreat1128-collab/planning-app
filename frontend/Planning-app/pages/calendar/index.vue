@@ -718,6 +718,15 @@ const dragState = ref({
   startY: 0,          // 起始触摸Y
 });
 
+/** APP端象限位置缓存 */
+const quadrantRects = ref({
+  q1: null,
+  q2: null,
+  q3: null,
+  q4: null,
+  delete: null,
+});
+
 /** 更改象限确认对话框 */
 const showChangeQuadrantDialog = ref(false);
 const changeQuadrantOption = ref(1); // 1=完整更改, 2=更改当天及未来
@@ -1396,7 +1405,40 @@ function onTaskLongPress(e, task, quadrant) {
 
   // 震动反馈
   uni.vibrateShort?.({ type: 'medium' });
+
+  // #ifndef H5
+  // APP端：获取所有象限和删除区域的位置信息
+  updateQuadrantRects();
+  // #endif
 }
+
+// #ifndef H5
+/**
+ * APP端：更新象限位置信息
+ */
+function updateQuadrantRects() {
+  const query = uni.createSelectorQuery();
+
+  query.select('.nb-q1').boundingClientRect();
+  query.select('.nb-q2').boundingClientRect();
+  query.select('.nb-q3').boundingClientRect();
+  query.select('.nb-q4').boundingClientRect();
+  query.select('.delete-zone').boundingClientRect();
+
+  query.exec((res) => {
+    if (res && res.length === 5) {
+      quadrantRects.value = {
+        q1: res[0],
+        q2: res[1],
+        q3: res[2],
+        q4: res[3],
+        delete: res[4],
+      };
+      console.log('[Drag] APP端象限位置已更新:', quadrantRects.value);
+    }
+  });
+}
+// #endif
 
 /**
  * 拖拽移动
@@ -1421,6 +1463,21 @@ function onTaskTouchMove(e) {
     const rect = deleteZone.getBoundingClientRect();
     const over = clientX >= rect.left && clientX <= rect.right &&
                  clientY >= rect.top && clientY <= rect.bottom;
+    if (over !== dragState.value.overDelete) {
+      dragState.value.overDelete = over;
+      if (over) {
+        uni.vibrateShort?.({ type: 'light' });
+      }
+    }
+  }
+  // #endif
+
+  // #ifndef H5
+  // APP端：使用缓存的位置信息检测
+  const deleteRect = quadrantRects.value.delete;
+  if (deleteRect) {
+    const over = clientX >= deleteRect.left && clientX <= deleteRect.right &&
+                 clientY >= deleteRect.top && clientY <= deleteRect.bottom;
     if (over !== dragState.value.overDelete) {
       dragState.value.overDelete = over;
       if (over) {
@@ -1481,6 +1538,16 @@ function detectQuadrantAtPosition(x, y) {
   for (const [key, el] of Object.entries(quadrants)) {
     if (!el) continue;
     const rect = el.getBoundingClientRect();
+    if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+      return key;
+    }
+  }
+  // #endif
+
+  // #ifndef H5
+  // APP端：使用缓存的位置信息
+  for (const [key, rect] of Object.entries(quadrantRects.value)) {
+    if (key === 'delete' || !rect) continue;
     if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
       return key;
     }
