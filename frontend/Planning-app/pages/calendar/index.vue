@@ -255,6 +255,7 @@
                 @longpress="onTaskLongPress($event, task, 'q3')"
                 @touchmove="onTaskTouchMove"
                 @touchend="onTaskTouchEnd"
+                @mousedown="onTaskMouseDown($event, task, 'q3')"
               >
                 <view
                   class="nb-check nb-check-q3"
@@ -309,6 +310,7 @@
                 @longpress="onTaskLongPress($event, task, 'q1')"
                 @touchmove="onTaskTouchMove"
                 @touchend="onTaskTouchEnd"
+                @mousedown="onTaskMouseDown($event, task, 'q1')"
               >
                 <view
                   class="nb-check nb-check-q1"
@@ -366,6 +368,7 @@
                 @longpress="onTaskLongPress($event, task, 'q4')"
                 @touchmove="onTaskTouchMove"
                 @touchend="onTaskTouchEnd"
+                @mousedown="onTaskMouseDown($event, task, 'q4')"
               >
                 <view
                   class="nb-check nb-check-q4"
@@ -419,6 +422,7 @@
                 @longpress="onTaskLongPress($event, task, 'q2')"
                 @touchmove="onTaskTouchMove"
                 @touchend="onTaskTouchEnd"
+                @mousedown="onTaskMouseDown($event, task, 'q2')"
               >
                 <view
                   class="nb-check nb-check-q2"
@@ -1380,27 +1384,119 @@ async function toggleTaskDone(task) {
 // 拖拽相关函数
 // ============================================================
 
+// H5端鼠标拖拽变量
+let mouseDownTask = null;
+let mouseDownQuadrant = '';
+let mouseDownTimer = null;
+let mouseDownX = 0;
+let mouseDownY = 0;
+let mouseMoved = false;
+
 /**
- * 长按任务开始拖拽
+ * H5端：鼠标按下任务项
  */
-function onTaskLongPress(e, task, quadrant) {
-  console.log('[Drag] 长按任务:', task.title, 'quadrant:', quadrant);
+function onTaskMouseDown(e, task, quadrant) {
+  // 只处理左键
+  if (e.button !== 0) return;
 
-  // 防止触发点击事件
-  e.preventDefault?.();
-  e.stopPropagation?.();
+  e.preventDefault();
+  e.stopPropagation();
 
+  mouseDownTask = task;
+  mouseDownQuadrant = quadrant;
+  mouseDownX = e.clientX;
+  mouseDownY = e.clientY;
+  mouseMoved = false;
+
+  // 清除之前的定时器
+  if (mouseDownTimer) {
+    clearTimeout(mouseDownTimer);
+  }
+
+  // 500ms后触发长按
+  mouseDownTimer = setTimeout(() => {
+    if (!mouseMoved) {
+      console.log('[Drag] 鼠标长按触发:', task.title);
+      startDrag(e, task, quadrant);
+    }
+  }, 500);
+
+  // 监听鼠标移动和松开
+  document.addEventListener('mousemove', onTaskMouseMove);
+  document.addEventListener('mouseup', onTaskMouseUp);
+}
+
+/**
+ * H5端：鼠标移动（检测是否移动超过阈值）
+ */
+function onTaskMouseMove(e) {
+  if (!mouseDownTask) return;
+
+  const dx = Math.abs(e.clientX - mouseDownX);
+  const dy = Math.abs(e.clientY - mouseDownY);
+
+  // 移动超过5px则取消长按
+  if (dx > 5 || dy > 5) {
+    mouseMoved = true;
+    if (mouseDownTimer) {
+      clearTimeout(mouseDownTimer);
+      mouseDownTimer = null;
+    }
+  }
+
+  // 如果已经开始拖拽，更新拖拽位置
+  if (dragState.value.dragging) {
+    onTaskTouchMove({
+      touches: [{ clientX: e.clientX, clientY: e.clientY }],
+      preventDefault: () => e.preventDefault(),
+      stopPropagation: () => e.stopPropagation(),
+    });
+  }
+}
+
+/**
+ * H5端：鼠标松开
+ */
+function onTaskMouseUp(e) {
+  // 清除定时器
+  if (mouseDownTimer) {
+    clearTimeout(mouseDownTimer);
+    mouseDownTimer = null;
+  }
+
+  // 如果正在拖拽，结束拖拽
+  if (dragState.value.dragging) {
+    onTaskTouchEnd({
+      preventDefault: () => e.preventDefault(),
+      stopPropagation: () => e.stopPropagation(),
+    });
+  }
+
+  // 清除状态
+  mouseDownTask = null;
+  mouseDownQuadrant = '';
+  mouseMoved = false;
+
+  // 移除监听
+  document.removeEventListener('mousemove', onTaskMouseMove);
+  document.removeEventListener('mouseup', onTaskMouseUp);
+}
+
+/**
+ * 开始拖拽（通用函数）
+ */
+function startDrag(e, task, quadrant) {
   const touch = e.touches?.[0] || e.changedTouches?.[0] || e;
 
   dragState.value = {
     dragging: true,
     task: task,
     fromQuadrant: quadrant,
-    x: touch.clientX || touch.pageX || 0,
-    y: touch.clientY || touch.pageY || 0,
+    x: touch.clientX || e.clientX || 0,
+    y: touch.clientY || e.clientY || 0,
     overDelete: false,
-    startX: touch.clientX || touch.pageX || 0,
-    startY: touch.clientY || touch.pageY || 0,
+    startX: touch.clientX || e.clientX || 0,
+    startY: touch.clientY || e.clientY || 0,
   };
 
   // 震动反馈
@@ -1410,6 +1506,20 @@ function onTaskLongPress(e, task, quadrant) {
   // APP端：获取所有象限和删除区域的位置信息
   updateQuadrantRects();
   // #endif
+}
+
+/**
+ * 长按任务开始拖拽（触摸端）
+ */
+function onTaskLongPress(e, task, quadrant) {
+  console.log('[Drag] 触摸长按任务:', task.title, 'quadrant:', quadrant);
+
+  // 防止触发点击事件
+  e.preventDefault?.();
+  e.stopPropagation?.();
+
+  // 调用通用的开始拖拽函数
+  startDrag(e, task, quadrant);
 }
 
 // #ifndef H5
