@@ -53,7 +53,7 @@
         <text class="form-label">规划期限</text>
         <view class="date-range-wrapper">
           <view class="date-display">
-            <text class="date-text">{{ planForm.startDate }}-{{ planForm.endDate }}</text>
+            <text class="date-text">{{ planForm.startDate }}-{{ planForm.endDate || '请选择' }}</text>
             <text class="clear-icon" @tap="clearDates">⊗</text>
           </view>
 
@@ -71,7 +71,9 @@
               <view class="date-item">
                 <text class="date-label">结束日期</text>
                 <view class="date-value-wrapper">
-                  <text class="date-value">{{ planForm.endDate }} {{ planForm.endWeekday }}</text>
+                  <text class="date-value" :class="{ 'date-placeholder': !planForm.endDate }">
+                    {{ planForm.endDate ? `${planForm.endDate} ${planForm.endWeekday}` : '请选择' }}
+                  </text>
                 </view>
                 <text class="date-hint">{{ planForm.duration }}</text>
               </view>
@@ -974,6 +976,11 @@ function formatDate(date) {
   font-weight: 600;
   word-break: break-all;
   line-height: 1.4;
+}
+
+.date-placeholder {
+  color: #ccc;
+  font-weight: 400;
 }
 
 .date-hint {

@@ -152,11 +152,12 @@ function selectTemplate(template) {
   });
 }
 
-// 创建自定义规划
+// 创建自定义规划（空白规划）
 function createCustomGoal() {
-  console.log('[Template] 创建自定义规划');
+  console.log('[Template] 创建自定义规划（空白规划）');
+  // 跳转到"新规划"页面，不传递templateId参数，使用默认空白值
   uni.navigateTo({
-    url: '/pages/planning/template/custom'
+    url: '/pages/planning/plan/create'
   });
 }
 
