@@ -649,22 +649,30 @@ async function loadPlanData(planId) {
       const startStr = plan.startDate.replace(/\//g, '-');
       const endStr = plan.endDate.replace(/\//g, '-');
 
-      try {
-        const result = await getTasks({ start: startStr, end: endStr });
+      // 验证日期顺序：start 不能晚于 end
+      const startDate = new Date(startStr);
+      const endDate = new Date(endStr);
+      if (startDate > endDate) {
+        console.warn('[GoalDetail] 日期顺序错误，startDate晚于endDate，跳过API加载:', { startStr, endStr });
+        // 日期顺序错误时，只使用localStorage的任务，不调用API
+      } else {
+        try {
+          const result = await getTasks({ start: startStr, end: endStr });
 
-        if (result && result.taskMap) {
-          // 后端返回格式: taskMap[date] = [task1, task2, ...] (每个task带_type字段)
-          // 需要提取所有日期的所有任务
-          apiTasks = Object.values(result.taskMap).flatMap(dayTasks => {
-            if (Array.isArray(dayTasks) && dayTasks.length > 0) {
-              return dayTasks;
-            }
-            return [];
-          });
+          if (result && result.taskMap) {
+            // 后端返回格式: taskMap[date] = [task1, task2, ...] (每个task带_type字段)
+            // 需要提取所有日期的所有任务
+            apiTasks = Object.values(result.taskMap).flatMap(dayTasks => {
+              if (Array.isArray(dayTasks) && dayTasks.length > 0) {
+                return dayTasks;
+              }
+              return [];
+            });
+          }
+        } catch (apiError) {
+          console.error('[GoalDetail] API加载任务失败:', apiError);
+          // 继续执行，只使用localStorage的任务
         }
-      } catch (apiError) {
-        console.error('[GoalDetail] API加载任务失败:', apiError);
-        // 继续执行，只使用localStorage的任务
       }
     }
 

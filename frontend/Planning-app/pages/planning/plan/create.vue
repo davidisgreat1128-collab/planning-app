@@ -21,7 +21,7 @@
           <input
             class="form-input"
             v-model="planForm.title"
-            placeholder="循序渐进养成良好作息"
+            placeholder="每一次选择成就不一样的你！"
             placeholder-class="input-placeholder"
             maxlength="20"
           />
@@ -156,6 +156,28 @@ import PlanIconDialog from '@/components/planning/PlanIconDialog.vue';
 
 // 获取planStore
 const planStore = usePlanStore();
+
+// 所有可用的图标 emoji
+const allIconEmojis = [
+  // 工作
+  '🗂️', '✉️', '💼', '☎️', '📋', '👥', '🌍', '🍹', '🍵', '📖', '🍌', '☕', '⌨️', '✈️', '🥧', '💻', '🔥', '🐦', '📇',
+  // 生活
+  '🥩', '🥫', '🧺', '🧊', '🧹', '🕷️', '🧾', '🥗', '🛒', '🍰', '💊', '🛏️', '🌺', '🥬', '🪑', '🚗', '🐕', '🏠',
+  // 学习
+  '📁', '📚', '📕', '📃', '🎓', '🗒️', '✏️', '🎯', '📙', '📄', '📱', '📗', '📘', '🎨', '🎸', '🎹', '🎭', '🏆',
+  // 运动
+  '👟', '🏋️', '🏐', '🏀', '⚽', '🤸', '🏸', '🏊', '🎾', '🏃', '🚴', '🧘', '🥊',
+  // 兴趣
+  '📜', '🎮', '📺', '📰', '⛺', '🚲', '🍟', '🍿', '🎂', '🥤', '🍜', '🔧', '📦', '🥇',
+  // 其他
+  '⚪', '❌', '⭕', '🎫', '☁️', '🎐', '🌸', '🍱', '❄️', '🚩', '🍂', '🥜'
+];
+
+// 获取随机图标
+function getRandomIconEmoji() {
+  const randomIndex = Math.floor(Math.random() * allIconEmojis.length);
+  return allIconEmojis[randomIndex];
+}
 
 // 模板ID（从URL参数获取）
 const templateId = ref(null);
@@ -726,7 +748,7 @@ onMounted(() => {
 
     planForm.value.title = ''; // 空白标题
     planForm.value.buff = getRandomBuff();
-    planForm.value.iconEmoji = '🔔';
+    planForm.value.iconEmoji = getRandomIconEmoji(); // 随机图标
 
     // 默认日期：开始日期为今天，结束日期为空
     const today = new Date();
