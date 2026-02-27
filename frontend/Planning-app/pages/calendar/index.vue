@@ -1408,6 +1408,8 @@ function onTaskMouseDown(e, task, quadrant) {
   mouseDownY = e.clientY;
   mouseMoved = false;
 
+  console.log('[Drag] 鼠标按下任务:', task.title, '坐标:', mouseDownX, mouseDownY);
+
   // 清除之前的定时器
   if (mouseDownTimer) {
     clearTimeout(mouseDownTimer);
@@ -1415,9 +1417,14 @@ function onTaskMouseDown(e, task, quadrant) {
 
   // 500ms后触发长按
   mouseDownTimer = setTimeout(() => {
-    if (!mouseMoved) {
-      console.log('[Drag] 鼠标长按触发:', task.title);
-      startDrag(e, task, quadrant);
+    if (!mouseMoved && mouseDownTask) {
+      console.log('[Drag] 鼠标长按触发:', mouseDownTask.title);
+      // 使用保存的坐标创建模拟事件对象
+      const fakeEvent = {
+        clientX: mouseDownX,
+        clientY: mouseDownY,
+      };
+      startDrag(fakeEvent, mouseDownTask, mouseDownQuadrant);
     }
   }, 500);
 
@@ -1437,6 +1444,9 @@ function onTaskMouseMove(e) {
 
   // 移动超过5px则取消长按
   if (dx > 5 || dy > 5) {
+    if (!mouseMoved) {
+      console.log('[Drag] 鼠标移动超过阈值,取消长按. dx:', dx, 'dy:', dy);
+    }
     mouseMoved = true;
     if (mouseDownTimer) {
       clearTimeout(mouseDownTimer);
@@ -1458,6 +1468,8 @@ function onTaskMouseMove(e) {
  * H5端：鼠标松开
  */
 function onTaskMouseUp(e) {
+  console.log('[Drag] 鼠标松开. dragging:', dragState.value.dragging);
+
   // 清除定时器
   if (mouseDownTimer) {
     clearTimeout(mouseDownTimer);
@@ -1488,16 +1500,23 @@ function onTaskMouseUp(e) {
 function startDrag(e, task, quadrant) {
   const touch = e.touches?.[0] || e.changedTouches?.[0] || e;
 
+  const x = touch.clientX || e.clientX || 0;
+  const y = touch.clientY || e.clientY || 0;
+
+  console.log('[Drag] 开始拖拽:', task.title, '象限:', quadrant, '位置:', x, y);
+
   dragState.value = {
     dragging: true,
     task: task,
     fromQuadrant: quadrant,
-    x: touch.clientX || e.clientX || 0,
-    y: touch.clientY || e.clientY || 0,
+    x: x,
+    y: y,
     overDelete: false,
-    startX: touch.clientX || e.clientX || 0,
-    startY: touch.clientY || e.clientY || 0,
+    startX: x,
+    startY: y,
   };
+
+  console.log('[Drag] dragState已更新:', dragState.value);
 
   // 震动反馈
   uni.vibrateShort?.({ type: 'medium' });
