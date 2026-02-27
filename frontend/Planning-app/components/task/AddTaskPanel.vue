@@ -542,10 +542,17 @@ const showCategoryDialog = ref(false);
 
 /** 当前图标显示 */
 const currentCategoryIcon = computed(() => {
+  // 优先使用用户手动选择的分类
   if (selectedCategoryId.value) {
     const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
     return category ? (category.iconEmoji || category.name.charAt(0)) : '无';
   }
+  // 其次使用 props 传入的 categoryId（规划详情页传入的当前规划ID）
+  if (props.categoryId) {
+    const category = userCategories.value.find(c => c.id === props.categoryId);
+    return category ? (category.iconEmoji || category.name.charAt(0)) : '无';
+  }
+  // 都没有时显示"无"
   return '无';
 });
 
