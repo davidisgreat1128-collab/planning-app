@@ -2146,17 +2146,18 @@ function loadSelectedContainer() {
   background-color: rgba(0, 0, 0, 0.5);
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
+  padding-top: 15vh;
 }
 
 .tp-sheet {
-  width: 80%;
-  max-width: 580rpx;
+  width: 75%;
+  max-width: 520rpx;
   background-color: #FFFFFF;
-  border-radius: 24rpx;
-  padding: 24rpx 0 0;
-  max-height: 75vh;
+  border-radius: 20rpx;
+  padding: 20rpx 0 0;
+  max-height: 70vh;
   overflow: hidden;
 }
 
