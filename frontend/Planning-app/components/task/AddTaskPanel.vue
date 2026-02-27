@@ -2151,12 +2151,12 @@ function loadSelectedContainer() {
 }
 
 .tp-sheet {
-  width: 90%;
-  max-width: 680rpx;
+  width: 80%;
+  max-width: 580rpx;
   background-color: #FFFFFF;
-  border-radius: 32rpx;
-  padding: 32rpx 0 0;
-  max-height: 85vh;
+  border-radius: 24rpx;
+  padding: 24rpx 0 0;
+  max-height: 75vh;
   overflow: hidden;
   position: fixed;
   top: 50%;
@@ -2169,12 +2169,12 @@ function loadSelectedContainer() {
   display: flex;
   flex-direction: row;
   border-top: 1rpx solid #F0F0F0;
-  margin-top: 12rpx;
+  margin-top: 8rpx;
 }
 
 .tp-btn {
   flex: 1;
-  height: 88rpx;
+  height: 76rpx;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2185,7 +2185,7 @@ function loadSelectedContainer() {
 }
 
 .tp-btn-text {
-  font-size: 28rpx;
+  font-size: 26rpx;
   color: #666;
 }
 
@@ -2200,19 +2200,19 @@ function loadSelectedContainer() {
 
 /* 顶部标题 */
 .dp-title {
-  font-size: 26rpx;
+  font-size: 22rpx;
   color: #333;
   text-align: center;
   display: block;
-  padding: 0 32rpx 16rpx;
+  padding: 0 24rpx 12rpx;
 }
 
 .dp-days {
-  font-size: 30rpx;
+  font-size: 26rpx;
   font-weight: bold;
   color: #333;
   text-decoration: underline;
-  text-underline-offset: 4rpx;
+  text-underline-offset: 3rpx;
 }
 
 /* 月份导航 */
@@ -2220,19 +2220,19 @@ function loadSelectedContainer() {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 0 24rpx 16rpx;
+  padding: 0 20rpx 12rpx;
 }
 
 .dp-nav-btn {
-  width: 48rpx;
-  height: 48rpx;
+  width: 40rpx;
+  height: 40rpx;
   display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .dp-nav-icon {
-  font-size: 32rpx;
+  font-size: 28rpx;
   color: #333;
   font-weight: bold;
 }
@@ -2240,13 +2240,13 @@ function loadSelectedContainer() {
 .dp-nav-title {
   flex: 1;
   text-align: center;
-  font-size: 28rpx;
+  font-size: 24rpx;
   color: #333;
   font-weight: bold;
 }
 
 .dp-lunar-toggle {
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #999;
 }
 
@@ -2254,15 +2254,15 @@ function loadSelectedContainer() {
 .dp-weekrow {
   display: flex;
   flex-direction: row;
-  padding: 0 12rpx;
+  padding: 0 10rpx;
   border-bottom: 1rpx solid #F0F0F0;
-  padding-bottom: 8rpx;
+  padding-bottom: 6rpx;
 }
 
 .dp-weekcell {
   flex: 1;
   text-align: center;
-  font-size: 22rpx;
+  font-size: 20rpx;
   color: #999;
 }
 
@@ -2271,7 +2271,7 @@ function loadSelectedContainer() {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
-  padding: 6rpx 12rpx;
+  padding: 4rpx 10rpx;
 }
 
 .dp-cell {
@@ -2280,28 +2280,28 @@ function loadSelectedContainer() {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: 8rpx 0;
+  padding: 6rpx 0;
   border-radius: 50%;
   position: relative;
 }
 
 .dp-cell-num {
-  font-size: 26rpx;
+  font-size: 24rpx;
   color: #333;
-  width: 52rpx;
-  height: 52rpx;
+  width: 46rpx;
+  height: 46rpx;
   display: flex;
   align-items: center;
   justify-content: center;
   border-radius: 50%;
-  line-height: 52rpx;
+  line-height: 46rpx;
   text-align: center;
 }
 
 .dp-cell-lunar {
-  font-size: 16rpx;
+  font-size: 14rpx;
   color: #999;
-  margin-top: 2rpx;
+  margin-top: 1rpx;
 }
 
 /* 其他月份：灰色 */
