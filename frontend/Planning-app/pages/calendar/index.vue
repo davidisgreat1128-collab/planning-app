@@ -455,18 +455,33 @@
       <!-- 拖拽蒙层和删除区域 -->
       <view v-if="dragState.dragging" class="drag-overlay">
         <!-- 调试信息 -->
-        <view style="position: fixed; top: 10px; left: 10px; background: yellow; padding: 10px; z-index: 10000; font-size: 12px;">
+        <view style="position: fixed; top: 10px; left: 10px; background: yellow; padding: 10px; z-index: 10001; font-size: 12px; max-width: 200px;">
           拖拽中: {{ dragState.dragging }}<br>
           位置: {{ dragState.x }}, {{ dragState.y }}<br>
-          任务: {{ dragState.task ? dragState.task.title : '无' }}
+          任务: {{ dragState.task ? dragState.task.title : '无' }}<br>
+          副本left: {{ dragState.x }}px<br>
+          副本top: {{ dragState.y }}px
         </view>
 
-        <!-- 半透明拖拽的任务副本 -->
+        <!-- 半透明拖拽的任务副本 - 简化版测试 -->
         <view
-          class="dragging-task"
-          :style="{ left: dragState.x + 'px', top: dragState.y + 'px' }"
+          :style="{
+            position: 'fixed',
+            left: dragState.x + 'px',
+            top: dragState.y + 'px',
+            backgroundColor: 'rgba(66, 133, 244, 0.95)',
+            color: 'white',
+            padding: '12px 20px',
+            borderRadius: '8px',
+            fontSize: '16px',
+            fontWeight: 'bold',
+            zIndex: 10000,
+            pointerEvents: 'none',
+            border: '3px solid red',
+            minWidth: '100px'
+          }"
         >
-          <text class="dragging-task-text">{{ dragState.task ? dragState.task.title : '' }}</text>
+          {{ dragState.task ? dragState.task.title : '拖拽副本' }}
         </view>
 
         <!-- 删除区域 -->
