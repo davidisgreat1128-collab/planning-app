@@ -1986,6 +1986,14 @@ let _h5RafPending = false;     // rAF 节流标志
 let _h5LastMoveX = 0;
 let _h5LastMoveY = 0;
 
+// 任务拖拽相关变量
+let mouseDownTask = null;
+let mouseDownQuadrant = '';
+let mouseDownTimer = null;
+let mouseDownX = 0;
+let mouseDownY = 0;
+let mouseMoved = false;
+
 function _fakeTouch(clientX, clientY) {
   return { touches: [{ clientX, clientY }], changedTouches: [{ clientX, clientY }] };
 }
