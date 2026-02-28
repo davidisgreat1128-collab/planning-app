@@ -252,9 +252,9 @@
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
-                @longpress="onTaskLongPress($event, task, 'q3')"
-                @touchmove="onTaskTouchMove"
-                @touchend="onTaskTouchEnd"
+                @longpress="(e) => onTaskLongPress(e, task, 'q3')"
+                @touchmove="(e) => onTaskTouchMove(e)"
+                @touchend="(e) => onTaskTouchEnd(e)"
                 @mousedown="(e) => onTaskMouseDown(e, task, 'q3')"
               >
                 <view
@@ -307,9 +307,9 @@
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
-                @longpress="onTaskLongPress($event, task, 'q1')"
-                @touchmove="onTaskTouchMove"
-                @touchend="onTaskTouchEnd"
+                @longpress="(e) => onTaskLongPress(e, task, 'q1')"
+                @touchmove="(e) => onTaskTouchMove(e)"
+                @touchend="(e) => onTaskTouchEnd(e)"
                 @mousedown="(e) => onTaskMouseDown(e, task, 'q1')"
               >
                 <view
@@ -365,9 +365,9 @@
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
-                @longpress="onTaskLongPress($event, task, 'q4')"
-                @touchmove="onTaskTouchMove"
-                @touchend="onTaskTouchEnd"
+                @longpress="(e) => onTaskLongPress(e, task, 'q4')"
+                @touchmove="(e) => onTaskTouchMove(e)"
+                @touchend="(e) => onTaskTouchEnd(e)"
                 @mousedown="(e) => onTaskMouseDown(e, task, 'q4')"
               >
                 <view
@@ -419,9 +419,9 @@
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
-                @longpress="onTaskLongPress($event, task, 'q2')"
-                @touchmove="onTaskTouchMove"
-                @touchend="onTaskTouchEnd"
+                @longpress="(e) => onTaskLongPress(e, task, 'q2')"
+                @touchmove="(e) => onTaskTouchMove(e)"
+                @touchend="(e) => onTaskTouchEnd(e)"
                 @mousedown="(e) => onTaskMouseDown(e, task, 'q2')"
               >
                 <view
