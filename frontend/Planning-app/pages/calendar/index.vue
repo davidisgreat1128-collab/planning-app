@@ -2058,6 +2058,13 @@ function _onMouseDown(e) {
     if (taskData) {
       console.log('[Drag-2] 找到任务数据:', taskData.task.title, '象限:', taskData.quadrant);
       console.log('[Drag-3] 准备调用鼠标长按处理，检查函数类型:', typeof onTaskMouseDown);
+      console.log('[Drag-3.1] 当前dragState状态:', dragState.value);
+
+      // 确保重置拖拽状态
+      if (dragState.value.dragging) {
+        console.log('[Drag-3.2] 检测到之前的拖拽未完成，强制重置');
+        dragState.value.dragging = false;
+      }
 
       // 直接在这里实现鼠标长按逻辑，避免函数调用顺序问题
       const task = taskData.task;
