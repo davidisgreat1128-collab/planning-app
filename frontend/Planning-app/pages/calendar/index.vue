@@ -2043,13 +2043,52 @@ function _onMouseDown(e) {
   // 检查是否点击了任务项
   const taskItem = e.target.closest('.nb-task-item');
   if (taskItem) {
-    console.log('[Drag] 鼠标按下任务项');
+    console.log('[Drag-1] 鼠标按下任务项');
 
     // 查找任务数据和象限
     const taskData = findTaskFromElement(taskItem);
     if (taskData) {
-      console.log('[Drag] 找到任务数据:', taskData.task.title, '象限:', taskData.quadrant);
-      onTaskMouseDown(e, taskData.task, taskData.quadrant);
+      console.log('[Drag-2] 找到任务数据:', taskData.task.title, '象限:', taskData.quadrant);
+      console.log('[Drag-3] 准备调用鼠标长按处理，检查函数类型:', typeof onTaskMouseDown);
+
+      // 直接在这里实现鼠标长按逻辑，避免函数调用顺序问题
+      const task = taskData.task;
+      const quadrant = taskData.quadrant;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      mouseDownTask = task;
+      mouseDownQuadrant = quadrant;
+      mouseDownX = e.clientX;
+      mouseDownY = e.clientY;
+      mouseMoved = false;
+
+      console.log('[Drag-4] 鼠标按下任务:', task.title, '坐标:', mouseDownX, mouseDownY);
+
+      // 清除之前的定时器
+      if (mouseDownTimer) {
+        clearTimeout(mouseDownTimer);
+      }
+
+      // 500ms后触发长按
+      mouseDownTimer = setTimeout(() => {
+        if (!mouseMoved && mouseDownTask) {
+          console.log('[Drag-5] 鼠标长按触发:', mouseDownTask.title);
+          // 使用保存的坐标创建模拟事件对象
+          const fakeEvent = {
+            clientX: mouseDownX,
+            clientY: mouseDownY,
+          };
+          console.log('[Drag-6] 准备调用startDrag，检查函数类型:', typeof startDrag);
+          startDrag(fakeEvent, mouseDownTask, mouseDownQuadrant);
+        }
+      }, 500);
+
+      // 监听鼠标移动和松开
+      document.addEventListener('mousemove', _onTaskMouseMove);
+      document.addEventListener('mouseup', _onTaskMouseUp);
+
       return; // 不再处理日历/内容区拖拽
     }
   }
@@ -2098,6 +2137,70 @@ function _onMouseUp(e) {
     onContentTouchEnd(_fakeTouch(e.clientX, e.clientY));
   }
   _h5MouseTarget = null;
+}
+
+/**
+ * 任务拖拽：鼠标移动（检测是否移动超过阈值）
+ */
+function _onTaskMouseMove(e) {
+  if (!mouseDownTask) return;
+
+  const dx = Math.abs(e.clientX - mouseDownX);
+  const dy = Math.abs(e.clientY - mouseDownY);
+
+  // 移动超过5px则取消长按
+  if (dx > 5 || dy > 5) {
+    if (!mouseMoved) {
+      console.log('[Drag-7] 鼠标移动超过阈值,取消长按. dx:', dx, 'dy:', dy);
+    }
+    mouseMoved = true;
+    if (mouseDownTimer) {
+      clearTimeout(mouseDownTimer);
+      mouseDownTimer = null;
+    }
+  }
+
+  // 如果已经开始拖拽，更新拖拽位置
+  if (dragState.value.dragging) {
+    console.log('[Drag-8] 拖拽中，更新位置:', e.clientX, e.clientY);
+    onTaskTouchMove({
+      touches: [{ clientX: e.clientX, clientY: e.clientY }],
+      preventDefault: () => e.preventDefault(),
+      stopPropagation: () => e.stopPropagation(),
+    });
+  }
+}
+
+/**
+ * 任务拖拽：鼠标松开
+ */
+function _onTaskMouseUp(e) {
+  console.log('[Drag-9] 鼠标松开. dragging:', dragState.value.dragging, 'mouseDownTask:', mouseDownTask?.title);
+
+  // 清除定时器
+  if (mouseDownTimer) {
+    clearTimeout(mouseDownTimer);
+    mouseDownTimer = null;
+  }
+
+  // 如果正在拖拽，触发拖拽结束
+  if (dragState.value.dragging) {
+    console.log('[Drag-10] 触发拖拽结束');
+    onTaskTouchEnd({
+      changedTouches: [{ clientX: e.clientX, clientY: e.clientY }],
+      preventDefault: () => e.preventDefault(),
+      stopPropagation: () => e.stopPropagation(),
+    });
+  }
+
+  // 清除状态
+  mouseDownTask = null;
+  mouseDownQuadrant = '';
+  mouseMoved = false;
+
+  // 移除事件监听
+  document.removeEventListener('mousemove', _onTaskMouseMove);
+  document.removeEventListener('mouseup', _onTaskMouseUp);
 }
 
 function h5BindMouseEvents() {
