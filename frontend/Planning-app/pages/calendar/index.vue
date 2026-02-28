@@ -252,9 +252,10 @@
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
+                @touchstart="(e) => { console.log('[Test] touchstart触发!', task.title); }"
                 @longpress="(e) => { console.log('[Test] longpress触发!', task.title); onTaskLongPress(e, task, 'q3'); }"
                 @touchmove="(e) => onTaskTouchMove(e)"
-                @touchend="(e) => onTaskTouchEnd(e)"
+                @touchend="(e) => { console.log('[Test] touchend触发!', task.title); onTaskTouchEnd(e); }"
               >
                 <view
                   class="nb-check nb-check-q3"
@@ -2948,6 +2949,9 @@ onUnmounted(() => {
   align-items: flex-start;
   padding: 10rpx 0;
   border-bottom: 1rpx solid #F4F4F4;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
 }
 .nb-task-item:last-child { border-bottom: none; }
 
