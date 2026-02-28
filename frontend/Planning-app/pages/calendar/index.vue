@@ -1402,53 +1402,6 @@ function testDragFunctions() {
 }
 
 /**
- * 从 DOM 元素查找对应的任务数据和象限
- */
-function findTaskFromElement(taskElement) {
-  // 确定象限
-  let quadrant = null;
-  const q1 = taskElement.closest('.nb-q1');
-  const q2 = taskElement.closest('.nb-q2');
-  const q3 = taskElement.closest('.nb-q3');
-  const q4 = taskElement.closest('.nb-q4');
-
-  if (q1) quadrant = 'q1';
-  else if (q2) quadrant = 'q2';
-  else if (q3) quadrant = 'q3';
-  else if (q4) quadrant = 'q4';
-
-  if (!quadrant) {
-    console.log('[Drag] 未找到象限');
-    return null;
-  }
-
-  // 获取任务标题文本
-  const titleElement = taskElement.querySelector('.nb-task-title');
-  if (!titleElement) {
-    console.log('[Drag] 未找到任务标题元素');
-    return null;
-  }
-
-  const taskTitle = titleElement.textContent.trim();
-  console.log('[Drag] 任务标题:', taskTitle);
-
-  // 根据象限查找任务
-  let taskList = [];
-  if (quadrant === 'q1') taskList = filteredUrgentImportant.value;
-  else if (quadrant === 'q2') taskList = filteredNotUrgentImportant.value;
-  else if (quadrant === 'q3') taskList = filteredUrgentNotImportant.value;
-  else if (quadrant === 'q4') taskList = filteredNotUrgentNotImportant.value;
-
-  const task = taskList.find(t => t.title === taskTitle);
-  if (!task) {
-    console.log('[Drag] 未找到匹配的任务. taskTitle:', taskTitle, 'quadrant:', quadrant);
-    return null;
-  }
-
-  return { task, quadrant };
-}
-
-/**
  * H5端：鼠标按下任务项 (wrapper函数,确保模板可访问)
  */
 function handleTaskMouseDown(e, task, quadrant) {
@@ -2035,6 +1988,53 @@ let _h5LastMoveY = 0;
 
 function _fakeTouch(clientX, clientY) {
   return { touches: [{ clientX, clientY }], changedTouches: [{ clientX, clientY }] };
+}
+
+/**
+ * 从 DOM 元素查找对应的任务数据和象限
+ */
+function findTaskFromElement(taskElement) {
+  // 确定象限
+  let quadrant = null;
+  const q1 = taskElement.closest('.nb-q1');
+  const q2 = taskElement.closest('.nb-q2');
+  const q3 = taskElement.closest('.nb-q3');
+  const q4 = taskElement.closest('.nb-q4');
+
+  if (q1) quadrant = 'q1';
+  else if (q2) quadrant = 'q2';
+  else if (q3) quadrant = 'q3';
+  else if (q4) quadrant = 'q4';
+
+  if (!quadrant) {
+    console.log('[Drag] 未找到象限');
+    return null;
+  }
+
+  // 获取任务标题文本
+  const titleElement = taskElement.querySelector('.nb-task-title');
+  if (!titleElement) {
+    console.log('[Drag] 未找到任务标题元素');
+    return null;
+  }
+
+  const taskTitle = titleElement.textContent.trim();
+  console.log('[Drag] 任务标题:', taskTitle);
+
+  // 根据象限查找任务
+  let taskList = [];
+  if (quadrant === 'q1') taskList = filteredUrgentImportant.value;
+  else if (quadrant === 'q2') taskList = filteredNotUrgentImportant.value;
+  else if (quadrant === 'q3') taskList = filteredUrgentNotImportant.value;
+  else if (quadrant === 'q4') taskList = filteredNotUrgentNotImportant.value;
+
+  const task = taskList.find(t => t.title === taskTitle);
+  if (!task) {
+    console.log('[Drag] 未找到匹配的任务. taskTitle:', taskTitle, 'quadrant:', quadrant);
+    return null;
+  }
+
+  return { task, quadrant };
 }
 
 function _onMouseDown(e) {
