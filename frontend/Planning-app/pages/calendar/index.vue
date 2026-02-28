@@ -252,7 +252,7 @@
                 :key="task.id"
                 class="nb-task-item"
                 @tap="openTaskDetail(task)"
-                @longpress="(e) => onTaskLongPress(e, task, 'q3')"
+                @longpress="(e) => { console.log('[Test] longpress触发!', task.title); onTaskLongPress(e, task, 'q3'); }"
                 @touchmove="(e) => onTaskTouchMove(e)"
                 @touchend="(e) => onTaskTouchEnd(e)"
               >
