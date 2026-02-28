@@ -642,29 +642,48 @@
         >
           <view class="change-option-content">
             <text class="change-option-title">更改此条计划的当天及未来计划</text>
-            <text class="change-option-desc">不影响过去记录</text>
+            <text class="change-option-desc" :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px' }">不影响过去记录</text>
           </view>
           <view v-if="changeQuadrantOption === 2" class="change-option-check">
             <text class="change-option-check-icon">✓</text>
           </view>
         </view>
 
-        <!-- 底部确定按钮 -->
-        <view
-          class="change-confirm-btn"
-          @tap="() => confirmChangeQuadrant()"
-          :style="{
-            marginTop: '24px',
-            backgroundColor: '#2c3e50',
-            borderRadius: '8px',
-            padding: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer'
-          }"
-        >
-          <text class="change-confirm-text" :style="{ fontSize: '16px', color: '#FFFFFF', fontWeight: '500' }">确定</text>
+        <!-- 底部按钮组 -->
+        <view :style="{ display: 'flex', gap: '12px', marginTop: '24px' }">
+          <!-- 取消按钮 -->
+          <view
+            @tap="() => closeChangeQuadrantDialog()"
+            :style="{
+              flex: 1,
+              backgroundColor: '#f0f0f0',
+              borderRadius: '8px',
+              padding: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }"
+          >
+            <text :style="{ fontSize: '16px', color: '#666', fontWeight: '500' }">取消</text>
+          </view>
+
+          <!-- 确定按钮 -->
+          <view
+            @tap="() => confirmChangeQuadrant()"
+            :style="{
+              flex: 1,
+              backgroundColor: '#2c3e50',
+              borderRadius: '8px',
+              padding: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }"
+          >
+            <text :style="{ fontSize: '16px', color: '#FFFFFF', fontWeight: '500' }">确定</text>
+          </view>
         </view>
       </view>
     </view>
@@ -707,7 +726,7 @@
         >
           <view class="delete-option-content">
             <text class="delete-option-title">仅删除当天计划</text>
-            <text class="delete-option-desc">不影响该计划的过去及未来计划</text>
+            <text class="delete-option-desc" :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px' }">不影响该计划的过去及未来计划</text>
           </view>
           <view v-if="deleteTaskOption === 1" class="delete-option-check">
             <text class="delete-option-check-icon">✓</text>
@@ -740,29 +759,48 @@
         >
           <view class="delete-option-content">
             <text class="delete-option-title">删除当天及未来计划</text>
-            <text class="delete-option-desc">不影响该计划的过去记录</text>
+            <text class="delete-option-desc" :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px' }">不影响该计划的过去记录</text>
           </view>
           <view v-if="deleteTaskOption === 3" class="delete-option-check">
             <text class="delete-option-check-icon">✓</text>
           </view>
         </view>
 
-        <!-- 底部确定按钮 -->
-        <view
-          class="delete-confirm-btn"
-          @tap="() => confirmDeleteTask()"
-          :style="{
-            marginTop: '24px',
-            backgroundColor: '#2c3e50',
-            borderRadius: '8px',
-            padding: '14px',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            cursor: 'pointer'
-          }"
-        >
-          <text class="delete-confirm-text" :style="{ fontSize: '16px', color: '#FFFFFF', fontWeight: '500' }">确定</text>
+        <!-- 底部按钮组 -->
+        <view :style="{ display: 'flex', gap: '12px', marginTop: '24px' }">
+          <!-- 取消按钮 -->
+          <view
+            @tap="() => closeDeleteTaskDialog()"
+            :style="{
+              flex: 1,
+              backgroundColor: '#f0f0f0',
+              borderRadius: '8px',
+              padding: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }"
+          >
+            <text :style="{ fontSize: '16px', color: '#666', fontWeight: '500' }">取消</text>
+          </view>
+
+          <!-- 确定按钮 -->
+          <view
+            @tap="() => confirmDeleteTask()"
+            :style="{
+              flex: 1,
+              backgroundColor: '#2c3e50',
+              borderRadius: '8px',
+              padding: '14px',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              cursor: 'pointer'
+            }"
+          >
+            <text :style="{ fontSize: '16px', color: '#FFFFFF', fontWeight: '500' }">确定</text>
+          </view>
         </view>
       </view>
     </view>
