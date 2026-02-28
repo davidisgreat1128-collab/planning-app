@@ -650,8 +650,21 @@
         </view>
 
         <!-- 底部确定按钮 -->
-        <view class="change-confirm-btn" @tap="() => confirmChangeQuadrant()">
-          <text class="change-confirm-text">确定</text>
+        <view
+          class="change-confirm-btn"
+          @tap="() => confirmChangeQuadrant()"
+          :style="{
+            marginTop: '24px',
+            backgroundColor: '#2c3e50',
+            borderRadius: '8px',
+            padding: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer'
+          }"
+        >
+          <text class="change-confirm-text" :style="{ fontSize: '16px', color: '#FFFFFF', fontWeight: '500' }">确定</text>
         </view>
       </view>
     </view>
@@ -735,8 +748,21 @@
         </view>
 
         <!-- 底部确定按钮 -->
-        <view class="delete-confirm-btn" @tap="() => confirmDeleteTask()">
-          <text class="delete-confirm-text">确定</text>
+        <view
+          class="delete-confirm-btn"
+          @tap="() => confirmDeleteTask()"
+          :style="{
+            marginTop: '24px',
+            backgroundColor: '#2c3e50',
+            borderRadius: '8px',
+            padding: '14px',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            cursor: 'pointer'
+          }"
+        >
+          <text class="delete-confirm-text" :style="{ fontSize: '16px', color: '#FFFFFF', fontWeight: '500' }">确定</text>
         </view>
       </view>
     </view>
