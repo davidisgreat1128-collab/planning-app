@@ -3525,27 +3525,28 @@ onUnmounted(() => {
   left: 0;
   right: 0;
   bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  background-color: rgba(0, 0, 0, 0.6);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 10000;
+  z-index: 10002;
 }
 
 /* 更改象限对话框 */
 .change-dialog {
-  width: 600rpx;
+  width: 320px;
+  max-width: 90vw;
   background-color: #FFFFFF;
-  border-radius: 24rpx;
-  padding: 40rpx 32rpx 32rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  padding: 24px 20px 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .change-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx 0;
+  padding: 16px 0;
   cursor: pointer;
 }
 
@@ -3556,45 +3557,45 @@ onUnmounted(() => {
 }
 
 .change-option-title {
-  font-size: 32rpx;
+  font-size: 16px;
   color: #1A1A2E;
   font-weight: bold;
-  margin-bottom: 8rpx;
+  margin-bottom: 4px;
 }
 
 .change-option-desc {
-  font-size: 24rpx;
+  font-size: 13px;
   color: #999;
 }
 
 .change-option-check {
-  width: 48rpx;
-  height: 48rpx;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background-color: #1A1A2E;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 24rpx;
+  margin-left: 16px;
 }
 
 .change-option-check-icon {
-  font-size: 32rpx;
+  font-size: 16px;
   color: #FFFFFF;
   font-weight: bold;
 }
 
 .change-divider {
-  height: 1rpx;
+  height: 1px;
   background-color: #EEEEEE;
-  margin: 8rpx 0;
+  margin: 8px 0;
 }
 
 .change-confirm-btn {
-  margin-top: 32rpx;
+  margin-top: 20px;
   background-color: #1A1A2E;
-  border-radius: 16rpx;
-  padding: 24rpx;
+  border-radius: 12px;
+  padding: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3602,25 +3603,26 @@ onUnmounted(() => {
 }
 
 .change-confirm-text {
-  font-size: 32rpx;
+  font-size: 16px;
   color: #FFFFFF;
   font-weight: bold;
 }
 
 /* 删除任务对话框 */
 .delete-dialog {
-  width: 600rpx;
+  width: 320px;
+  max-width: 90vw;
   background-color: #FFFFFF;
-  border-radius: 24rpx;
-  padding: 40rpx 32rpx 32rpx;
-  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.15);
+  border-radius: 16px;
+  padding: 24px 20px 20px;
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
 }
 
 .delete-option {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: 24rpx 0;
+  padding: 16px 0;
   cursor: pointer;
 }
 
@@ -3631,45 +3633,45 @@ onUnmounted(() => {
 }
 
 .delete-option-title {
-  font-size: 32rpx;
+  font-size: 16px;
   color: #1A1A2E;
   font-weight: bold;
-  margin-bottom: 8rpx;
+  margin-bottom: 4px;
 }
 
 .delete-option-desc {
-  font-size: 24rpx;
+  font-size: 13px;
   color: #999;
 }
 
 .delete-option-check {
-  width: 48rpx;
-  height: 48rpx;
+  width: 24px;
+  height: 24px;
   border-radius: 50%;
   background-color: #FF3B30;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-left: 24rpx;
+  margin-left: 16px;
 }
 
 .delete-option-check-icon {
-  font-size: 32rpx;
+  font-size: 16px;
   color: #FFFFFF;
   font-weight: bold;
 }
 
 .delete-divider {
-  height: 1rpx;
+  height: 1px;
   background-color: #EEEEEE;
-  margin: 8rpx 0;
+  margin: 8px 0;
 }
 
 .delete-confirm-btn {
-  margin-top: 32rpx;
+  margin-top: 20px;
   background-color: #FF3B30;
-  border-radius: 16rpx;
-  padding: 24rpx;
+  border-radius: 12px;
+  padding: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -3677,7 +3679,7 @@ onUnmounted(() => {
 }
 
 .delete-confirm-text {
-  font-size: 32rpx;
+  font-size: 16px;
   color: #FFFFFF;
   font-weight: bold;
 }
