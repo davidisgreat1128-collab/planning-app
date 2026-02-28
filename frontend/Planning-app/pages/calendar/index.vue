@@ -590,8 +590,35 @@
 
     <!-- 规划和分类抽屉 -->
     <!-- 更改象限确认对话框 -->
-    <view v-if="showChangeQuadrantDialog" class="dialog-mask" @tap="() => closeChangeQuadrantDialog()">
-      <view class="change-dialog" @tap.stop>
+    <view
+      v-if="showChangeQuadrantDialog"
+      class="dialog-mask"
+      @tap="() => closeChangeQuadrantDialog()"
+      :style="{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10002
+      }"
+    >
+      <view
+        class="change-dialog"
+        @tap.stop
+        :style="{
+          width: '320px',
+          maxWidth: '90vw',
+          backgroundColor: '#FFFFFF',
+          borderRadius: '16px',
+          padding: '24px 20px 20px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+        }"
+      >
         <!-- 选项1: 完整更改此条重复计划（默认选中） -->
         <view
           class="change-option"
@@ -630,8 +657,35 @@
     </view>
 
     <!-- 删除任务确认对话框 -->
-    <view v-if="showDeleteTaskDialog" class="dialog-mask" @tap="() => closeDeleteTaskDialog()">
-      <view class="delete-dialog" @tap.stop>
+    <view
+      v-if="showDeleteTaskDialog"
+      class="dialog-mask"
+      @tap="() => closeDeleteTaskDialog()"
+      :style="{
+        position: 'fixed',
+        top: 0,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        backgroundColor: 'rgba(0, 0, 0, 0.6)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        zIndex: 10002
+      }"
+    >
+      <view
+        class="delete-dialog"
+        @tap.stop
+        :style="{
+          width: '320px',
+          maxWidth: '90vw',
+          backgroundColor: '#FFFFFF',
+          borderRadius: '16px',
+          padding: '24px 20px 20px',
+          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
+        }"
+      >
         <!-- 选项1：仅删除当天计划（默认选中） -->
         <view
           class="delete-option"
