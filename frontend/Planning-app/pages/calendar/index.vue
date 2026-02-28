@@ -2183,11 +2183,24 @@ function _onTaskMouseMove(e) {
   // 如果已经开始拖拽，更新拖拽位置
   if (dragState.value.dragging) {
     console.log('[Drag-9] 拖拽中，更新位置:', e.clientX, e.clientY);
-    onTaskTouchMove({
-      touches: [{ clientX: e.clientX, clientY: e.clientY }],
-      preventDefault: () => e.preventDefault(),
-      stopPropagation: () => e.stopPropagation(),
-    });
+
+    // 内联 onTaskTouchMove 逻辑
+    dragState.value.x = e.clientX;
+    dragState.value.y = e.clientY;
+
+    // 检测是否在删除区域
+    const deleteZone = document.querySelector?.('.delete-zone');
+    if (deleteZone) {
+      const rect = deleteZone.getBoundingClientRect();
+      const over = e.clientX >= rect.left && e.clientX <= rect.right &&
+                   e.clientY >= rect.top && e.clientY <= rect.bottom;
+      if (over !== dragState.value.overDelete) {
+        dragState.value.overDelete = over;
+        if (over) {
+          uni.vibrateShort?.({ type: 'light' });
+        }
+      }
+    }
   }
 }
 
@@ -2206,11 +2219,48 @@ function _onTaskMouseUp(e) {
   // 如果正在拖拽，触发拖拽结束
   if (dragState.value.dragging) {
     console.log('[Drag-11] 触发拖拽结束');
-    onTaskTouchEnd({
-      changedTouches: [{ clientX: e.clientX, clientY: e.clientY }],
-      preventDefault: () => e.preventDefault(),
-      stopPropagation: () => e.stopPropagation(),
-    });
+
+    // 内联 onTaskTouchEnd 逻辑
+    const { task, fromQuadrant, overDelete, x, y } = dragState.value;
+
+    // 重置拖拽状态
+    dragState.value.dragging = false;
+
+    // 如果在删除区域上方,显示删除对话框
+    if (overDelete) {
+      console.log('[Drag-12] 拖拽到删除区域，显示删除对话框');
+      dragState.value.task = task;
+      dragState.value.fromQuadrant = fromQuadrant;
+      showDeleteTaskDialog.value = true;
+    } else {
+      // 检测拖拽到哪个象限（使用H5的document.querySelector方式）
+      const quadrants = {
+        q1: document.querySelector?.('.nb-q1'),
+        q2: document.querySelector?.('.nb-q2'),
+        q3: document.querySelector?.('.nb-q3'),
+        q4: document.querySelector?.('.nb-q4'),
+      };
+
+      let target = null;
+      for (const [key, el] of Object.entries(quadrants)) {
+        if (!el) continue;
+        const rect = el.getBoundingClientRect();
+        if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+          target = key;
+          break;
+        }
+      }
+
+      if (target && target !== fromQuadrant) {
+        console.log('[Drag-13] 拖拽到象限:', target, '显示更改对话框');
+        targetQuadrant.value = target;
+        dragState.value.task = task;
+        dragState.value.fromQuadrant = fromQuadrant;
+        showChangeQuadrantDialog.value = true;
+      } else {
+        console.log('[Drag-14] 未拖拽到其他象限，取消拖拽');
+      }
+    }
   }
 
   // 清除状态
