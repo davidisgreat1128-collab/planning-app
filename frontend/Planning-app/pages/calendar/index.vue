@@ -255,7 +255,7 @@
                 @longpress="(e) => onTaskLongPress(e, task, 'q3')"
                 @touchmove="(e) => onTaskTouchMove(e)"
                 @touchend="(e) => onTaskTouchEnd(e)"
-                @mousedown="(e) => onTaskMouseDown(e, task, 'q3')"
+                @mousedown="(e) => handleTaskMouseDown(e, task, 'q3')"
               >
                 <view
                   class="nb-check nb-check-q3"
@@ -310,7 +310,7 @@
                 @longpress="(e) => onTaskLongPress(e, task, 'q1')"
                 @touchmove="(e) => onTaskTouchMove(e)"
                 @touchend="(e) => onTaskTouchEnd(e)"
-                @mousedown="(e) => onTaskMouseDown(e, task, 'q1')"
+                @mousedown="(e) => handleTaskMouseDown(e, task, 'q1')"
               >
                 <view
                   class="nb-check nb-check-q1"
@@ -368,7 +368,7 @@
                 @longpress="(e) => onTaskLongPress(e, task, 'q4')"
                 @touchmove="(e) => onTaskTouchMove(e)"
                 @touchend="(e) => onTaskTouchEnd(e)"
-                @mousedown="(e) => onTaskMouseDown(e, task, 'q4')"
+                @mousedown="(e) => handleTaskMouseDown(e, task, 'q4')"
               >
                 <view
                   class="nb-check nb-check-q4"
@@ -422,7 +422,7 @@
                 @longpress="(e) => onTaskLongPress(e, task, 'q2')"
                 @touchmove="(e) => onTaskTouchMove(e)"
                 @touchend="(e) => onTaskTouchEnd(e)"
-                @mousedown="(e) => onTaskMouseDown(e, task, 'q2')"
+                @mousedown="(e) => handleTaskMouseDown(e, task, 'q2')"
               >
                 <view
                   class="nb-check nb-check-q2"
@@ -1393,7 +1393,27 @@ let mouseDownY = 0;
 let mouseMoved = false;
 
 /**
- * H5端：鼠标按下任务项
+ * 测试函数是否可用
+ */
+function testDragFunctions() {
+  console.log('[Debug] 测试拖拽函数可用性:', {
+    handleTaskMouseDown: typeof handleTaskMouseDown,
+    onTaskLongPress: typeof onTaskLongPress,
+    onTaskTouchMove: typeof onTaskTouchMove,
+    onTaskTouchEnd: typeof onTaskTouchEnd,
+  });
+}
+
+/**
+ * H5端：鼠标按下任务项 (wrapper函数,确保模板可访问)
+ */
+const handleTaskMouseDown = (e, task, quadrant) => {
+  console.log('[Debug] handleTaskMouseDown被调用:', task.title, quadrant);
+  onTaskMouseDown(e, task, quadrant);
+};
+
+/**
+ * H5端：鼠标按下任务项 (内部实现)
  */
 function onTaskMouseDown(e, task, quadrant) {
   // 只处理左键
@@ -2041,6 +2061,15 @@ function h5UnbindMouseEvents() {
 // 生命周期
 // ============================================================
 onMounted(async () => {
+  // 调试：检查拖拽函数是否存在
+  console.log('[Debug] 检查拖拽函数:', {
+    handleTaskMouseDown: typeof handleTaskMouseDown,
+    onTaskLongPress: typeof onTaskLongPress,
+    onTaskTouchMove: typeof onTaskTouchMove,
+    onTaskTouchEnd: typeof onTaskTouchEnd,
+  });
+  console.log('[Debug] handleTaskMouseDown函数:', handleTaskMouseDown);
+
   try {
     const info = uni.getSystemInfoSync();
     statusBarHeight.value = info.statusBarHeight || 20;
