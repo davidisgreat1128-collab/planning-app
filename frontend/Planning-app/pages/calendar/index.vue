@@ -454,6 +454,13 @@
 
       <!-- 拖拽蒙层和删除区域 -->
       <view v-if="dragState.dragging" class="drag-overlay">
+        <!-- 调试信息 -->
+        <view style="position: fixed; top: 10px; left: 10px; background: yellow; padding: 10px; z-index: 10000; font-size: 12px;">
+          拖拽中: {{ dragState.dragging }}<br>
+          位置: {{ dragState.x }}, {{ dragState.y }}<br>
+          任务: {{ dragState.task ? dragState.task.title : '无' }}
+        </view>
+
         <!-- 半透明拖拽的任务副本 -->
         <view
           class="dragging-task"
@@ -3441,31 +3448,34 @@ onUnmounted(() => {
 /* 拖拽中的任务副本 */
 .dragging-task {
   position: fixed;
-  background-color: rgba(255, 255, 255, 0.9);
-  border-radius: 12rpx;
-  padding: 16rpx 24rpx;
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.2);
-  transform: translate(-50%, -50%) scale(1.1);
+  background-color: rgba(66, 133, 244, 0.95);
+  border-radius: 8px;
+  padding: 12px 20px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+  transform: translate(-50%, -50%) scale(1.2);
   z-index: 9999;
   pointer-events: none;
+  min-width: 100px;
+  white-space: nowrap;
 }
 
 .dragging-task-text {
-  font-size: 28rpx;
-  color: #333;
+  font-size: 16px;
+  color: #ffffff;
+  font-weight: bold;
 }
 
 /* 删除区域 */
 .delete-zone {
   position: fixed;
-  bottom: 100rpx;
+  bottom: 80px;
   left: 50%;
   transform: translateX(-50%);
-  width: 200rpx;
-  height: 200rpx;
+  width: 120px;
+  height: 120px;
   border-radius: 50%;
-  background-color: rgba(255, 59, 48, 0.1);
-  border: 4rpx dashed #FF3B30;
+  background-color: rgba(255, 59, 48, 0.2);
+  border: 3px dashed #FF3B30;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -3475,19 +3485,20 @@ onUnmounted(() => {
 }
 
 .delete-zone-active {
-  background-color: rgba(255, 59, 48, 0.3);
+  background-color: rgba(255, 59, 48, 0.5);
   border-color: #FF3B30;
   border-style: solid;
-  transform: translateX(-50%) scale(1.2);
+  border-width: 4px;
+  transform: translateX(-50%) scale(1.3);
 }
 
 .delete-zone-icon {
-  font-size: 72rpx;
-  margin-bottom: 12rpx;
+  font-size: 48px;
+  margin-bottom: 8px;
 }
 
 .delete-zone-text {
-  font-size: 28rpx;
+  font-size: 16px;
   color: #FF3B30;
   font-weight: bold;
 }
