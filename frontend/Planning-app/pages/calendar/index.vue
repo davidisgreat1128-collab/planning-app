@@ -2061,15 +2061,6 @@ function h5UnbindMouseEvents() {
 // 生命周期
 // ============================================================
 onMounted(async () => {
-  // 调试：检查拖拽函数是否存在
-  console.log('[Debug] 检查拖拽函数:', {
-    handleTaskMouseDown: typeof handleTaskMouseDown,
-    onTaskLongPress: typeof onTaskLongPress,
-    onTaskTouchMove: typeof onTaskTouchMove,
-    onTaskTouchEnd: typeof onTaskTouchEnd,
-  });
-  console.log('[Debug] handleTaskMouseDown函数:', handleTaskMouseDown);
-
   try {
     const info = uni.getSystemInfoSync();
     statusBarHeight.value = info.statusBarHeight || 20;
