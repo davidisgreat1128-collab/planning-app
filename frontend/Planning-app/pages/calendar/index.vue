@@ -590,7 +590,7 @@
 
     <!-- 规划和分类抽屉 -->
     <!-- 更改象限确认对话框 -->
-    <view v-if="showChangeQuadrantDialog" class="dialog-mask" @tap="closeChangeQuadrantDialog">
+    <view v-if="showChangeQuadrantDialog" class="dialog-mask" @tap="() => closeChangeQuadrantDialog()">
       <view class="change-dialog" @tap.stop>
         <!-- 选项1: 完整更改此条重复计划（默认选中） -->
         <view
@@ -623,14 +623,14 @@
         </view>
 
         <!-- 底部确定按钮 -->
-        <view class="change-confirm-btn" @tap="confirmChangeQuadrant">
+        <view class="change-confirm-btn" @tap="() => confirmChangeQuadrant()">
           <text class="change-confirm-text">确定</text>
         </view>
       </view>
     </view>
 
     <!-- 删除任务确认对话框 -->
-    <view v-if="showDeleteTaskDialog" class="dialog-mask" @tap="closeDeleteTaskDialog">
+    <view v-if="showDeleteTaskDialog" class="dialog-mask" @tap="() => closeDeleteTaskDialog()">
       <view class="delete-dialog" @tap.stop>
         <!-- 选项1：仅删除当天计划（默认选中） -->
         <view
@@ -681,7 +681,7 @@
         </view>
 
         <!-- 底部确定按钮 -->
-        <view class="delete-confirm-btn" @tap="confirmDeleteTask">
+        <view class="delete-confirm-btn" @tap="() => confirmDeleteTask()">
           <text class="delete-confirm-text">确定</text>
         </view>
       </view>
