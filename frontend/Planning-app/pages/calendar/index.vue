@@ -1407,10 +1407,10 @@ function testDragFunctions() {
 /**
  * H5端：鼠标按下任务项 (wrapper函数,确保模板可访问)
  */
-const handleTaskMouseDown = (e, task, quadrant) => {
+function handleTaskMouseDown(e, task, quadrant) {
   console.log('[Debug] handleTaskMouseDown被调用:', task.title, quadrant);
   onTaskMouseDown(e, task, quadrant);
-};
+}
 
 /**
  * H5端：鼠标按下任务项 (内部实现)
