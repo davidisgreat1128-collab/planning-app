@@ -2083,13 +2083,25 @@ function _onMouseDown(e) {
       mouseDownTimer = setTimeout(() => {
         if (!mouseMoved && mouseDownTask) {
           console.log('[Drag-5] 鼠标长按触发:', mouseDownTask.title);
-          // 使用保存的坐标创建模拟事件对象
-          const fakeEvent = {
-            clientX: mouseDownX,
-            clientY: mouseDownY,
+
+          // 直接实现拖拽开始逻辑（内联startDrag）
+          console.log('[Drag-6] 开始拖拽:', mouseDownTask.title, '象限:', mouseDownQuadrant, '位置:', mouseDownX, mouseDownY);
+
+          dragState.value = {
+            dragging: true,
+            task: mouseDownTask,
+            fromQuadrant: mouseDownQuadrant,
+            x: mouseDownX,
+            y: mouseDownY,
+            overDelete: false,
+            startX: mouseDownX,
+            startY: mouseDownY,
           };
-          console.log('[Drag-6] 准备调用startDrag，检查函数类型:', typeof startDrag);
-          startDrag(fakeEvent, mouseDownTask, mouseDownQuadrant);
+
+          console.log('[Drag-7] dragState已更新:', dragState.value);
+
+          // 震动反馈
+          uni.vibrateShort?.({ type: 'medium' });
         }
       }, 500);
 
@@ -2159,7 +2171,7 @@ function _onTaskMouseMove(e) {
   // 移动超过5px则取消长按
   if (dx > 5 || dy > 5) {
     if (!mouseMoved) {
-      console.log('[Drag-7] 鼠标移动超过阈值,取消长按. dx:', dx, 'dy:', dy);
+      console.log('[Drag-8] 鼠标移动超过阈值,取消长按. dx:', dx, 'dy:', dy);
     }
     mouseMoved = true;
     if (mouseDownTimer) {
@@ -2170,7 +2182,7 @@ function _onTaskMouseMove(e) {
 
   // 如果已经开始拖拽，更新拖拽位置
   if (dragState.value.dragging) {
-    console.log('[Drag-8] 拖拽中，更新位置:', e.clientX, e.clientY);
+    console.log('[Drag-9] 拖拽中，更新位置:', e.clientX, e.clientY);
     onTaskTouchMove({
       touches: [{ clientX: e.clientX, clientY: e.clientY }],
       preventDefault: () => e.preventDefault(),
@@ -2183,7 +2195,7 @@ function _onTaskMouseMove(e) {
  * 任务拖拽：鼠标松开
  */
 function _onTaskMouseUp(e) {
-  console.log('[Drag-9] 鼠标松开. dragging:', dragState.value.dragging, 'mouseDownTask:', mouseDownTask?.title);
+  console.log('[Drag-10] 鼠标松开. dragging:', dragState.value.dragging, 'mouseDownTask:', mouseDownTask?.title);
 
   // 清除定时器
   if (mouseDownTimer) {
@@ -2193,7 +2205,7 @@ function _onTaskMouseUp(e) {
 
   // 如果正在拖拽，触发拖拽结束
   if (dragState.value.dragging) {
-    console.log('[Drag-10] 触发拖拽结束');
+    console.log('[Drag-11] 触发拖拽结束');
     onTaskTouchEnd({
       changedTouches: [{ clientX: e.clientX, clientY: e.clientY }],
       preventDefault: () => e.preventDefault(),
