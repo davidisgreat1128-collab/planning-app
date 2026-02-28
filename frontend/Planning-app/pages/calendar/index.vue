@@ -3646,33 +3646,25 @@ onUnmounted(() => {
 }
 
 .change-confirm-btn {
-  margin-top: 20px;
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  border-radius: 12px;
-  padding: 16px;
+  margin-top: 24px;
+  background-color: #2c3e50;
+  border-radius: 8px;
+  padding: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
-  transition: all 0.3s ease;
-}
-
-.change-confirm-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(102, 126, 234, 0.5);
+  transition: opacity 0.2s ease;
 }
 
 .change-confirm-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
+  opacity: 0.8;
 }
 
 .change-confirm-text {
   font-size: 16px;
   color: #FFFFFF;
-  font-weight: bold;
-  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
 /* 删除任务对话框 */
@@ -3735,32 +3727,24 @@ onUnmounted(() => {
 }
 
 .delete-confirm-btn {
-  margin-top: 20px;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%);
-  border-radius: 12px;
-  padding: 16px;
+  margin-top: 24px;
+  background-color: #2c3e50;
+  border-radius: 8px;
+  padding: 14px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(255, 59, 48, 0.4);
-  transition: all 0.3s ease;
-}
-
-.delete-confirm-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 6px 16px rgba(255, 59, 48, 0.5);
+  transition: opacity 0.2s ease;
 }
 
 .delete-confirm-btn:active {
-  transform: translateY(0);
-  box-shadow: 0 2px 8px rgba(255, 59, 48, 0.4);
+  opacity: 0.8;
 }
 
 .delete-confirm-text {
   font-size: 16px;
   color: #FFFFFF;
-  font-weight: bold;
-  letter-spacing: 0.5px;
+  font-weight: 500;
 }
 
