@@ -254,7 +254,7 @@
               >
                 <view
                   class="nb-check nb-check-q3"
-                  @tap.stop="toggleTaskDone(task)"
+                  @click.stop="handleCheckboxClick(task)"
                 ></view>
                 <view
                   class="nb-task-right"
@@ -278,7 +278,7 @@
               >
                 <view
                   class="nb-check nb-check-done"
-                  @tap.stop="toggleTaskDone(task)"
+                  @click.stop="handleCheckboxClick(task)"
                 >
                   <text class="nb-check-mark">✓</text>
                 </view>
@@ -310,7 +310,7 @@
               >
                 <view
                   class="nb-check nb-check-q1"
-                  @tap.stop="toggleTaskDone(task)"
+                  @click.stop="handleCheckboxClick(task)"
                 ></view>
                 <view
                   class="nb-task-right"
@@ -333,7 +333,7 @@
               >
                 <view
                   class="nb-check nb-check-done"
-                  @tap.stop="toggleTaskDone(task)"
+                  @click.stop="handleCheckboxClick(task)"
                 >
                   <text class="nb-check-mark">✓</text>
                 </view>
@@ -369,7 +369,7 @@
               >
                 <view
                   class="nb-check nb-check-q4"
-                  @tap.stop="toggleTaskDone(task)"
+                  @click.stop="handleCheckboxClick(task)"
                 ></view>
                 <view
                   class="nb-task-right"
@@ -392,7 +392,7 @@
               >
                 <view
                   class="nb-check nb-check-done"
-                  @tap.stop="toggleTaskDone(task)"
+                  @click.stop="handleCheckboxClick(task)"
                 >
                   <text class="nb-check-mark">✓</text>
                 </view>
@@ -424,7 +424,7 @@
               >
                 <view
                   class="nb-check nb-check-q2"
-                  @tap.stop="toggleTaskDone(task)"
+                  @click.stop="handleCheckboxClick(task)"
                 ></view>
                 <view
                   class="nb-task-right"
@@ -448,7 +448,7 @@
               >
                 <view
                   class="nb-check nb-check-done"
-                  @tap.stop="toggleTaskDone(task)"
+                  @click.stop="handleCheckboxClick(task)"
                 >
                   <text class="nb-check-mark">✓</text>
                 </view>
@@ -1566,6 +1566,17 @@ function openTaskDetail(task) {
 }
 
 /**
+ * 处理复选框点击，切换任务完成状态
+ */
+async function handleCheckboxClick(task) {
+  try {
+    await taskStore.toggleDone(task.id, task.status);
+  } catch (err) {
+    uni.showToast({ title: err.message || '操作失败', icon: 'none' });
+  }
+}
+
+/**
  * 四象限视图：直接切换完成状态（不跳转）
  */
 async function toggleTaskDone(task) {
@@ -2224,8 +2235,11 @@ function findTaskFromElement(taskElement) {
 function _onMouseDown(e) {
   if (e.button !== 0) return; // 只处理左键
 
-  // 检查是否点击了任务项
-  const taskItem = e.target.closest('.nb-task-item');
+  // 只处理点击了任务右侧文本区域的情况（不处理复选框）
+  const taskRight = e.target.closest('.nb-task-right');
+  if (!taskRight) return;
+
+  const taskItem = taskRight.closest('.nb-task-item');
   if (taskItem) {
     // 查找任务数据和象限
     const taskData = findTaskFromElement(taskItem);
