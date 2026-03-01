@@ -624,18 +624,27 @@
           class="change-option"
           :class="{ 'change-option-selected': changeQuadrantOption === 1 }"
           @tap="changeQuadrantOption = 1"
+          :style="{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 0',
+            border: '1px dashed red'
+          }"
         >
-          <text class="change-option-title">完整更改此条重复计划</text>
+          <text class="change-option-title" :style="{ border: '1px dashed blue', flex: 1 }">完整更改此条重复计划</text>
           <view
             :style="{
               width: '20px',
               height: '20px',
               borderRadius: '50%',
-              border: changeQuadrantOption === 1 ? 'none' : '2px solid #ddd',
+              border: changeQuadrantOption === 1 ? '2px solid green' : '2px solid #ddd',
               backgroundColor: changeQuadrantOption === 1 ? '#2c3e50' : 'transparent',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0
             }"
           >
             <text v-if="changeQuadrantOption === 1" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
@@ -650,8 +659,16 @@
           class="change-option"
           :class="{ 'change-option-selected': changeQuadrantOption === 2 }"
           @tap="changeQuadrantOption = 2"
+          :style="{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 0',
+            border: '1px dashed red'
+          }"
         >
-          <view class="change-option-content">
+          <view class="change-option-content" :style="{ border: '1px dashed blue', flex: 1 }">
             <text class="change-option-title">更改此条计划的当天及未来计划</text>
             <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响过去记录</text>
           </view>
@@ -660,11 +677,13 @@
               width: '20px',
               height: '20px',
               borderRadius: '50%',
-              border: changeQuadrantOption === 2 ? 'none' : '2px solid #ddd',
+              border: changeQuadrantOption === 2 ? '2px solid green' : '2px solid #ddd',
               backgroundColor: changeQuadrantOption === 2 ? '#2c3e50' : 'transparent',
               display: 'flex',
               alignItems: 'center',
-              justifyContent: 'center'
+              justifyContent: 'center',
+              flexShrink: 0,
+              marginLeft: '12px'
             }"
           >
             <text v-if="changeQuadrantOption === 2" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
