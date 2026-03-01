@@ -626,8 +626,19 @@
           @tap="changeQuadrantOption = 1"
         >
           <text class="change-option-title">完整更改此条重复计划</text>
-          <view v-if="changeQuadrantOption === 1" class="change-option-check">
-            <text class="change-option-check-icon">✓</text>
+          <view
+            :style="{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              border: changeQuadrantOption === 1 ? 'none' : '2px solid #ddd',
+              backgroundColor: changeQuadrantOption === 1 ? '#2c3e50' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }"
+          >
+            <text v-if="changeQuadrantOption === 1" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
           </view>
         </view>
 
@@ -642,10 +653,21 @@
         >
           <view class="change-option-content">
             <text class="change-option-title">更改此条计划的当天及未来计划</text>
-            <text class="change-option-desc" :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px' }">不影响过去记录</text>
+            <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响过去记录</text>
           </view>
-          <view v-if="changeQuadrantOption === 2" class="change-option-check">
-            <text class="change-option-check-icon">✓</text>
+          <view
+            :style="{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              border: changeQuadrantOption === 2 ? 'none' : '2px solid #ddd',
+              backgroundColor: changeQuadrantOption === 2 ? '#2c3e50' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }"
+          >
+            <text v-if="changeQuadrantOption === 2" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
           </view>
         </view>
 
@@ -726,10 +748,21 @@
         >
           <view class="delete-option-content">
             <text class="delete-option-title">仅删除当天计划</text>
-            <text class="delete-option-desc" :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px' }">不影响该计划的过去及未来计划</text>
+            <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响该计划的过去及未来计划</text>
           </view>
-          <view v-if="deleteTaskOption === 1" class="delete-option-check">
-            <text class="delete-option-check-icon">✓</text>
+          <view
+            :style="{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              border: deleteTaskOption === 1 ? 'none' : '2px solid #ddd',
+              backgroundColor: deleteTaskOption === 1 ? '#2c3e50' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }"
+          >
+            <text v-if="deleteTaskOption === 1" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
           </view>
         </view>
 
@@ -743,8 +776,19 @@
           @tap="deleteTaskOption = 2"
         >
           <text class="delete-option-title">完整清空此条重复计划</text>
-          <view v-if="deleteTaskOption === 2" class="delete-option-check">
-            <text class="delete-option-check-icon">✓</text>
+          <view
+            :style="{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              border: deleteTaskOption === 2 ? 'none' : '2px solid #ddd',
+              backgroundColor: deleteTaskOption === 2 ? '#2c3e50' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }"
+          >
+            <text v-if="deleteTaskOption === 2" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
           </view>
         </view>
 
@@ -759,10 +803,21 @@
         >
           <view class="delete-option-content">
             <text class="delete-option-title">删除当天及未来计划</text>
-            <text class="delete-option-desc" :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px' }">不影响该计划的过去记录</text>
+            <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响该计划的过去记录</text>
           </view>
-          <view v-if="deleteTaskOption === 3" class="delete-option-check">
-            <text class="delete-option-check-icon">✓</text>
+          <view
+            :style="{
+              width: '20px',
+              height: '20px',
+              borderRadius: '50%',
+              border: deleteTaskOption === 3 ? 'none' : '2px solid #ddd',
+              backgroundColor: deleteTaskOption === 3 ? '#2c3e50' : 'transparent',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center'
+            }"
+          >
+            <text v-if="deleteTaskOption === 3" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
           </view>
         </view>
 
