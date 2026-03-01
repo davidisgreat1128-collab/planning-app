@@ -251,17 +251,18 @@
                 v-for="task in filteredUrgentNotImportant"
                 :key="task.id"
                 class="nb-task-item"
-                @tap="openTaskDetail(task)"
-                @touchstart="(e) => { console.log('[Test] touchstart触发!', task.title); }"
-                @longpress="(e) => { console.log('[Test] longpress触发!', task.title); onTaskLongPress(e, task, 'q3'); }"
-                @touchmove="(e) => onTaskTouchMove(e)"
-                @touchend="(e) => { console.log('[Test] touchend触发!', task.title); onTaskTouchEnd(e); }"
               >
                 <view
                   class="nb-check nb-check-q3"
                   @tap.stop="toggleTaskDone(task)"
                 ></view>
-                <view class="nb-task-right">
+                <view
+                  class="nb-task-right"
+                  @tap="openTaskDetail(task)"
+                  @longpress="(e) => onTaskLongPress(e, task, 'q3')"
+                  @touchmove="(e) => onTaskTouchMove(e)"
+                  @touchend="(e) => onTaskTouchEnd(e)"
+                >
                   <view v-if="task.hasSubtask" class="nb-subtask-icon">
                     <text class="nb-subtask-icon-text">☰</text>
                   </view>
@@ -306,16 +307,18 @@
                 v-for="task in filteredUrgentImportant"
                 :key="task.id"
                 class="nb-task-item"
-                @tap="openTaskDetail(task)"
-                @longpress="(e) => onTaskLongPress(e, task, 'q1')"
-                @touchmove="(e) => onTaskTouchMove(e)"
-                @touchend="(e) => onTaskTouchEnd(e)"
               >
                 <view
                   class="nb-check nb-check-q1"
                   @tap.stop="toggleTaskDone(task)"
                 ></view>
-                <view class="nb-task-right">
+                <view
+                  class="nb-task-right"
+                  @tap="openTaskDetail(task)"
+                  @longpress="(e) => onTaskLongPress(e, task, 'q1')"
+                  @touchmove="(e) => onTaskTouchMove(e)"
+                  @touchend="(e) => onTaskTouchEnd(e)"
+                >
                   <view v-if="task.hasSubtask" class="nb-subtask-icon">
                     <text class="nb-subtask-icon-text">☰</text>
                   </view>
@@ -363,16 +366,18 @@
                 v-for="task in filteredNotUrgentNotImportant"
                 :key="task.id"
                 class="nb-task-item"
-                @tap="openTaskDetail(task)"
-                @longpress="(e) => onTaskLongPress(e, task, 'q4')"
-                @touchmove="(e) => onTaskTouchMove(e)"
-                @touchend="(e) => onTaskTouchEnd(e)"
               >
                 <view
                   class="nb-check nb-check-q4"
                   @tap.stop="toggleTaskDone(task)"
                 ></view>
-                <view class="nb-task-right">
+                <view
+                  class="nb-task-right"
+                  @tap="openTaskDetail(task)"
+                  @longpress="(e) => onTaskLongPress(e, task, 'q4')"
+                  @touchmove="(e) => onTaskTouchMove(e)"
+                  @touchend="(e) => onTaskTouchEnd(e)"
+                >
                   <view v-if="task.hasSubtask" class="nb-subtask-icon">
                     <text class="nb-subtask-icon-text">☰</text>
                   </view>
@@ -416,16 +421,19 @@
                 v-for="task in filteredNotUrgentImportant"
                 :key="task.id"
                 class="nb-task-item"
-                @tap="openTaskDetail(task)"
-                @longpress="(e) => onTaskLongPress(e, task, 'q2')"
-                @touchmove="(e) => onTaskTouchMove(e)"
-                @touchend="(e) => onTaskTouchEnd(e)"
               >
                 <view
                   class="nb-check nb-check-q2"
                   @tap.stop="toggleTaskDone(task)"
                 ></view>
-                <view class="nb-task-right">
+                <view
+                  class="nb-task-right"
+                  :class="{ 'nb-task-pressed': pressedTaskId === task.id }"
+                  @tap="openTaskDetail(task)"
+                  @longpress="(e) => onTaskLongPress(e, task, 'q2')"
+                  @touchmove="(e) => onTaskTouchMove(e)"
+                  @touchend="(e) => onTaskTouchEnd(e)"
+                >
                   <view v-if="task.hasSubtask" class="nb-subtask-icon">
                     <text class="nb-subtask-icon-text">☰</text>
                   </view>
@@ -454,16 +462,7 @@
 
       <!-- 拖拽蒙层和删除区域 -->
       <view v-if="dragState.dragging" class="drag-overlay">
-        <!-- 调试信息 -->
-        <view style="position: fixed; top: 10px; left: 10px; background: yellow; padding: 10px; z-index: 10001; font-size: 12px; max-width: 200px;">
-          拖拽中: {{ dragState.dragging }}<br>
-          位置: {{ dragState.x }}, {{ dragState.y }}<br>
-          任务: {{ dragState.task ? dragState.task.title : '无' }}<br>
-          副本left: {{ dragState.x }}px<br>
-          副本top: {{ dragState.y }}px
-        </view>
-
-        <!-- 半透明拖拽的任务副本 - 简化版测试 -->
+        <!-- 半透明拖拽的任务副本 -->
         <view
           :style="{
             position: 'fixed',
@@ -1604,22 +1603,9 @@ let mouseDownY = 0;
 let mouseMoved = false;
 
 /**
- * 测试函数是否可用
- */
-function testDragFunctions() {
-  console.log('[Debug] 测试拖拽函数可用性:', {
-    handleTaskMouseDown: typeof handleTaskMouseDown,
-    onTaskLongPress: typeof onTaskLongPress,
-    onTaskTouchMove: typeof onTaskTouchMove,
-    onTaskTouchEnd: typeof onTaskTouchEnd,
-  });
-}
-
-/**
  * H5端：鼠标按下任务项 (wrapper函数,确保模板可访问)
  */
 function handleTaskMouseDown(e, task, quadrant) {
-  console.log('[Debug] handleTaskMouseDown被调用:', task.title, quadrant);
   onTaskMouseDown(e, task, quadrant);
 }
 
@@ -1639,8 +1625,6 @@ function onTaskMouseDown(e, task, quadrant) {
   mouseDownY = e.clientY;
   mouseMoved = false;
 
-  console.log('[Drag] 鼠标按下任务:', task.title, '坐标:', mouseDownX, mouseDownY);
-
   // 清除之前的定时器
   if (mouseDownTimer) {
     clearTimeout(mouseDownTimer);
@@ -1649,7 +1633,6 @@ function onTaskMouseDown(e, task, quadrant) {
   // 500ms后触发长按
   mouseDownTimer = setTimeout(() => {
     if (!mouseMoved && mouseDownTask) {
-      console.log('[Drag] 鼠标长按触发:', mouseDownTask.title);
       // 使用保存的坐标创建模拟事件对象
       const fakeEvent = {
         clientX: mouseDownX,
@@ -1675,9 +1658,6 @@ function onTaskMouseMove(e) {
 
   // 移动超过5px则取消长按
   if (dx > 5 || dy > 5) {
-    if (!mouseMoved) {
-      console.log('[Drag] 鼠标移动超过阈值,取消长按. dx:', dx, 'dy:', dy);
-    }
     mouseMoved = true;
     if (mouseDownTimer) {
       clearTimeout(mouseDownTimer);
@@ -1699,7 +1679,6 @@ function onTaskMouseMove(e) {
  * H5端：鼠标松开
  */
 function onTaskMouseUp(e) {
-  console.log('[Drag] 鼠标松开. dragging:', dragState.value.dragging);
 
   // 清除定时器
   if (mouseDownTimer) {
@@ -1734,8 +1713,6 @@ function startDrag(e, task, quadrant) {
   const x = touch.clientX || e.clientX || 0;
   const y = touch.clientY || e.clientY || 0;
 
-  console.log('[Drag] 开始拖拽:', task.title, '象限:', quadrant, '位置:', x, y);
-
   dragState.value = {
     dragging: true,
     task: task,
@@ -1746,8 +1723,6 @@ function startDrag(e, task, quadrant) {
     startX: x,
     startY: y,
   };
-
-  console.log('[Drag] dragState已更新:', dragState.value);
 
   // 震动反馈
   uni.vibrateShort?.({ type: 'medium' });
@@ -1762,8 +1737,6 @@ function startDrag(e, task, quadrant) {
  * 长按任务开始拖拽（触摸端）
  */
 function onTaskLongPress(e, task, quadrant) {
-  console.log('[Drag] 触摸长按任务:', task.title, 'quadrant:', quadrant);
-
   // 防止触发点击事件
   e.preventDefault?.();
   e.stopPropagation?.();
@@ -1794,7 +1767,6 @@ function updateQuadrantRects() {
         q4: res[3],
         delete: res[4],
       };
-      console.log('[Drag] APP端象限位置已更新:', quadrantRects.value);
     }
   });
 }
@@ -1864,7 +1836,6 @@ function onTaskTouchEnd(e) {
 
   // 如果在删除区域上方,显示删除对话框
   if (overDelete) {
-    console.log('[Drag] 拖拽到删除区域');
     dragState.value.task = task;
     dragState.value.fromQuadrant = fromQuadrant;
     showDeleteTaskDialog.value = true;
@@ -1875,7 +1846,6 @@ function onTaskTouchEnd(e) {
   const target = detectQuadrantAtPosition(x, y);
 
   if (target && target !== fromQuadrant) {
-    console.log('[Drag] 拖拽到象限:', target);
     targetQuadrant.value = target;
     dragState.value.task = task;
     dragState.value.fromQuadrant = fromQuadrant;
@@ -1935,8 +1905,6 @@ async function confirmChangeQuadrant() {
 
   if (!task || !newQuadrant) return;
 
-  console.log('[Drag] 确认更改象限:', task.title, '->', newQuadrant, 'option:', option);
-
   // 根据目标象限设置isUrgent和isImportant
   let isUrgent, isImportant;
   if (newQuadrant === 'q1') { isUrgent = true; isImportant = true; }
@@ -1982,8 +1950,6 @@ async function confirmDeleteTask() {
   const option = deleteTaskOption.value;
 
   if (!task) return;
-
-  console.log('[Drag] 确认删除任务:', task.title, 'option:', option);
 
   try {
     // 根据选项删除任务
@@ -2229,19 +2195,16 @@ function findTaskFromElement(taskElement) {
   else if (q4) quadrant = 'q4';
 
   if (!quadrant) {
-    console.log('[Drag] 未找到象限');
     return null;
   }
 
   // 获取任务标题文本
   const titleElement = taskElement.querySelector('.nb-task-title');
   if (!titleElement) {
-    console.log('[Drag] 未找到任务标题元素');
     return null;
   }
 
   const taskTitle = titleElement.textContent.trim();
-  console.log('[Drag] 任务标题:', taskTitle);
 
   // 根据象限查找任务
   let taskList = [];
@@ -2252,7 +2215,6 @@ function findTaskFromElement(taskElement) {
 
   const task = taskList.find(t => t.title === taskTitle);
   if (!task) {
-    console.log('[Drag] 未找到匹配的任务. taskTitle:', taskTitle, 'quadrant:', quadrant);
     return null;
   }
 
@@ -2265,18 +2227,11 @@ function _onMouseDown(e) {
   // 检查是否点击了任务项
   const taskItem = e.target.closest('.nb-task-item');
   if (taskItem) {
-    console.log('[Drag-1] 鼠标按下任务项');
-
     // 查找任务数据和象限
     const taskData = findTaskFromElement(taskItem);
     if (taskData) {
-      console.log('[Drag-2] 找到任务数据:', taskData.task.title, '象限:', taskData.quadrant);
-      console.log('[Drag-3] 准备调用鼠标长按处理，检查函数类型:', typeof onTaskMouseDown);
-      console.log('[Drag-3.1] 当前dragState状态:', dragState.value);
-
       // 确保重置拖拽状态
       if (dragState.value.dragging) {
-        console.log('[Drag-3.2] 检测到之前的拖拽未完成，强制重置');
         dragState.value.dragging = false;
       }
 
@@ -2293,8 +2248,6 @@ function _onMouseDown(e) {
       mouseDownY = e.clientY;
       mouseMoved = false;
 
-      console.log('[Drag-4] 鼠标按下任务:', task.title, '坐标:', mouseDownX, mouseDownY);
-
       // 清除之前的定时器
       if (mouseDownTimer) {
         clearTimeout(mouseDownTimer);
@@ -2303,11 +2256,7 @@ function _onMouseDown(e) {
       // 500ms后触发长按
       mouseDownTimer = setTimeout(() => {
         if (!mouseMoved && mouseDownTask) {
-          console.log('[Drag-5] 鼠标长按触发:', mouseDownTask.title);
-
           // 直接实现拖拽开始逻辑（内联startDrag）
-          console.log('[Drag-6] 开始拖拽:', mouseDownTask.title, '象限:', mouseDownQuadrant, '位置:', mouseDownX, mouseDownY);
-
           dragState.value = {
             dragging: true,
             task: mouseDownTask,
@@ -2318,8 +2267,6 @@ function _onMouseDown(e) {
             startX: mouseDownX,
             startY: mouseDownY,
           };
-
-          console.log('[Drag-7] dragState已更新:', dragState.value);
 
           // 震动反馈
           uni.vibrateShort?.({ type: 'medium' });
@@ -2391,9 +2338,6 @@ function _onTaskMouseMove(e) {
 
   // 移动超过5px则取消长按
   if (dx > 5 || dy > 5) {
-    if (!mouseMoved) {
-      console.log('[Drag-8] 鼠标移动超过阈值,取消长按. dx:', dx, 'dy:', dy);
-    }
     mouseMoved = true;
     if (mouseDownTimer) {
       clearTimeout(mouseDownTimer);
@@ -2403,7 +2347,6 @@ function _onTaskMouseMove(e) {
 
   // 如果已经开始拖拽，更新拖拽位置
   if (dragState.value.dragging) {
-    console.log('[Drag-9] 拖拽中，更新位置:', e.clientX, e.clientY);
 
     // 内联 onTaskTouchMove 逻辑
     dragState.value.x = e.clientX;
@@ -2429,8 +2372,6 @@ function _onTaskMouseMove(e) {
  * 任务拖拽：鼠标松开
  */
 function _onTaskMouseUp(e) {
-  console.log('[Drag-10] 鼠标松开. dragging:', dragState.value.dragging, 'mouseDownTask:', mouseDownTask?.title);
-
   // 清除定时器
   if (mouseDownTimer) {
     clearTimeout(mouseDownTimer);
@@ -2439,8 +2380,6 @@ function _onTaskMouseUp(e) {
 
   // 如果正在拖拽，触发拖拽结束
   if (dragState.value.dragging) {
-    console.log('[Drag-11] 触发拖拽结束');
-
     // 内联 onTaskTouchEnd 逻辑
     const { task, fromQuadrant, overDelete, x, y } = dragState.value;
 
@@ -2449,7 +2388,6 @@ function _onTaskMouseUp(e) {
 
     // 如果在删除区域上方,显示删除对话框
     if (overDelete) {
-      console.log('[Drag-12] 拖拽到删除区域，显示删除对话框');
       dragState.value.task = task;
       dragState.value.fromQuadrant = fromQuadrant;
       showDeleteTaskDialog.value = true;
@@ -2473,13 +2411,10 @@ function _onTaskMouseUp(e) {
       }
 
       if (target && target !== fromQuadrant) {
-        console.log('[Drag-13] 拖拽到象限:', target, '显示更改对话框');
         targetQuadrant.value = target;
         dragState.value.task = task;
         dragState.value.fromQuadrant = fromQuadrant;
         showChangeQuadrantDialog.value = true;
-      } else {
-        console.log('[Drag-14] 未拖拽到其他象限，取消拖拽');
       }
     }
   }
