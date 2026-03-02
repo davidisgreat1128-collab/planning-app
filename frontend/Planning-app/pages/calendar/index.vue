@@ -1487,13 +1487,17 @@ async function confirmChangeQuadrant() {
   else if (newQuadrant === 'q4') { isUrgent = false; isImportant = false; }
 
   try {
+    // 对于重复任务，使用 taskId（原始任务ID），否则使用 id
+    const taskIdToUpdate = task.taskId || task.id;
+
     // 根据选项更新任务
     if (option === 1) {
       // 完整更改此条重复计划
-      await taskStore.editTask(task.id, { isUrgent, isImportant });
+      await taskStore.editTask(taskIdToUpdate, { isUrgent, isImportant });
     } else if (option === 2) {
       // 更改当天及未来计划
-      await taskStore.editTask(task.id, { isUrgent, isImportant });
+      // TODO: 后续需要实现"仅更改当天及未来"的API
+      await taskStore.editTask(taskIdToUpdate, { isUrgent, isImportant });
     }
 
     // 刷新任务列表
