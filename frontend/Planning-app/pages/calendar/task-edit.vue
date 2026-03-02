@@ -2114,7 +2114,6 @@ async function save() {
       await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
       console.log('[TaskEdit] 已重新加载任务列表');
 
-      uni.hideLoading();
       uni.showToast({ title: '修改成功', icon: 'success' });
     } else {
       console.log('[TaskEdit] 准备创建新任务');
@@ -2124,7 +2123,6 @@ async function save() {
       // 强制重新加载任务数据
       await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
 
-      uni.hideLoading();
       uni.showToast({ title: '创建成功', icon: 'success' });
     }
 
