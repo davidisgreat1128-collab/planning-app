@@ -1433,6 +1433,32 @@ async function handleCheckboxClick(task) {
 }
 
 /**
+ * 处理删除任务确认（从 DeleteTaskDialog 组件回调）
+ */
+async function handleDeleteTaskConfirm(option) {
+  const task = dragState.value.task;
+  if (!task) return;
+
+  try {
+    if (option === 1) {
+      await taskStore.removeTask(task.id);
+    } else if (option === 2) {
+      await taskStore.removeTask(task.id);
+    } else if (option === 3) {
+      await taskStore.removeTask(task.id);
+    }
+    await taskStore.fetchTasksByDate(selectedDate.value);
+    uni.showToast({ title: '已删除', icon: 'success' });
+  } catch (err) {
+    console.error('[Delete] 删除任务失败:', err);
+    uni.showToast({ title: '删除失败', icon: 'none' });
+  }
+
+  showDeleteTaskDialog.value = false;
+  deleteTaskOption.value = 1;
+}
+
+/**
  * 四象限视图：直接切换完成状态（不跳转）
  */
 async function toggleTaskDone(task) {
