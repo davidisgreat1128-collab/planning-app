@@ -81,7 +81,7 @@
           <view class="tep-subtask-line"></view>
           <view class="tep-subtask-body">
             <!-- "继续添加下一条子计划" 输入行 -->
-            <view class="tep-subtask-add-row" @tap="focusSubtaskInput">
+            <view class="tep-subtask-add-row">
               <input
                 ref="subtaskInputRef"
                 class="tep-subtask-add-input"
@@ -91,6 +91,9 @@
                 @input="newSubtaskText = $event.detail.value"
                 @confirm="addSubtask"
               />
+              <view class="tep-subtask-add-btn" @tap="addSubtask">
+                <text class="tep-subtask-add-icon">+</text>
+              </view>
             </view>
             <!-- 已有子计划列表 -->
             <view
@@ -253,16 +256,12 @@
     <!-- ⑧ 底部按钮区 -->
     <view class="tep-bottom-bar">
       <view
-        v-if="selectedPlanName"
-        class="tep-btn-outline"
-        @tap="viewGoal"
-      >
-        <text class="tep-btn-outline-text">查看目标</text>
-      </view>
-      <view
         class="tep-btn-save"
-        :class="{ 'tep-btn-save-full': !selectedPlanName }"
-        @tap="save"
+        :class="{
+          'tep-btn-save-disabled': !hasFormChanged,
+          'tep-btn-save-active': hasFormChanged
+        }"
+        @tap="handleSave"
       >
         <text class="tep-btn-save-text">保存</text>
       </view>
@@ -428,6 +427,57 @@
       @confirm="confirmDelete"
     />
 
+    <!-- ⑫ 保存重复任务确认弹窗 -->
+    <view v-if="showSaveRecurringDialog" class="tep-modal-mask" @tap="closeSaveRecurringDialog">
+      <view class="delete-dialog" @tap.stop>
+        <!-- 对话框标题 -->
+        <view class="delete-dialog-title">
+          <text class="delete-dialog-title-text">更新重复任务</text>
+        </view>
+
+        <!-- 选项1：完整更改此条重复计划 -->
+        <view
+          class="delete-option"
+          :class="{ 'delete-option-selected': saveRecurringOption === 1 }"
+          @tap="saveRecurringOption = 1"
+        >
+          <view class="delete-option-content">
+            <text class="delete-option-title">完整更改此条重复计划</text>
+          </view>
+          <view v-if="saveRecurringOption === 1" class="delete-option-check">
+            <text class="delete-option-check-icon">✓</text>
+          </view>
+        </view>
+
+        <!-- 分隔线 -->
+        <view class="delete-divider"></view>
+
+        <!-- 选项2：更改当天及未来计划 -->
+        <view
+          class="delete-option"
+          :class="{ 'delete-option-selected': saveRecurringOption === 2 }"
+          @tap="saveRecurringOption = 2"
+        >
+          <view class="delete-option-content">
+            <text class="delete-option-title">更改当天及未来计划</text>
+          </view>
+          <view v-if="saveRecurringOption === 2" class="delete-option-check">
+            <text class="delete-option-check-icon">✓</text>
+          </view>
+        </view>
+
+        <!-- 底部按钮区域：取消 + 确定 -->
+        <view class="delete-actions">
+          <view class="delete-cancel-btn" @tap="closeSaveRecurringDialog">
+            <text class="delete-cancel-text">取消</text>
+          </view>
+          <view class="delete-confirm-btn" @tap="confirmSaveRecurring">
+            <text class="delete-confirm-text">确定</text>
+          </view>
+        </view>
+      </view>
+    </view>
+
   </view>
 </template>
 
@@ -445,6 +495,8 @@ const planStore = usePlanStore();
 
 /** 任务ID（编辑模式时有值） */
 const taskId = ref(null);
+/** 原始任务ID（用于重复任务，保存时使用） */
+const originalTaskId = ref(null);
 /** 预设日期（从日历页传入） */
 const presetDate = ref('');
 
@@ -475,6 +527,12 @@ const showDeleteDialog = ref(false);
 
 /** 删除选项：1=仅删除当天, 2=完整清空重复任务, 3=删除当天及未来 */
 const deleteOption = ref(1);
+
+/** 弹窗：保存重复任务确认弹窗 */
+const showSaveRecurringDialog = ref(false);
+
+/** 保存重复任务选项：1=完整更改此条重复计划, 2=更改当天及未来计划 */
+const saveRecurringOption = ref(1);
 
 /** 当前任务的创建时间（编辑模式从任务数据读取） */
 const createdAt = ref('');
@@ -572,11 +630,6 @@ function focusSubtaskInput() {
   // UniApp 中 ref 聚焦通过 focus 属性控制，这里简单实现
 }
 
-/** 跳转查看目标 */
-function viewGoal() {
-  uni.showToast({ title: '查看目标功能开发中', icon: 'none' });
-}
-
 /** 跳转专注页面 */
 function goFocus() {
   uni.showToast({ title: '正在跳转专注页面...', icon: 'none' });
@@ -628,6 +681,25 @@ const currentQuadrant = computed(() => {
 
 /** 选中的规划名称（显示用） */
 const selectedPlanName = ref('');
+
+/** 原始表单数据（用于检测变化） */
+const originalForm = ref(null);
+
+/** 原始子任务数据（用于检测变化） */
+const originalSubtasks = ref(null);
+
+/** 表单是否有变化 */
+const hasFormChanged = computed(() => {
+  if (!originalForm.value) return false;
+
+  // 检测表单变化
+  const formChanged = JSON.stringify(form.value) !== JSON.stringify(originalForm.value);
+
+  // 检测子任务变化
+  const subtasksChanged = JSON.stringify(subtasks.value) !== JSON.stringify(originalSubtasks.value || []);
+
+  return formChanged || subtasksChanged;
+});
 
 /** 左卡片：开始日期显示 */
 const startDateDisplay = computed(() => {
@@ -1596,6 +1668,11 @@ function getLunarSimple(_date) {
 // 保存 / 删除
 // ============================================================
 async function save() {
+  console.log('[TaskEdit] save() 开始执行');
+  console.log('[TaskEdit] taskId:', taskId.value);
+  console.log('[TaskEdit] originalTaskId:', originalTaskId.value);
+  console.log('[TaskEdit] form:', form.value);
+
   if (!form.value.title.trim()) {
     uni.showToast({ title: '请填写任务标题', icon: 'none' });
     return;
@@ -1661,6 +1738,11 @@ async function save() {
     // 后端任务：调用 API
     let payload;
 
+    // 准备子任务数据
+    const subtasksData = subtasks.value.length > 0
+      ? subtasks.value.map(s => ({ title: s.title, done: s.done }))
+      : null;
+
     if (form.value.hasTimeRange) {
       // 当天时间段模式
       if (!form.value.startTime || !form.value.endTime) {
@@ -1680,7 +1762,8 @@ async function save() {
         endTime:     form.value.endTime,
         isRecurring: !!form.value.rrule,
         rrule:       form.value.rrule || null,
-        planId:      form.value.planId || null
+        planId:      form.value.planId || null,
+        subtasks:    subtasksData
       };
     } else if (form.value.endDate && form.value.endDate !== startDate) {
       // 多天范围模式
@@ -1697,7 +1780,8 @@ async function save() {
         endTime:     null,
         isRecurring: !!form.value.rrule,
         rrule:       form.value.rrule || null,
-        planId:      form.value.planId || null
+        planId:      form.value.planId || null,
+        subtasks:    subtasksData
       };
     } else {
       // 单天全天模式
@@ -1713,24 +1797,100 @@ async function save() {
         endTime:     null,
         isRecurring: !!form.value.rrule,
         rrule:       form.value.rrule || null,
-        planId:      form.value.planId || null
+        planId:      form.value.planId || null,
+        subtasks:    subtasksData
       };
     }
 
     if (isEdit.value) {
-      await taskStore.editTask(taskId.value, payload);
+      // 使用原始任务ID（对于重复任务，这是正确的ID）
+      const idToUpdate = originalTaskId.value || taskId.value;
+      console.log('[TaskEdit] 准备更新任务，ID:', idToUpdate);
+      console.log('[TaskEdit] payload:', payload);
+
+      await taskStore.editTask(idToUpdate, payload);
+      console.log('[TaskEdit] 任务更新成功');
+
+      // 强制重新加载任务数据
+      await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
+      console.log('[TaskEdit] 已重新加载任务列表');
+
       uni.showToast({ title: '修改成功', icon: 'success' });
     } else {
+      console.log('[TaskEdit] 准备创建新任务');
       await taskStore.addTask(payload);
+
+      // 强制重新加载任务数据
+      await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
+
       uni.showToast({ title: '创建成功', icon: 'success' });
     }
 
+    console.log('[TaskEdit] 准备返回上一页');
     setTimeout(() => { uni.navigateBack(); }, 800);
   } catch (err) {
+    console.error('[TaskEdit] 保存失败:', err);
     uni.showToast({ title: err.message || '保存失败', icon: 'none' });
   } finally {
     uni.hideLoading();
   }
+}
+
+// ============================================================
+// 保存任务相关函数
+// ============================================================
+
+/**
+ * 处理保存按钮点击
+ */
+async function handleSave() {
+  // 如果没有变化，不执行保存
+  if (!hasFormChanged.value) {
+    return;
+  }
+
+  // TODO: 暂时注释掉重复任务弹窗逻辑，先测试基本保存功能
+  // // 检查是否是重复任务
+  // const wasRecurring = !!(originalForm.value && originalForm.value.rrule);
+  // const isRecurring = !!form.value.rrule;
+
+  // // 如果当前任务是重复任务（无论之前是不是），都需要用户选择更新范围
+  // if (isRecurring) {
+  //   // 重复任务的任何修改都显示对话框
+  //   saveRecurringOption.value = 1;
+  //   showSaveRecurringDialog.value = true;
+  // } else if (wasRecurring && !isRecurring) {
+  //   // 从重复变为不重复 - 直接保存
+  //   await save();
+  // } else {
+  //   // 普通任务修改 - 直接保存
+  //   await save();
+  // }
+
+  // 暂时所有情况都直接保存
+  await save();
+}
+
+/**
+ * 关闭保存重复任务对话框
+ */
+function closeSaveRecurringDialog() {
+  showSaveRecurringDialog.value = false;
+}
+
+/**
+ * 确认保存重复任务
+ */
+async function confirmSaveRecurring() {
+  const option = saveRecurringOption.value;
+  closeSaveRecurringDialog();
+
+  // TODO: 根据选项保存
+  // option === 1: 完整更改此条重复计划
+  // option === 2: 更改当天及未来计划
+  // 目前先统一调用 save，后续需要实现不同的API
+
+  await save();
 }
 
 // ============================================================
@@ -1936,6 +2096,9 @@ onMounted(() => {
     }
 
     if (task) {
+      // 保存原始任务ID（对于重复任务，task.taskId 是原始ID，task.id 是实例ID）
+      originalTaskId.value = task.taskId || task.id;
+
       form.value.title        = task.title        || '';
       form.value.description  = task.description  || '';
       form.value.isUrgent     = task.isUrgent     || false;
@@ -2017,6 +2180,10 @@ onMounted(() => {
   } else {
     activeDateTab.value = 'other';
   }
+
+  // 保存原始表单数据和子任务数据用于检测变化
+  originalForm.value = JSON.parse(JSON.stringify(form.value));
+  originalSubtasks.value = JSON.parse(JSON.stringify(subtasks.value));
 });
 </script>
 
@@ -2033,12 +2200,17 @@ onMounted(() => {
 
 /* ① 顶部导航 */
 .tep-nav {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
   background-color: #FFFFFF;
   padding: 56rpx 24rpx 20rpx;
   border-bottom: 1rpx solid #F0F0F0;
+  z-index: 100;
 }
 .tep-nav-back {
   width: 72rpx;
@@ -2072,10 +2244,15 @@ onMounted(() => {
 
 /* ② 日期 Tab 栏 */
 .tep-date-tabs {
+  position: fixed;
+  top: 148rpx;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: row;
   background-color: #FFFFFF;
   border-bottom: 1rpx solid #F0F0F0;
+  z-index: 99;
 }
 .tep-date-tab {
   flex: 1;
@@ -2102,7 +2279,14 @@ onMounted(() => {
 }
 
 /* 滚动区 */
-.tep-scroll { flex: 1; }
+.tep-scroll {
+  position: fixed;
+  top: 220rpx;
+  left: 0;
+  right: 0;
+  bottom: 140rpx;
+  overflow-y: auto;
+}
 
 /* ③ 任务卡片 */
 .tep-task-card {
@@ -2167,9 +2351,34 @@ onMounted(() => {
   min-height: 40rpx;
 }
 .tep-subtask-body { flex: 1; display: flex; flex-direction: column; }
-.tep-subtask-add-row { padding: 8rpx 0 12rpx; }
-.tep-subtask-add-input { font-size: 26rpx; color: #333; width: 100%; }
+.tep-subtask-add-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  padding: 8rpx 0 12rpx;
+}
+.tep-subtask-add-input {
+  font-size: 26rpx;
+  color: #333;
+  flex: 1;
+}
 .tep-subtask-placeholder { color: #CCCCCC; font-size: 26rpx; }
+.tep-subtask-add-btn {
+  width: 48rpx;
+  height: 48rpx;
+  border-radius: 50%;
+  border: 2rpx solid #DDDDDD;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  margin-left: 12rpx;
+}
+.tep-subtask-add-icon {
+  font-size: 32rpx;
+  color: #999999;
+  font-weight: bold;
+}
 .tep-subtask-row {
   display: flex;
   flex-direction: row;
@@ -2316,6 +2525,10 @@ onMounted(() => {
 
 /* ⑧ 底部按钮 */
 .tep-bottom-bar {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
   display: flex;
   flex-direction: row;
   align-items: center;
@@ -2323,28 +2536,25 @@ onMounted(() => {
   padding-bottom: calc(20rpx + env(safe-area-inset-bottom));
   background-color: #FFFFFF;
   border-top: 1rpx solid #F0F0F0;
-  gap: 20rpx;
+  z-index: 10;
 }
-.tep-btn-outline {
-  flex: 1;
-  height: 90rpx;
-  border-radius: 50rpx;
-  border: 2rpx solid #999;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-.tep-btn-outline-text { font-size: 30rpx; color: #555; }
 .tep-btn-save {
-  flex: 1;
+  width: 100%;
   height: 90rpx;
   border-radius: 50rpx;
-  background-color: #AAAAAA;
+  background-color: #CCCCCC;
   display: flex;
   align-items: center;
   justify-content: center;
+  transition: background-color 0.3s;
 }
-.tep-btn-save-full { flex: 1; }
+.tep-btn-save-disabled {
+  background-color: #CCCCCC;
+  opacity: 0.6;
+}
+.tep-btn-save-active {
+  background-color: #1A1A2E;
+}
 .tep-btn-save-text { font-size: 30rpx; color: #FFFFFF; font-weight: bold; }
 
 /* 弹窗通用 */
@@ -2481,4 +2691,21 @@ onMounted(() => {
 /* ============================================================
    删除任务确认弹窗样式已移至 DeleteTaskDialog.vue 组件
    ============================================================ */
+
+/* ============================================================
+   保存重复任务确认弹窗样式（复用删除对话框样式）
+   ============================================================ */
+.delete-dialog-title {
+  padding-bottom: 20rpx;
+  border-bottom: 1px solid #E5E5E5;
+  margin-bottom: 8rpx;
+}
+
+.delete-dialog-title-text {
+  display: block;
+  font-size: 32rpx;
+  font-weight: bold;
+  color: #1A1A2E;
+  text-align: center;
+}
 </style>
