@@ -1989,6 +1989,12 @@ async function save() {
         // 查找并更新任务
         const taskIndex = tasks.findIndex(t => String(t.id) === String(taskId.value));
         if (taskIndex !== -1) {
+          // 准备子任务数据
+          const subtasksData = subtasks.value.length > 0
+            ? subtasks.value.map(s => ({ title: s.title, done: s.done }))
+            : [];
+          console.log('[TaskEdit] 保存子任务数据:', subtasksData);
+
           // 更新任务数据
           tasks[taskIndex] = {
             ...tasks[taskIndex],
@@ -1999,6 +2005,7 @@ async function save() {
             date: startDate,
             occurDate: startDate,
             status: taskDone.value ? 'completed' : 'pending',
+            subtasks: subtasksData,
             updateTime: new Date().toISOString(),
             // 如果任务被标记为完成，记录完成时间
             ...(taskDone.value && !tasks[taskIndex].completedAt ? { completedAt: new Date().toISOString() } : {})
