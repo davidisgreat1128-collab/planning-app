@@ -1308,10 +1308,14 @@ function confirmRepeatEndDate() {
     repeatEndDate.value = tempRepeatEndDate.value;
   }
   showRepeatEndPicker.value = false;
+  syncRrule();
 }
 
 function clearRepeatEndDate() {
   repeatEndDate.value = '';
+  tempRepeatEndDate.value = '';
+  showRepeatEndPicker.value = false;
+  syncRrule();
 }
 
 function repeatCalPrevMonth() {
