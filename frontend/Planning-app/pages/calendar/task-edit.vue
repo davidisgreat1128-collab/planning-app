@@ -2013,6 +2013,7 @@ async function save() {
             taskStore.tasks[storeTaskIndex] = tasks[taskIndex];
           }
 
+          uni.hideLoading();
           uni.showToast({ title: '修改成功', icon: 'success' });
           setTimeout(() => { uni.navigateBack(); }, 800);
           return;
