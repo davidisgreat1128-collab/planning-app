@@ -629,10 +629,9 @@
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '16px 0',
-            border: '1px dashed red'
           }"
         >
-          <text class="change-option-title" :style="{ border: '1px dashed blue', flex: 1 }">完整更改此条重复计划</text>
+          <text class="change-option-title" :style="{ flex: 1 }">完整更改此条重复计划</text>
           <view
             :style="{
               width: '20px',
@@ -664,10 +663,9 @@
             alignItems: 'center',
             justifyContent: 'space-between',
             padding: '16px 0',
-            border: '1px dashed red'
           }"
         >
-          <view class="change-option-content" :style="{ border: '1px dashed blue', flex: 1 }">
+          <view class="change-option-content" :style="{ flex: 1 }">
             <text class="change-option-title">更改此条计划的当天及未来计划</text>
             <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响过去记录</text>
           </view>
@@ -763,8 +761,15 @@
           class="delete-option"
           :class="{ 'delete-option-selected': deleteTaskOption === 1 }"
           @tap="deleteTaskOption = 1"
+          :style="{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 0',
+          }"
         >
-          <view class="delete-option-content">
+          <view class="delete-option-content" :style="{ flex: 1 }">
             <text class="delete-option-title">仅删除当天计划</text>
             <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响该计划的过去及未来计划</text>
           </view>
@@ -772,6 +777,7 @@
             :style="{
               width: '20px',
               height: '20px',
+              flexShrink: '0',
               borderRadius: '50%',
               border: deleteTaskOption === 1 ? 'none' : '2px solid #ddd',
               backgroundColor: deleteTaskOption === 1 ? '#2c3e50' : 'transparent',
@@ -792,12 +798,20 @@
           class="delete-option"
           :class="{ 'delete-option-selected': deleteTaskOption === 2 }"
           @tap="deleteTaskOption = 2"
+          :style="{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 0',
+          }"
         >
-          <text class="delete-option-title">完整清空此条重复计划</text>
+          <text class="delete-option-title" :style="{ flex: 1 }">完整清空此条重复计划</text>
           <view
             :style="{
               width: '20px',
               height: '20px',
+              flexShrink: '0',
               borderRadius: '50%',
               border: deleteTaskOption === 2 ? 'none' : '2px solid #ddd',
               backgroundColor: deleteTaskOption === 2 ? '#2c3e50' : 'transparent',
@@ -818,8 +832,15 @@
           class="delete-option"
           :class="{ 'delete-option-selected': deleteTaskOption === 3 }"
           @tap="deleteTaskOption = 3"
+          :style="{
+            display: 'flex',
+            flexDirection: 'row',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            padding: '16px 0',
+          }"
         >
-          <view class="delete-option-content">
+          <view class="delete-option-content" :style="{ flex: 1 }">
             <text class="delete-option-title">删除当天及未来计划</text>
             <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响该计划的过去记录</text>
           </view>
@@ -827,6 +848,7 @@
             :style="{
               width: '20px',
               height: '20px',
+              flexShrink: '0',
               borderRadius: '50%',
               border: deleteTaskOption === 3 ? 'none' : '2px solid #ddd',
               backgroundColor: deleteTaskOption === 3 ? '#2c3e50' : 'transparent',
