@@ -727,178 +727,11 @@
     </view>
 
     <!-- 删除任务确认对话框 -->
-    <view
-      v-if="showDeleteTaskDialog"
-      class="dialog-mask"
-      @tap="() => closeDeleteTaskDialog()"
-      :style="{
-        position: 'fixed',
-        top: 0,
-        left: 0,
-        right: 0,
-        bottom: 0,
-        backgroundColor: 'rgba(0, 0, 0, 0.6)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 10002
-      }"
-    >
-      <view
-        class="delete-dialog"
-        @tap.stop
-        :style="{
-          width: '320px',
-          maxWidth: '90vw',
-          backgroundColor: '#FFFFFF',
-          borderRadius: '16px',
-          padding: '24px 20px 20px',
-          boxShadow: '0 8px 32px rgba(0, 0, 0, 0.3)'
-        }"
-      >
-        <!-- 选项1：仅删除当天计划（默认选中） -->
-        <view
-          class="delete-option"
-          :class="{ 'delete-option-selected': deleteTaskOption === 1 }"
-          @tap="deleteTaskOption = 1"
-          :style="{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '16px 0',
-          }"
-        >
-          <view class="delete-option-content" :style="{ flex: 1 }">
-            <text class="delete-option-title">仅删除当天计划</text>
-            <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响该计划的过去及未来计划</text>
-          </view>
-          <view
-            :style="{
-              width: '20px',
-              height: '20px',
-              flexShrink: '0',
-              borderRadius: '50%',
-              border: deleteTaskOption === 1 ? 'none' : '2px solid #ddd',
-              backgroundColor: deleteTaskOption === 1 ? '#2c3e50' : 'transparent',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }"
-          >
-            <text v-if="deleteTaskOption === 1" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
-          </view>
-        </view>
-
-        <!-- 分隔线 -->
-        <view class="delete-divider"></view>
-
-        <!-- 选项2：完整清空此条重复计划 -->
-        <view
-          class="delete-option"
-          :class="{ 'delete-option-selected': deleteTaskOption === 2 }"
-          @tap="deleteTaskOption = 2"
-          :style="{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '16px 0',
-          }"
-        >
-          <text class="delete-option-title" :style="{ flex: 1 }">完整清空此条重复计划</text>
-          <view
-            :style="{
-              width: '20px',
-              height: '20px',
-              flexShrink: '0',
-              borderRadius: '50%',
-              border: deleteTaskOption === 2 ? 'none' : '2px solid #ddd',
-              backgroundColor: deleteTaskOption === 2 ? '#2c3e50' : 'transparent',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }"
-          >
-            <text v-if="deleteTaskOption === 2" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
-          </view>
-        </view>
-
-        <!-- 分隔线 -->
-        <view class="delete-divider"></view>
-
-        <!-- 选项3：删除当天及未来计划 -->
-        <view
-          class="delete-option"
-          :class="{ 'delete-option-selected': deleteTaskOption === 3 }"
-          @tap="deleteTaskOption = 3"
-          :style="{
-            display: 'flex',
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            padding: '16px 0',
-          }"
-        >
-          <view class="delete-option-content" :style="{ flex: 1 }">
-            <text class="delete-option-title">删除当天及未来计划</text>
-            <text :style="{ fontSize: '12px', color: '#999', fontWeight: 'normal', marginTop: '4px', display: 'block' }">不影响该计划的过去记录</text>
-          </view>
-          <view
-            :style="{
-              width: '20px',
-              height: '20px',
-              flexShrink: '0',
-              borderRadius: '50%',
-              border: deleteTaskOption === 3 ? 'none' : '2px solid #ddd',
-              backgroundColor: deleteTaskOption === 3 ? '#2c3e50' : 'transparent',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center'
-            }"
-          >
-            <text v-if="deleteTaskOption === 3" :style="{ fontSize: '14px', color: '#fff' }">✓</text>
-          </view>
-        </view>
-
-        <!-- 底部按钮组 -->
-        <view :style="{ display: 'flex', gap: '12px', marginTop: '24px' }">
-          <!-- 取消按钮 -->
-          <view
-            @tap="() => closeDeleteTaskDialog()"
-            :style="{
-              flex: 1,
-              backgroundColor: '#f0f0f0',
-              borderRadius: '8px',
-              padding: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }"
-          >
-            <text :style="{ fontSize: '16px', color: '#666', fontWeight: '500' }">取消</text>
-          </view>
-
-          <!-- 确定按钮 -->
-          <view
-            @tap="() => confirmDeleteTask()"
-            :style="{
-              flex: 1,
-              backgroundColor: '#2c3e50',
-              borderRadius: '8px',
-              padding: '14px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              cursor: 'pointer'
-            }"
-          >
-            <text :style="{ fontSize: '16px', color: '#FFFFFF', fontWeight: '500' }">确定</text>
-          </view>
-        </view>
-      </view>
-    </view>
+    <DeleteTaskDialog
+      v-model:show="showDeleteTaskDialog"
+      v-model:selectedOption="deleteTaskOption"
+      @confirm="handleDeleteTaskConfirm"
+    />
 
     <CategoryDrawer
       v-model:visible="showCategoryDrawer"
@@ -915,6 +748,7 @@ import { useLogStore } from '@/store/log.js';
 import { useUserStore } from '@/store/user.js';
 import { usePlanStore } from '@/store/plan.js';
 import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday.js';
+import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 import CategoryDrawer from '@/components/category-drawer.vue';
 
@@ -1976,11 +1810,10 @@ function closeDeleteTaskDialog() {
 }
 
 /**
- * 确认删除任务
+ * 处理删除任务确认（从组件回调）
  */
-async function confirmDeleteTask() {
+async function handleDeleteTaskConfirm(option) {
   const task = dragState.value.task;
-  const option = deleteTaskOption.value;
 
   if (!task) return;
 
