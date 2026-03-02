@@ -2105,6 +2105,7 @@ async function save() {
       const idToUpdate = originalTaskId.value || taskId.value;
       console.log('[TaskEdit] 准备更新任务，ID:', idToUpdate);
       console.log('[TaskEdit] payload:', payload);
+      console.log('[TaskEdit] payload.subtasks:', payload.subtasks);
 
       await taskStore.editTask(idToUpdate, payload);
       console.log('[TaskEdit] 任务更新成功');
@@ -2113,14 +2114,17 @@ async function save() {
       await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
       console.log('[TaskEdit] 已重新加载任务列表');
 
+      uni.hideLoading();
       uni.showToast({ title: '修改成功', icon: 'success' });
     } else {
       console.log('[TaskEdit] 准备创建新任务');
+      console.log('[TaskEdit] payload.subtasks:', payload.subtasks);
       await taskStore.addTask(payload);
 
       // 强制重新加载任务数据
       await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
 
+      uni.hideLoading();
       uni.showToast({ title: '创建成功', icon: 'success' });
     }
 
