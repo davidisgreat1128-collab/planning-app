@@ -2037,9 +2037,11 @@ async function save() {
     let payload;
 
     // 准备子任务数据
+    console.log('[TaskEdit] subtasks.value:', JSON.stringify(subtasks.value));
     const subtasksData = subtasks.value.length > 0
       ? subtasks.value.map(s => ({ title: s.title, done: s.done }))
       : null;
+    console.log('[TaskEdit] subtasksData:', JSON.stringify(subtasksData));
 
     if (form.value.hasTimeRange) {
       // 当天时间段模式
