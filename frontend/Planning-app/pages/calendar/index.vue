@@ -788,6 +788,9 @@ const dragState = ref({
   startY: 0,          // 起始触摸Y
 });
 
+/** 长按任务ID（用于显示按下效果） */
+const pressedTaskId = ref(null);
+
 /** APP端象限位置缓存 */
 const quadrantRects = ref({
   q1: null,
@@ -1459,6 +1462,53 @@ async function handleDeleteTaskConfirm(option) {
 }
 
 /**
+ * 关闭更改象限对话框
+ */
+function closeChangeQuadrantDialog() {
+  showChangeQuadrantDialog.value = false;
+  changeQuadrantOption.value = 1;
+}
+
+/**
+ * 确认更改象限
+ */
+async function confirmChangeQuadrant() {
+  const task = dragState.value.task;
+  const newQuadrant = targetQuadrant.value;
+  const option = changeQuadrantOption.value;
+
+  if (!task || !newQuadrant) return;
+
+  // 根据目标象限设置isUrgent和isImportant
+  let isUrgent, isImportant;
+  if (newQuadrant === 'q1') { isUrgent = true; isImportant = true; }
+  else if (newQuadrant === 'q2') { isUrgent = false; isImportant = true; }
+  else if (newQuadrant === 'q3') { isUrgent = true; isImportant = false; }
+  else if (newQuadrant === 'q4') { isUrgent = false; isImportant = false; }
+
+  try {
+    // 根据选项更新任务
+    if (option === 1) {
+      // 完整更改此条重复计划
+      await taskStore.editTask(task.id, { isUrgent, isImportant });
+    } else if (option === 2) {
+      // 更改当天及未来计划
+      await taskStore.editTask(task.id, { isUrgent, isImportant });
+    }
+
+    // 刷新任务列表
+    await taskStore.fetchTasksByDate(selectedDate.value);
+
+    uni.showToast({ title: '已更改', icon: 'success' });
+  } catch (err) {
+    console.error('[Drag] 更改象限失败:', err);
+    uni.showToast({ title: '更改失败', icon: 'none' });
+  }
+
+  closeChangeQuadrantDialog();
+}
+
+/**
  * 四象限视图：直接切换完成状态（不跳转）
  */
 async function toggleTaskDone(task) {
@@ -1739,10 +1789,30 @@ function onTaskTouchEnd(e) {
   const target = detectQuadrantAtPosition(x, y);
 
   if (target && target !== fromQuadrant) {
-    targetQuadrant.value = target;
-    dragState.value.task = task;
-    dragState.value.fromQuadrant = fromQuadrant;
-    showChangeQuadrantDialog.value = true;
+    // 检查任务是否为重复任务
+    const isRecurring = task.isRecurring || task.rrule;
+
+    if (isRecurring) {
+      // 重复任务：显示对话框让用户选择
+      targetQuadrant.value = target;
+      dragState.value.task = task;
+      dragState.value.fromQuadrant = fromQuadrant;
+      showChangeQuadrantDialog.value = true;
+    } else {
+      // 普通任务：直接更改象限
+      const isUrgent = target === 'q1' || target === 'q3';
+      const isImportant = target === 'q1' || target === 'q2';
+
+      taskStore.editTask(task.id, { isUrgent, isImportant })
+        .then(() => {
+          taskStore.fetchTasksByDate(selectedDate.value);
+          uni.showToast({ title: '已更改', icon: 'success' });
+        })
+        .catch(err => {
+          console.error('[Drag] 更改象限失败:', err);
+          uni.showToast({ title: '更改失败', icon: 'none' });
+        });
+    }
   }
 }
 
@@ -2306,10 +2376,30 @@ function _onTaskMouseUp(e) {
       }
 
       if (target && target !== fromQuadrant) {
-        targetQuadrant.value = target;
-        dragState.value.task = task;
-        dragState.value.fromQuadrant = fromQuadrant;
-        showChangeQuadrantDialog.value = true;
+        // 检查任务是否为重复任务
+        const isRecurring = task.isRecurring || task.rrule;
+
+        if (isRecurring) {
+          // 重复任务：显示对话框让用户选择
+          targetQuadrant.value = target;
+          dragState.value.task = task;
+          dragState.value.fromQuadrant = fromQuadrant;
+          showChangeQuadrantDialog.value = true;
+        } else {
+          // 普通任务：直接更改象限
+          const isUrgent = target === 'q1' || target === 'q3';
+          const isImportant = target === 'q1' || target === 'q2';
+
+          taskStore.editTask(task.id, { isUrgent, isImportant })
+            .then(() => {
+              taskStore.fetchTasksByDate(selectedDate.value);
+              uni.showToast({ title: '已更改', icon: 'success' });
+            })
+            .catch(err => {
+              console.error('[Drag] 更改象限失败:', err);
+              uni.showToast({ title: '更改失败', icon: 'none' });
+            });
+        }
       }
     }
   }
