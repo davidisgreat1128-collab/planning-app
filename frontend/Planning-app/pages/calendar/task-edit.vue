@@ -639,6 +639,39 @@
       @confirm="confirmDelete"
     />
 
+    <!-- ⑪ 重复规则：结束重复日期选择器弹窗 -->
+    <view v-if="showRepeatEndPicker" class="tep-modal-mask" @tap.self="closeRepeatEndPicker">
+      <view class="tep-modal-sheet">
+        <text class="tep-sheet-title">选择结束日期</text>
+        <view class="cal-header">
+          <text class="cal-nav" @tap="repeatCalPrevMonth">‹</text>
+          <text class="cal-month-title">{{ repeatCalYear }}年{{ repeatCalMonth + 1 }}月</text>
+          <text class="cal-nav" @tap="repeatCalNextMonth">›</text>
+        </view>
+        <view class="cal-week-row">
+          <text v-for="d in weekLabels" :key="d" class="cal-week-cell">{{ d }}</text>
+        </view>
+        <view class="cal-body">
+          <view v-for="(week, wi) in repeatCalRows" :key="wi" class="cal-row">
+            <view
+              v-for="(cell, di) in week"
+              :key="di"
+              class="cal-cell"
+              :class="getRepeatEndCellClass(cell)"
+              @tap="onSelectRepeatEndDate(cell)"
+            >
+              <text class="cal-cell-num">{{ cell.day }}</text>
+            </view>
+          </view>
+        </view>
+        <view class="tep-modal-btns">
+          <text class="tep-modal-cancel" @tap="closeRepeatEndPicker">取消</text>
+          <text class="tep-modal-cancel" @tap="clearRepeatEndDate">清除</text>
+          <text class="tep-modal-confirm" @tap="confirmRepeatEndDate">确定</text>
+        </view>
+      </view>
+    </view>
+
     <!-- ⑫ 保存重复任务确认弹窗 -->
     <view v-if="showSaveRecurringDialog" class="tep-modal-mask" @tap="closeSaveRecurringDialog">
       <view class="delete-dialog" @tap.stop>
