@@ -220,7 +220,7 @@ async function updateTask(taskId, userId, data) {
   const {
     title, description, isUrgent, isImportant,
     isAllDay, dateType, taskDate, startDate, endDate,
-    startTime, endTime, status
+    startTime, endTime, status, subtasks
   } = data;
 
   // 完成任务时记录完成时间
@@ -241,6 +241,7 @@ async function updateTask(taskId, userId, data) {
     startTime: startTime ?? task.startTime,
     endTime: endTime ?? task.endTime,
     status: status ?? task.status,
+    subtasks: subtasks !== undefined ? subtasks : task.subtasks,
     completedAt: data.completedAt ?? task.completedAt
   });
 
