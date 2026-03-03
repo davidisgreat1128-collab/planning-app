@@ -1958,11 +1958,6 @@ function getLunarSimple(_date) {
 // 保存 / 删除
 // ============================================================
 async function save() {
-  console.log('[TaskEdit] save() 开始执行');
-  console.log('[TaskEdit] taskId:', taskId.value);
-  console.log('[TaskEdit] originalTaskId:', originalTaskId.value);
-  console.log('[TaskEdit] form:', form.value);
-
   if (!form.value.title.trim()) {
     uni.showToast({ title: '请填写任务标题', icon: 'none' });
     return;
@@ -1974,13 +1969,10 @@ async function save() {
     uni.showLoading({ title: '保存中...' });
 
     // 检查是否是 localStorage 任务（ID 以 task_ 开头）
-    console.log('[TaskEdit] save() 调用 - taskId:', taskId.value, 'isEdit:', isEdit.value);
     const isLocalStorageTask = isEdit.value && taskId.value && String(taskId.value).startsWith('task_');
-    console.log('[TaskEdit] isLocalStorageTask:', isLocalStorageTask);
 
     if (isLocalStorageTask) {
       // localStorage 任务：直接更新 localStorage，不调用后端 API
-      console.log('[TaskEdit] 保存 localStorage 任务:', taskId.value);
 
       try {
         const savedTasks = uni.getStorageSync('tasks');
@@ -1993,7 +1985,6 @@ async function save() {
           const subtasksData = subtasks.value.length > 0
             ? subtasks.value.map(s => ({ title: s.title, done: s.done }))
             : [];
-          console.log('[TaskEdit] 保存子任务数据:', subtasksData);
 
           // 更新任务数据
           tasks[taskIndex] = {
@@ -2037,11 +2028,9 @@ async function save() {
     let payload;
 
     // 准备子任务数据
-    console.log('[TaskEdit] subtasks.value:', JSON.stringify(subtasks.value));
     const subtasksData = subtasks.value.length > 0
       ? subtasks.value.map(s => ({ title: s.title, done: s.done }))
       : null;
-    console.log('[TaskEdit] subtasksData:', JSON.stringify(subtasksData));
 
     if (form.value.hasTimeRange) {
       // 当天时间段模式
@@ -2105,21 +2094,14 @@ async function save() {
     if (isEdit.value) {
       // 使用原始任务ID（对于重复任务，这是正确的ID）
       const idToUpdate = originalTaskId.value || taskId.value;
-      console.log('[TaskEdit] 准备更新任务，ID:', idToUpdate);
-      console.log('[TaskEdit] payload:', payload);
-      console.log('[TaskEdit] payload.subtasks:', payload.subtasks);
 
       await taskStore.editTask(idToUpdate, payload);
-      console.log('[TaskEdit] 任务更新成功');
 
       // 强制重新加载任务数据
       await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
-      console.log('[TaskEdit] 已重新加载任务列表');
 
       uni.showToast({ title: '修改成功', icon: 'success' });
     } else {
-      console.log('[TaskEdit] 准备创建新任务');
-      console.log('[TaskEdit] payload.subtasks:', payload.subtasks);
       await taskStore.addTask(payload);
 
       // 强制重新加载任务数据
@@ -2128,7 +2110,6 @@ async function save() {
       uni.showToast({ title: '创建成功', icon: 'success' });
     }
 
-    console.log('[TaskEdit] 准备返回上一页');
     setTimeout(() => { uni.navigateBack(); }, 800);
   } catch (err) {
     console.error('[TaskEdit] 保存失败:', err);

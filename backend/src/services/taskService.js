@@ -217,23 +217,18 @@ async function updateTask(taskId, userId, data) {
   const task = await Task.findOne({ where: { id: taskId, userId } });
   if (!task) throw new NotFoundError('任务不存在');
 
-  console.log('[TaskService] updateTask - 收到的data:', JSON.stringify(data));
-  console.log('[TaskService] updateTask - 当前task.subtasks:', JSON.stringify(task.subtasks));
-
   const {
     title, description, isUrgent, isImportant,
     isAllDay, dateType, taskDate, startDate, endDate,
     startTime, endTime, status, subtasks
   } = data;
 
-  console.log('[TaskService] updateTask - 解构后的subtasks:', JSON.stringify(subtasks));
-
   // 完成任务时记录完成时间
   if (status === 'completed' && task.status !== 'completed') {
     data.completedAt = new Date();
   }
 
-  const updateData = {
+  await task.update({
     title: title ?? task.title,
     description: description ?? task.description,
     isUrgent: isUrgent ?? task.isUrgent,
@@ -248,13 +243,7 @@ async function updateTask(taskId, userId, data) {
     status: status ?? task.status,
     subtasks: subtasks !== undefined ? subtasks : task.subtasks,
     completedAt: data.completedAt ?? task.completedAt
-  };
-
-  console.log('[TaskService] updateTask - 准备更新的updateData.subtasks:', JSON.stringify(updateData.subtasks));
-
-  await task.update(updateData);
-
-  console.log('[TaskService] updateTask - 更新后的task.subtasks:', JSON.stringify(task.subtasks));
+  });
 
   return task;
 }
