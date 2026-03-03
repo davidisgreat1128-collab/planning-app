@@ -1406,22 +1406,12 @@ function openTask(task) {
 
 /**
  * 四象限视图：点击任务
- * - 有子任务时展开子任务弹窗（38.jpg效果）
- * - 无子任务时跳转编辑页
+ * - 直接跳转到任务编辑页面
  */
 function openTaskDetail(task) {
   fabOpen.value = false;
-  if (task.subtasks && task.subtasks.length > 0) {
-    // 有子任务数据：展开弹窗
-    subtaskPopup.value = {
-      visible: true,
-      task,
-      subtasks: task.subtasks.map(s => ({ ...s }))
-    };
-  } else {
-    // 无子任务：跳转编辑
-    uni.navigateTo({ url: `/pages/calendar/task-edit?id=${task.id}&date=${selectedDate.value}` });
-  }
+  // 直接跳转到任务编辑页面
+  uni.navigateTo({ url: `/pages/calendar/task-edit?id=${task.id}&date=${selectedDate.value}` });
 }
 
 /**
