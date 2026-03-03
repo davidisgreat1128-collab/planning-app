@@ -1419,7 +1419,11 @@ function openTaskDetail(task) {
  */
 async function handleCheckboxClick(task) {
   try {
-    await taskStore.toggleDone(task.id, task.status);
+	  //对于重复任务，使用taskId(原始任务ID)，否则使用id
+	  const taskIdToUpdate = task.taskId || task.id;
+	  console.log('[handleCheckboxClick] task对象:', JSON.stringify(task, null, 2));
+	  console.log('[handleCheckboxClick] task.id:', task.id, 'task.taskId:', task.taskId, '最终使用ID:', taskIdToUpdate);
+    await taskStore.toggleDone(taskIdToUpdate, task.status);
   } catch (err) {
     uni.showToast({ title: err.message || '操作失败', icon: 'none' });
   }
@@ -1505,7 +1509,7 @@ async function confirmChangeQuadrant() {
 /**
  * 四象限视图：直接切换完成状态（不跳转）
  */
-async function toggleTaskDone(task) {
+
 async function toggleTaskDone(task) {
   // 访客模式：禁止修改演示数据
   if (userStore.token === 'guest') {
@@ -1525,7 +1529,6 @@ async function toggleTaskDone(task) {
   } catch (err) {
     uni.showToast({ title: err.message || '操作失败', icon: 'none' });
   }
-}
 
 // ============================================================
 // 拖拽相关函数

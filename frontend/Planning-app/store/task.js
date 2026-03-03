@@ -189,7 +189,12 @@ export const useTaskStore = defineStore('task', () => {
       await updateTask(id, { status: newStatus });
       const idx = tasks.value.findIndex(t => t.id === id);
       if (idx !== -1) {
-        tasks.value[idx].status = newStatus;
+        // 使用扩展运算符创建新对象，确保触发响应式更新
+        tasks.value[idx] = {
+          ...tasks.value[idx],
+          status: newStatus,
+          completedAt: newStatus === 'completed' ? new Date().toISOString() : null
+        };
       }
     }
   }
