@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-02-19（第15次会话，代码提交+文档合规+Bug核查）
+> **最后更新**: 2026-03-03（第16次会话，index.vue架构评估文档创建）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 6ab896e（docs: 补齐工作日志+文档导航合规）
+> **最新commit**: 3e11a48（移除子任务保存功能的所有调试日志）
 
 ---
 
@@ -203,12 +203,73 @@
 - ✅ **pages/calendar/view.vue**（视图选择，TabBar占位）
 - ✅ **pages/calendar/focus.vue**（专注/番茄钟，TabBar占位）
 
+### Phase 3k - index.vue架构评估（第16次会话，2026-03-03）
+- ✅ **深度分析 pages/calendar/index.vue**（3802行超大文件）：
+  - 文件行数：3802行（超标661%）
+  - 函数数量：73个（超标143%）
+  - 响应式状态：54+个（超标170%）
+  - 识别15项问题（2个P0严重Bug + 4个P1高风险 + 4个P2中风险 + 5个P3低风险）
+  - P0问题：函数重复声明5处、变量重复声明12处
+  - 识别9大职责领域（日历渲染、四象限管理、拖拽系统、弹窗状态机、任务CRUD、节日加载、时间线视图、访客模式、H5鼠标模拟）
+- ✅ **创建架构评估完整文档体系**（遵循CLAUDE.md规范，全部中文）：
+  - `docs/02-技术设计/index.vue架构评估任务-分阶段可交接方案.md`（~300行）
+    - 任务拆分为4个独立子任务（每个1.5-2.5小时）
+    - 支持Claude账号切换的交接文档规范
+    - 包含"下一个Claude接手指南"（3种场景）
+  - `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md`（~800行）
+    - 健康评分：35/100（高风险）
+    - 四阶段评估：问题识别 → 职责拆解 → 架构升级方向 → 渐进式重构策略
+    - 12步绞杀者模式重构路线图
+    - 优先级矩阵（P0→P1→P2→P3）
+  - `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-03-index.vue架构评估文档创建.md`（~100行）
+- ✅ **本次为纯文档工作，未修改任何代码**（遵循用户指示"先不要动代码"）
+
 ---
 
 ## 🔄 待完成（下一步）
 
-### P0 - 下一个Claude应该做的
+### ⚠️ 重要提示：index.vue 存在严重Bug，需优先处理
 
+**背景**：第16次会话完成了 `pages/calendar/index.vue`（3802行）的企业级架构评估，发现2个P0级严重Bug：
+- 函数重复声明（5处）
+- 变量重复声明（12处）
+
+**详细评估报告位置**：
+- `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md`（~800行，包含15项问题、9大职责领域、12步重构方案）
+- `docs/02-技术设计/index.vue架构评估任务-分阶段可交接方案.md`（~300行，4个可独立交接的子任务）
+
+### P0 - 下一个Claude应该做的（3个选项，建议优先级：选项A > 选项B > 选项C）
+
+**选项A：执行架构评估任务1 - 紧急Bug识别报告**（推荐，2小时）
+- **目标**：基于评估报告，生成详细的P0级Bug修复清单
+- **输入**：读取 `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md` 中的问题1和问题2
+- **工作内容**：
+  1. 定位所有函数重复声明的精确位置（文件名:行号）
+  2. 定位所有变量重复声明的精确位置
+  3. 分析每处重复声明的影响范围
+  4. 设计修复方案（保留哪个声明、删除哪个）
+  5. 评估修复风险
+- **输出文档**：`docs/06-AI协作日志/03-Bug分析记录/BUG-001-index.vue重复声明问题汇总.md`
+- **下一步**：完成后可继续执行任务2或直接修复Bug
+
+**选项B：执行架构评估任务2 - 职责拆解方案设计**（推荐，2.5小时）
+- **目标**：基于9大职责领域，设计具体的组件拆分方案
+- **输入**：读取评估报告中的职责拆解部分
+- **工作内容**：
+  1. 为每个职责领域设计独立的Composable（useCalendarRender、useQuadrant等）
+  2. 设计组件拆分结构（拆成哪些.vue文件）
+  3. 设计状态管理方案（哪些状态提升到Pinia）
+  4. 设计接口边界（props/emits/provide/inject）
+- **输出文档**：`docs/02-技术设计/index.vue重构方案-职责拆解设计.md`
+- **下一步**：完成后可继续执行任务3或开始实施重构
+
+**选项C：直接修复P0级Bug**（高风险，5小时）
+- **目标**：直接修复函数和变量重复声明
+- **风险**：未做详细分析，可能遗漏影响范围或引入新Bug
+- **建议**：先执行选项A生成Bug清单后再修复，更安全
+- **验证**：修复后运行 `npm run lint` 确保无错误
+
+**选项D：继续前端业务功能开发**（可选）
 1. **AddTaskPanel.vue 时间段/重复/提醒 功能实现**（用户已确认这3个按钮目前是 placeholder）：
    - `onTimeTap()`：实现时间段选择弹窗（开始时间 + 结束时间，对应 isAllDay=false）
    - `onRepeatTap()`：实现重复规则底部 list 弹窗（复用 task-edit.vue 的重复弹窗逻辑）
@@ -231,6 +292,16 @@
 
 ## ⚠️ 已知问题和注意事项
 
+### 🔴 文件大小超标（高优先级）
+- ⚠️ **已建立追踪机制**：所有超标文件已登记到 `docs/02-技术设计/超标文件追踪清单.md`
+- ⚠️ **6个文件超过800行阈值**：
+  - P0级（>2000行）：`pages/calendar/index.vue`（3802行）、`task-edit.vue`（3340行）、`AddTaskPanel.vue`（2847行）
+  - P1级（1000-2000行）：`plan/detail.vue`（1392行）、`category-drawer.vue`（1221行）
+  - P2级（800-1000行）：`plan/create.vue`（1122行）
+- ⚠️ **index.vue 已完成评估**：状态🟡评估中，等待您审批拆分方案
+- ⚠️ **管理规范已建立**：详见 `.claude/CLAUDE.md` 第7.8节 + `docs/02-技术设计/代码规范.md` 第8节
+
+### 其他已知问题
 - ⚠️ `holiday API` 已对齐（返回 `holidayMap` / `lunarMap` 对象，`calendar/index.vue` 已适配）
 - ⚠️ `relatedStage` 字段的校验用的是中文 name
 - ⚠️ .env.development 含 MySQL 密码，绝对不能提交
@@ -244,13 +315,19 @@
 
 | 路径 | 说明 |
 |------|------|
+| **文件大小管理（2026-03-03新增）** | |
+| `docs/02-技术设计/超标文件追踪清单.md` | ⭐ 追踪所有超标文件（当前6个），拆分进度管理 |
+| `.claude/CLAUDE.md` 第7.8节 | 文件大小管理规范（5种场景标准流程） |
+| `docs/02-技术设计/代码规范.md` 第8节 | 文件大小约束（800行阈值、拆分建议） |
+| **后端核心** | |
 | `backend/src/config/constants.js` | 所有枚举常量（PLANNING_TYPES / TASK_STATUS / 等） |
 | `backend/src/models/index.js` | 模型入口+关联关系 |
 | `backend/src/app.js` | Express路由注册中心 |
 | `backend/src/routes/planning.js` | 规划记录REST接口+进度接口 |
 | `backend/tests/` | 6个测试文件，84个测试用例 |
-| `frontend/Planning-app/pages/calendar/index.vue` | **日历主页（核心）** |
-| `frontend/Planning-app/pages/calendar/task-edit.vue` | 任务创建/编辑 |
+| **前端核心** | |
+| `frontend/Planning-app/pages/calendar/index.vue` | **日历主页（核心）** ⚠️ 3802行超标 |
+| `frontend/Planning-app/pages/calendar/task-edit.vue` | 任务创建/编辑 ⚠️ 3340行超标 |
 | `frontend/Planning-app/pages/calendar/log-edit.vue` | 日志记录 |
 | `frontend/Planning-app/api/task.js` | 任务API封装 |
 | `frontend/Planning-app/api/log.js` | 日志API封装 |
@@ -310,21 +387,43 @@
 
 > 请先读 `D:\MyProject\Planning-app\.claude\CLAUDE.md` 和 `CURRENT_STATUS.md`。
 >
-> **当前状态**：最新commit `6ab896e`，前端三大视图（四象限笔记本卡片/任务编辑页/时间轴彩色bar）全部重构完成并已提交，文档合规整治完成。
+> **当前状态**（2026-03-03 第16次会话）：
+> - 最新commit: `3e11a48`（移除子任务保存功能的所有调试日志）
+> - 当前分支: `develop`
+> - **重要发现**：`pages/calendar/index.vue`（3802行）存在严重Bug，已完成企业级架构评估
 >
-> **前端已完成模块**：
-> - `calendar/index.vue`：可折叠日历条（周/月）+ 四象限笔记本卡片视图 + 时间轴彩色bar视图 ✅
-> - `pages/calendar/task-edit.vue`：任务详情/编辑页完全重构（设计图41/42/43风格） ✅
-> - `components/task/AddTaskPanel.vue`：快速添加底部面板 ✅（但时间段/重复/提醒3个按钮是placeholder，需要实现）
-> - `store/task.js`：四象限计算属性 + CRUD ✅
+> **第16次会话完成内容**：
+> - ✅ 深度分析 `index.vue`：识别15项问题（2个P0严重Bug + 4个P1高风险 + 4个P2中风险 + 5个P3低风险）
+> - ✅ 创建3个文档（~1200行）：
+>   1. `docs/02-技术设计/index.vue架构评估任务-分阶段可交接方案.md`（任务拆分方案）
+>   2. `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md`（完整评估报告）
+>   3. `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-03-index.vue架构评估文档创建.md`（工作日志）
+> - ✅ **未修改任何代码**（遵循用户指示"先不要动代码，你先开始文档方面的工作吧"）
 >
-> **下一步任务**（P0 最优先）：
-> 1. **实现 AddTaskPanel.vue 的3个功能按钮**：
->    - `onTimeTap()` → 时间段选择弹窗（isAllDay=false，选开始/结束时间）
->    - `onRepeatTap()` → 重复规则底部弹窗（参考 task-edit.vue 的 showRepeatSheet 逻辑）
->    - `onReminderTap()` → 提醒时间选择
-> 2. **实际联调**：HBuilderX 运行到 H5，验证注册→登录→创建任务完整流程
-> 3. **闹铃功能**（Phase 4）：前端闹铃设置页面
+> **下一步任务**（强烈建议优先级：选项A > 选项B > 选项C > 选项D）：
+>
+> **🔴 选项A：执行架构评估任务1 - 紧急Bug识别报告**（推荐，2小时）
+> - 读取评估报告，定位所有P0级Bug的精确位置
+> - 生成详细Bug清单：`docs/06-AI协作日志/03-Bug分析记录/BUG-001-index.vue重复声明问题汇总.md`
+> - 这是修复Bug前的必要准备，避免遗漏影响范围
+>
+> **🟡 选项B：执行架构评估任务2 - 职责拆解方案设计**（推荐，2.5小时）
+> - 基于9大职责领域，设计Composable和组件拆分方案
+> - 输出文档：`docs/02-技术设计/index.vue重构方案-职责拆解设计.md`
+>
+> **🟠 选项C：直接修复P0级Bug**（高风险，5小时）
+> - 修复函数重复声明（5处）和变量重复声明（12处）
+> - 风险：未做详细分析，建议先执行选项A
+>
+> **🟢 选项D：继续前端业务功能开发**
+> - 实现 AddTaskPanel.vue 的3个功能按钮（时间段/重复/提醒）
+> - 或进行实际联调验证
+>
+> **必读文档**（按顺序）：
+> 1. `.claude/CLAUDE.md`（协作规范）
+> 2. `.claude/CURRENT_STATUS.md`（本文档）
+> 3. `docs/02-技术设计/index.vue架构评估任务-分阶段可交接方案.md`（任务拆分）
+> 4. `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md`（评估报告）
 >
 > **字段规范**（勿改）：
 > - 后端任务字段：`taskDate` / `startTime` / `endTime` / `isAllDay` / `dateType`
@@ -332,9 +431,10 @@
 > - 响应结构：`GET /api/v1/tasks?date=` 返回 `{ date, single: [], range: [], recurring: [] }`
 >
 > **已知问题**：
+> - ⚠️ **index.vue 存在P0级Bug**：函数重复声明5处、变量重复声明12处（详见评估报告）
 > - `pages.json` TabBar 没有配置图标文件（`iconPath`），视觉上只显示文字
 > - `routes/log.js` GET 接口要求 `date` 或 `start` 参数必填，前端不能裸调 `getLogs({})`
-> - AddTaskPanel 的时间段/重复/提醒是 `uni.showToast('开发中')` 的 placeholder，用户已知
+> - AddTaskPanel 的时间段/重复/提醒是 `uni.showToast('开发中')` 的 placeholder
 
 ---
 
