@@ -34,7 +34,13 @@ const createTaskSchema = Joi.object({
   planId:       Joi.string().max(50).allow(null),  // 修改：前端规划ID是字符串类型
   categoryId:   Joi.string().max(50).allow(null),  // 添加：分类ID字段
   reminderTime: Joi.string().allow(null),  // 添加：提醒时间字段
-  reminderPersistent: Joi.boolean().allow(null)  // 添加：持久提醒字段
+  reminderPersistent: Joi.boolean().allow(null),  // 添加：持久提醒字段
+  subtasks:     Joi.array().items(
+    Joi.object({
+      title: Joi.string().trim().min(1).max(200).required(),
+      done: Joi.boolean().required()
+    })
+  ).allow(null)  // 添加：子任务数组字段
 });
 
 const updateTaskSchema = Joi.object({
@@ -50,7 +56,13 @@ const updateTaskSchema = Joi.object({
   startTime:    timeStr.allow(null),
   endTime:      timeStr.allow(null),
   status:       Joi.string().valid('pending', 'completed', 'skipped'),
-  categoryId:   Joi.string().max(50).allow(null)  // 添加：分类ID字段
+  categoryId:   Joi.string().max(50).allow(null),  // 添加：分类ID字段
+  subtasks:     Joi.array().items(
+    Joi.object({
+      title: Joi.string().trim().min(1).max(200).required(),
+      done: Joi.boolean().required()
+    })
+  ).allow(null)  // 添加：子任务数组字段
 }).min(1);
 
 const getTasksQuerySchema = Joi.object({
