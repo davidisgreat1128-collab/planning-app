@@ -171,6 +171,13 @@ function initTaskModel(sequelize) {
         allowNull: true,
         defaultValue: null,
         comment: '任务所属分类ID（前端localStorage存储的分类ID）'
+      },
+      // 子任务列表（JSON格式）
+      subtasks: {
+        type: DataTypes.JSON,
+        allowNull: true,
+        defaultValue: null,
+        comment: '子任务数组，格式: [{"title": "子任务1", "done": false}]'
       }
     },
     {
