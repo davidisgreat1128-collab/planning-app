@@ -4,7 +4,7 @@
  */
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
-import { getTasks, createTask, updateTask, updateOccurrence, deleteTask } from '@/api/task.js';
+import { getTasks, createTask, updateTask, deleteTask } from '@/api/task.js';
 
 export const useTaskStore = defineStore('task', () => {
   // ============================================================
@@ -134,11 +134,10 @@ export const useTaskStore = defineStore('task', () => {
 
   /**
    * 切换任务完成状态
-   * @param {number|string} id - 任务ID或occurrence ID
+   * @param {number|string} id - 任务ID
    * @param {string} currentStatus - 当前状态 ('pending' | 'completed' | 'skipped')
-   * @param {object} taskObj - 任务对象（用于判断是否是重复任务实例）
    */
-  async function toggleDone(id, currentStatus, taskObj = null) {
+  async function toggleDone(id, currentStatus) {
     const newStatus = currentStatus === 'completed' ? 'pending' : 'completed';
 
     // 检查是否是 localStorage 任务（ID 以 task_ 开头）
@@ -186,20 +185,8 @@ export const useTaskStore = defineStore('task', () => {
         throw e;
       }
     } else {
-      // 后端任务：判断是否是重复任务实例
-      const isRecurringInstance = taskObj && taskObj._type === 'recurring';
-
-      if (isRecurringInstance) {
-        // 重复任务实例：调用 occurrence API
-        console.log('[TaskStore] toggleDone - 重复任务实例，使用 occurrence API:', id);
-        await updateOccurrence(id, newStatus);
-      } else {
-        // 普通任务：调用普通 task API
-        console.log('[TaskStore] toggleDone - 普通任务，使用 task API:', id);
-        await updateTask(id, { status: newStatus });
-      }
-
-      // 更新本地状态
+      // 后端任务：调用 API
+      await updateTask(id, { status: newStatus });
       const idx = tasks.value.findIndex(t => t.id === id);
       if (idx !== -1) {
         // 使用扩展运算符创建新对象，确保触发响应式更新

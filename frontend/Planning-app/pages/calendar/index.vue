@@ -1419,9 +1419,11 @@ function openTaskDetail(task) {
  */
 async function handleCheckboxClick(task) {
   try {
+	  //对于重复任务，使用taskId(原始任务ID)，否则使用id
+	  const taskIdToUpdate = task.taskId || task.id;
 	  console.log('[handleCheckboxClick] task对象:', JSON.stringify(task, null, 2));
-	  console.log('[handleCheckboxClick] task.id:', task.id, 'task._type:', task._type);
-    await taskStore.toggleDone(task.id, task.status, task);
+	  console.log('[handleCheckboxClick] task.id:', task.id, 'task.taskId:', task.taskId, '最终使用ID:', taskIdToUpdate);
+    await taskStore.toggleDone(taskIdToUpdate, task.status);
   } catch (err) {
     uni.showToast({ title: err.message || '操作失败', icon: 'none' });
   }
@@ -1516,7 +1518,7 @@ async function toggleTaskDone(task) {
   }
 
   try {
-    await taskStore.toggleDone(task.id, task.status, task);
+    await taskStore.toggleDone(task.id, task.status);
     // 若弹窗中父任务被切换，同步弹窗状态
     if (subtaskPopup.value.task && subtaskPopup.value.task.id === task.id) {
       subtaskPopup.value.task = {
@@ -1527,7 +1529,6 @@ async function toggleTaskDone(task) {
   } catch (err) {
     uni.showToast({ title: err.message || '操作失败', icon: 'none' });
   }
-}
 
 // ============================================================
 // 拖拽相关函数
