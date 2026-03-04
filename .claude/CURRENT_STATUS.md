@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-04（第17次会话，UserRepository 三层架构实施完成）
+> **最后更新**: 2026-03-04（第17次会话，LogRepository 三层架构实施完成）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: e1a2056（实施 UserRepository 三层架构）
+> **最新commit**: 79044be（实施 LogRepository 三层架构）
 
 ---
 
@@ -133,7 +133,14 @@
     - 集成登录/注册/登出 API 调用
     - 支持访客模式（token = 'guest'）
     - hydrate() 数据完整性检查
-- ✅ **Store 层重构**（commit: 558cfc3 + 5bd51ce + e1a2056）：
+  - `frontend/Planning-app/repositories/LogRepository.js`（425行，commit: 79044be）：
+    - memoryCache (Map结构) + localStorage持久化
+    - operationQueue 离线队列（指数退避重试）
+    - 按日期过滤：getByDate(date) 方法
+    - 日志转任务：convertToTask(id, taskData) 方法
+    - 软删除：deletedAt 字段
+    - 同步最近30天数据（避免拉取过多历史）
+- ✅ **Store 层重构**（commit: 558cfc3 + 5bd51ce + e1a2056 + 79044be）：
   - `frontend/Planning-app/store/category.js`（190行）：
     - Pinia Composition API，computed 自动映射 Repository.getAll()
     - hydrate() / createCategory() / updateCategory() / deleteCategory() / reorderCategories() 全部调用 Repository
@@ -150,9 +157,15 @@
     - 全部改为调用 UserRepository 方法
     - 新增 _syncFromRepository() 同步响应式状态
     - 新增 isGuest 计算属性
-- ✅ **App.vue 数据水合**（commit: 5bd51ce + e1a2056）：
-  - onLaunch 改为 async，导入 3 个 Store
-  - 启动时 Promise.all 并行调用 `userStore.hydrate()` + `categoryStore.hydrate()` + `taskStore.hydrate()`
+  - `frontend/Planning-app/store/log.js`（重构，commit: 79044be）：
+    - 移除所有直接 API 调用
+    - 全部改为调用 LogRepository 方法
+    - logs 改为 computed 属性（自动从 Repository 获取）
+    - 新增 logsCount 计算属性
+    - 保持 API 兼容（addLog/editLog/toTask/removeLog）
+- ✅ **App.vue 数据水合**（commit: 5bd51ce + e1a2056 + 79044be）：
+  - onLaunch 改为 async，导入 4 个 Store
+  - 启动时 Promise.all 并行调用 4 个 Store 的 hydrate()（user + category + task + log）
   - 加载缓存 + 同步服务器 + 重放离线队列
   - 简化登录状态判断（使用 userStore.isLoggedIn）
 - ✅ **修复 profile.vue**（commit: e1a2056）：
@@ -280,21 +293,17 @@
 
 ## 🔄 待完成（下一步）
 
-### ⚠️ 重要提示：三层架构核心迁移已完成
+### ⚠️ 重要提示：三层架构迁移基本完成
 
-**本次会话已完成**（commit: e1a2056）：
-- ✅ CategoryRepository + TaskRepository + UserRepository 创建（3个核心 Repository）
-- ✅ category.js + task.js + user.js Store 重构为三层架构
-- ✅ App.vue 并行加载所有 Store 数据（Promise.all）
+**本次会话已完成**（commit: 79044be）：
+- ✅ CategoryRepository + TaskRepository + UserRepository + LogRepository 创建（4个主要 Repository）
+- ✅ category.js + task.js + user.js + log.js Store 重构为三层架构
+- ✅ App.vue 并行加载所有 Store 数据（Promise.all，4个）
 - ✅ 架构设计文档 + CLAUDE.md 规范更新
 
-**仍需迁移的 Store**（次要功能，优先级较低）：
-- ⏸️ **store/log.js**：日志CRUD，需创建 LogRepository（管理 journal_logs 表数据）
+**仍需迁移的 Store**（次要功能，优先级最低）：
 - ⏸️ **store/planning.js**：规划CRUD，需创建 PlanningRepository（管理 planning_records 表）
-
-**迁移优先级**（建议顺序）：
-1. **LogRepository**（P1）：日志功能相对独立
-2. **PlanningRepository**（P1）：规划功能依赖用户状态
+  - 注：规划功能使用频率低，可后续迁移
 
 ### P0 - 下一个Claude应该做的（2个选项，建议优先级：选项A > 选项B）
 
