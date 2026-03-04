@@ -82,7 +82,6 @@
 <script setup>
 import { ref, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
-import { getToken } from '@/utils/storage.js';
 
 const userStore = useUserStore();
 const loading = ref(false);
@@ -105,22 +104,20 @@ onMounted(async () => {
 
 /** 检查登录状态并刷新用户信息 */
 async function checkLoginAndLoad() {
-  // store 无 token 时，尝试从本地缓存恢复
-  if (!userStore.token) {
-    const savedToken = getToken();
-    if (!savedToken) {
-      uni.reLaunch({ url: '/pages/user/login' });
-      return;
-    }
-    userStore.token = savedToken;
-  }
-
-  // 访客模式：跳过网络请求
-  if (userStore.token === 'guest') {
-    // console.log('[Profile] 访客模式：跳过刷新用户信息');
+  // App.vue 已通过 hydrate() 加载数据，这里只需检查登录状态
+  if (!userStore.isLoggedIn) {
+    // 未登录：跳转登录页
+    uni.reLaunch({ url: '/pages/user/login' });
     return;
   }
 
+  // 访客模式：跳过网络请求
+  if (userStore.isGuest) {
+    console.log('[Profile] 访客模式：跳过刷新用户信息');
+    return;
+  }
+
+  // 正常用户：刷新最新信息
   loading.value = true;
   try {
     await userStore.refreshProfile();

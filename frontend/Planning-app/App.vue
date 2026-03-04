@@ -1,5 +1,4 @@
 <script>
-import { getToken, getUserInfo } from '@/utils/storage.js';
 import { useUserStore } from '@/store/user.js';
 import { useCategoryStore } from '@/store/category.js';
 import { useTaskStore } from '@/store/task.js';
@@ -23,46 +22,33 @@ export default {
       console.log('[App] 首次安装日期已记录:', today);
     }
 
-    // 启动时从本地存储恢复登录状态到 store
-    const token = getToken();
-    const userInfo = getUserInfo();
-    // console.log('[App] onLaunch, token:', !!token);
-
-    // 检查是否开启了访客模式
-    const guestMode = uni.getStorageSync('guest_mode');
-
-    // 【三层架构】从 Repository 加载数据到 Store (内存缓存 + 服务器同步)
+    // 【三层架构】从 Repository 加载所有数据到 Store
+    const userStore = useUserStore();
     const categoryStore = useCategoryStore();
     const taskStore = useTaskStore();
 
     try {
-      await categoryStore.hydrate(); // 加载分类数据
-      await taskStore.hydrate();     // 加载任务数据
-      console.log('[App] Repository 数据加载完成');
+      // 并行加载所有 Store 数据
+      await Promise.all([
+        userStore.hydrate(),      // 加载用户数据（token + userInfo）
+        categoryStore.hydrate(),  // 加载分类数据
+        taskStore.hydrate()       // 加载任务数据
+      ]);
+      console.log('[App] 所有 Repository 数据加载完成');
     } catch (err) {
       console.warn('[App] Repository 数据加载失败:', err);
     }
 
-    if (token) {
-      // 有 Token：恢复登录状态，跳转主页
-      const userStore = useUserStore();
-      userStore.token = token;
-      userStore.userInfo = userInfo;
-      // console.log('[App] 已登录，跳转主页');
-      setTimeout(() => {
-        uni.reLaunch({ url: '/pages/calendar/index' });
-      }, 100);
-    } else if (guestMode) {
-      // 访客模式：设置访客token，跳转主页
-      const userStore = useUserStore();
-      userStore.enterGuestMode();
-      // console.log('[App] 访客模式，跳转主页');
+    // 根据登录状态决定跳转
+    if (userStore.isLoggedIn) {
+      // 已登录（包括访客模式）：跳转主页
+      console.log('[App] 已登录，跳转主页');
       setTimeout(() => {
         uni.reLaunch({ url: '/pages/calendar/index' });
       }, 100);
     } else {
-      // 普通模式 + 无token：pages.json已配置login为首页，无需跳转
-      // console.log('[App] 未登录，停留在登录页');
+      // 未登录：pages.json 已配置 login 为首页，无需跳转
+      console.log('[App] 未登录，停留在登录页');
     }
   },
 

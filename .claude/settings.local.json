@@ -8,7 +8,8 @@
       "Bash(sed:*)",
       "Bash(awk:*)",
       "Bash(npm run lint:*)",
-      "Bash(cat:*)"
+      "Bash(cat:*)",
+      "Bash(git push:*)"
     ],
     "deny": [],
     "ask": []
