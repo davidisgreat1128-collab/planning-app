@@ -747,6 +747,7 @@ import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
 import { useUserStore } from '@/store/user.js';
 import { usePlanStore } from '@/store/plan.js';
+import { useAuthGuard } from '@/composables/useAuthGuard.js';
 import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday.js';
 import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
@@ -759,6 +760,7 @@ const taskStore = useTaskStore();
 const logStore = useLogStore();
 const userStore = useUserStore();
 const planStore = usePlanStore();
+const { requireAuth, isGuest } = useAuthGuard();
 
 // ============================================================
 // 状态变量
@@ -1427,19 +1429,11 @@ async function handleCheckboxClick(task) {
 
 /**
  * 四象限视图：直接切换完成状态（不跳转）
+ * 访客模式拦截：使用 requireAuth 装饰器
  */
-
-
-// 访客模式：禁止修改演示数据
-async function toggleTaskDone(task) {
-	//访客模式检查: 如果是访客（token === 'guest'），禁止修改，显示提示
-  if (userStore.token === 'guest') {
-    uni.showToast({ title: '访客模式下无法修改任务，请登录后使用', icon: 'none', duration: 2000 });
-    return;
-  }
-
+const toggleTaskDone = requireAuth(async (task) => {
   try {
-	  //调用后端APL-切换任务状态
+    // 调用后端API-切换任务状态
     await taskStore.toggleDone(task.id, task.status);
     // 若弹窗中父任务被切换，同步弹窗状态
     if (subtaskPopup.value.task && subtaskPopup.value.task.id === task.id) {
@@ -1448,11 +1442,11 @@ async function toggleTaskDone(task) {
         status: task.status === 'completed' ? 'pending' : 'completed'
       };
     }
-  } 
-	//错误处理: catch 错误并显示 toast 提示
-	catch (err) {
+  } catch (err) {
+    // 错误处理: catch 错误并显示 toast 提示
     uni.showToast({ title: err.message || '操作失败', icon: 'none' });
   }
+});
 
 
 // ============================================================
@@ -1921,15 +1915,13 @@ function closeSubtaskPopup() {
   subtaskPopup.value.subtasks = [];
 }
 
-/** 切换弹窗中单个子任务完成状态（本地模拟，实际联调时需调用API） */
-function toggleSubtask(sub) {
-  // 访客模式：禁止修改演示数据
-  if (userStore.token === 'guest') {
-    uni.showToast({ title: '访客模式下无法修改任务，请登录后使用', icon: 'none', duration: 2000 });
-    return;
-  }
+/**
+ * 切换弹窗中单个子任务完成状态（本地模拟，实际联调时需调用API）
+ * 访客模式拦截：使用 requireAuth 装饰器
+ */
+const toggleSubtask = requireAuth((sub) => {
   sub.done = !sub.done;
-}
+});
 
 /**
  * 根据任务获取象限CSS类名（用于弹窗复选框颜色）
@@ -2382,7 +2374,7 @@ onMounted(async () => {
   updateCurrentTime();
 
   // 访客模式：跳过网络请求，使用演示数据
-  if (userStore.token === 'guest') {
+  if (isGuest()) {
     // console.log('[Calendar] 访客模式：加载演示数据');
     // 加载演示任务数据（覆盖四象限 + 时间轴）
     taskStore.tasks = [

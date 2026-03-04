@@ -378,6 +378,8 @@ frontend/Planning-app/
 │   ├── common/            通用组件
 │   ├── planning/          规划组件
 │   └── iching/            易经组件
+├── composables/           ⭐ Vue 3 Composition API 可复用逻辑
+│   └── useAuthGuard.js    访客模式权限守卫
 ├── utils/                 工具函数
 │   ├── request.js         网络请求封装 (axios)
 │   ├── storage.js         本地存储封装
