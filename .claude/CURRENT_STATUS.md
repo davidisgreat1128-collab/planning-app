@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-03（第16次会话，index.vue架构评估文档创建）
+> **最后更新**: 2026-03-04（第17次会话，三层架构实施完成）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 3e11a48（移除子任务保存功能的所有调试日志）
+> **最新commit**: 5bd51ce（完成三层架构集成 - App.vue 数据水合和 TaskStore 重构）
 
 ---
 
@@ -107,6 +107,42 @@
   - `toggleTaskDone(task)`：四象限直接切换完成，带弹窗状态同步
   - `openTaskDetail(task)`：有子任务时展开弹窗，无子任务时跳转编辑
   - `closeSubtaskPopup()` / `toggleSubtask(sub)` / `getQuadrantClass(task)`
+
+### Phase 3k - 三层架构实施（第17次会话，commit: 5bd51ce）
+完整实施 Component → Store → Repository 三层架构，离线优先、乐观锁、指数退避重试：
+- ✅ **架构设计文档**（commit: 9dfb3f1）：
+  - `docs/02-技术设计/三层架构设计.md`：当前实施指南（数据流图、CategoryRepository 完整示例、迁移检查清单、FAQ）
+  - `docs/02-技术设计/企业级数据流架构（支持10万+用户）.md`：未来演进路线图（DTO、Validator、RepositoryFactory、ErrorRecovery、PerformanceMonitor 标注⏸️待办）
+  - 更新 `.claude/CLAUDE.md` v1.2 → v1.3：新增 7.9 节"三层架构规范"（强制规范、禁止行为、代码示例）
+- ✅ **Repository 层**（commit: 558cfc3）：
+  - `frontend/Planning-app/repositories/CategoryRepository.js`（285行）：
+    - memoryCache (Map结构，O(1)查找) + localStorage持久化
+    - operationQueue 离线队列（指数退避重试：1s→2s→4s→8s→16s，最多5次）
+    - version 字段乐观锁（冲突检测，本地优先策略）
+    - sortOrder 字段（支持拖拽排序）
+    - deletedAt 软删除（过滤逻辑在 getAll()）
+    - 500ms debounce 防抖写入和同步
+    - hydrate() 启动流程：_loadFromLocalStorage() → sync() → _replayQueue()
+  - `frontend/Planning-app/repositories/TaskRepository.js`（260行）：
+    - 简化版 CategoryRepository（单用户场景，version可选）
+    - 新增 `getByDate(date)` 方法按日期过滤
+    - taskDate 字段替代 dueDate
+- ✅ **Store 层重构**（commit: 558cfc3 + 5bd51ce）：
+  - `frontend/Planning-app/store/category.js`（190行）：
+    - Pinia Composition API，computed 自动映射 Repository.getAll()
+    - hydrate() / createCategory() / updateCategory() / deleteCategory() / reorderCategories() 全部调用 Repository
+    - 移除所有直接 API 调用
+  - `frontend/Planning-app/store/task.js`（重构，commit: 5bd51ce）：
+    - 移除 `import { getTasks, createTask, ... } from '@/api/task.js'`
+    - 全部改为调用 TaskRepository 方法
+    - 保留所有 computed 属性（urgentImportant、notUrgentImportant、doneTasks 等）
+    - fetchTasksByDate() 改用 TaskRepository.getByDate()
+    - addTask/updateTask/deleteTask 全部调用 Repository
+- ✅ **App.vue 数据水合**（commit: 5bd51ce）：
+  - onLaunch 改为 async，导入 useCategoryStore 和 useTaskStore
+  - 启动时调用 `categoryStore.hydrate()` + `taskStore.hydrate()`
+  - 加载缓存 + 同步服务器 + 重放离线队列
+  - 添加错误处理和日志记录
 
 ### Phase 3g - 可折叠日历条（第11次会话，commit: fb742ef）
 - ✅ **calendar/index.vue 完整重写**：实现周/月双模式日历条，手势驱动展开/折叠
@@ -228,19 +264,34 @@
 
 ## 🔄 待完成（下一步）
 
-### ⚠️ 重要提示：index.vue 存在严重Bug，需优先处理
+### ⚠️ 重要提示：三层架构迁移仍在进行中
 
-**背景**：第16次会话完成了 `pages/calendar/index.vue`（3802行）的企业级架构评估，发现2个P0级严重Bug：
-- 函数重复声明（5处）
-- 变量重复声明（12处）
+**本次会话已完成**：
+- ✅ CategoryRepository + TaskRepository 创建（离线优先、乐观锁、指数退避重试）
+- ✅ category.js Store 和 task.js Store 重构为调用 Repository
+- ✅ App.vue 数据水合集成
+- ✅ 架构设计文档 + CLAUDE.md 规范更新
 
-**详细评估报告位置**：
-- `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md`（~800行，包含15项问题、9大职责领域、12步重构方案）
-- `docs/02-技术设计/index.vue架构评估任务-分阶段可交接方案.md`（~300行，4个可独立交接的子任务）
+**仍需迁移的 Store**（后续会话）：
+- ⏸️ **store/user.js**：用户登录/注册状态，需创建 UserRepository（管理 token、userInfo、guest_mode）
+- ⏸️ **store/log.js**：日志CRUD，需创建 LogRepository（管理 journal_logs 表数据）
+- ⏸️ **store/planning.js**：规划CRUD，需创建 PlanningRepository（管理 planning_records 表）
 
-### P0 - 下一个Claude应该做的（3个选项，建议优先级：选项A > 选项B > 选项C）
+**迁移优先级**（建议顺序）：
+1. **UserRepository**（P0，最高优先级）：登录状态管理影响所有功能
+2. **LogRepository**（P1）：日志功能相对独立
+3. **PlanningRepository**（P1）：规划功能依赖用户状态
 
-**选项A：执行架构评估任务1 - 紧急Bug识别报告**（推荐，2小时）
+### P0 - 下一个Claude应该做的（2个选项，建议优先级：选项A > 选项B）
+
+**选项A：继续三层架构迁移 - 创建 UserRepository**（推荐，1.5小时）
+- 目标：将 store/user.js 改造为三层架构
+- 创建 `frontend/Planning-app/repositories/UserRepository.js`
+- 管理：token、userInfo、guest_mode 的 localStorage 持久化
+- 重构 store/user.js 的 login/register/logout/enterGuestMode 方法
+- 更新相关组件调用（login.vue、register.vue、profile.vue）
+
+**选项B：执行 index.vue 架构评估任务1 - 紧急Bug识别报告**（2小时）
 - **目标**：基于评估报告，生成详细的P0级Bug修复清单
 - **输入**：读取 `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md` 中的问题1和问题2
 - **工作内容**：
