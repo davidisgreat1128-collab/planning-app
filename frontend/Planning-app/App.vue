@@ -2,6 +2,7 @@
 import { useUserStore } from '@/store/user.js';
 import { useCategoryStore } from '@/store/category.js';
 import { useTaskStore } from '@/store/task.js';
+import { useLogStore } from '@/store/log.js';
 
 export default {
   async onLaunch() {
@@ -26,13 +27,15 @@ export default {
     const userStore = useUserStore();
     const categoryStore = useCategoryStore();
     const taskStore = useTaskStore();
+    const logStore = useLogStore();
 
     try {
       // 并行加载所有 Store 数据
       await Promise.all([
         userStore.hydrate(),      // 加载用户数据（token + userInfo）
         categoryStore.hydrate(),  // 加载分类数据
-        taskStore.hydrate()       // 加载任务数据
+        taskStore.hydrate(),      // 加载任务数据
+        logStore.hydrate()        // 加载日志数据
       ]);
       console.log('[App] 所有 Repository 数据加载完成');
     } catch (err) {
