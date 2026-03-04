@@ -274,7 +274,7 @@ class LogRepository {
       const startDate = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0]
 
       const res = await getLogsApi({ start: startDate, end: endDate })
-      const serverLogs = res.list || res || []
+      const serverLogs = res?.list || []
 
       // 合并到 memoryCache（服务器数据优先）
       for (const log of serverLogs) {
