@@ -1,9 +1,11 @@
 <script>
 import { getToken, getUserInfo } from '@/utils/storage.js';
 import { useUserStore } from '@/store/user.js';
+import { useCategoryStore } from '@/store/category.js';
+import { useTaskStore } from '@/store/task.js';
 
 export default {
-  onLaunch() {
+  async onLaunch() {
     // 【已完成测试】访客模式测试阶段已完成，注释掉清除缓存逻辑
     // TODO: 正式发布时实现版本检测，升级时才清除旧数据
     // try {
@@ -28,6 +30,18 @@ export default {
 
     // 检查是否开启了访客模式
     const guestMode = uni.getStorageSync('guest_mode');
+
+    // 【三层架构】从 Repository 加载数据到 Store (内存缓存 + 服务器同步)
+    const categoryStore = useCategoryStore();
+    const taskStore = useTaskStore();
+
+    try {
+      await categoryStore.hydrate(); // 加载分类数据
+      await taskStore.hydrate();     // 加载任务数据
+      console.log('[App] Repository 数据加载完成');
+    } catch (err) {
+      console.warn('[App] Repository 数据加载失败:', err);
+    }
 
     if (token) {
       // 有 Token：恢复登录状态，跳转主页
