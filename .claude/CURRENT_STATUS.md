@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-04（第17次会话，LogRepository 三层架构实施完成）
+> **最后更新**: 2026-03-04（第17次会话，PlanningRepository 三层架构实施完成）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 79044be（实施 LogRepository 三层架构）
+> **最新commit**: 5d5476f（实施 PlanningRepository 三层架构）
 
 ---
 
@@ -140,6 +140,14 @@
     - 日志转任务：convertToTask(id, taskData) 方法
     - 软删除：deletedAt 字段
     - 同步最近30天数据（避免拉取过多历史）
+  - `frontend/Planning-app/repositories/PlanningRepository.js`（434行，commit: 5d5476f）：
+    - memoryCache (Map结构) + localStorage持久化
+    - operationQueue 离线队列（指数退避重试）
+    - 按类型过滤：getByType(type) 方法（life/career/project/mood/health/time/habit）
+    - 按状态过滤：getByStatus(status) 方法
+    - 状态更新：updateStatus(id, status) 快捷方法
+    - 软删除：deletedAt 字段
+    - 分页拉取服务器数据（最多200条）
 - ✅ **Store 层重构**（commit: 558cfc3 + 5bd51ce + e1a2056 + 79044be）：
   - `frontend/Planning-app/store/category.js`（190行）：
     - Pinia Composition API，computed 自动映射 Repository.getAll()
@@ -163,9 +171,16 @@
     - logs 改为 computed 属性（自动从 Repository 获取）
     - 新增 logsCount 计算属性
     - 保持 API 兼容（addLog/editLog/toTask/removeLog）
-- ✅ **App.vue 数据水合**（commit: 5bd51ce + e1a2056 + 79044be）：
-  - onLaunch 改为 async，导入 4 个 Store
-  - 启动时 Promise.all 并行调用 4 个 Store 的 hydrate()（user + category + task + log）
+  - `frontend/Planning-app/store/planning.js`（重构，commit: 5d5476f）：
+    - Options API → Composition API
+    - 移除所有直接 API 调用
+    - 全部改为调用 PlanningRepository 方法
+    - list 改为 computed 属性（自动从 Repository.getByType() 获取）
+    - pagination 改为伪分页（Repository 已缓存全部数据）
+    - loadMore() 改为空操作（无需真实分页）
+- ✅ **App.vue 数据水合**（commit: 5bd51ce + e1a2056 + 79044be + 5d5476f）：
+  - onLaunch 改为 async，导入 5 个 Store
+  - 启动时 Promise.all 并行调用 5 个 Store 的 hydrate()（user + category + task + log + planning）
   - 加载缓存 + 同步服务器 + 重放离线队列
   - 简化登录状态判断（使用 userStore.isLoggedIn）
 - ✅ **修复 profile.vue**（commit: e1a2056）：
@@ -293,21 +308,22 @@
 
 ## 🔄 待完成（下一步）
 
-### ⚠️ 重要提示：三层架构迁移基本完成
+### ✅ 三层架构迁移已全部完成
 
-**本次会话已完成**（commit: 79044be）：
-- ✅ CategoryRepository + TaskRepository + UserRepository + LogRepository 创建（4个主要 Repository）
-- ✅ category.js + task.js + user.js + log.js Store 重构为三层架构
-- ✅ App.vue 并行加载所有 Store 数据（Promise.all，4个）
+**本次会话已完成**（commit: e1a2056 + 79044be + 5d5476f）：
+- ✅ CategoryRepository + TaskRepository + UserRepository + LogRepository + PlanningRepository 创建（5个 Repository 全部完成）
+- ✅ category.js + task.js + user.js + log.js + planning.js Store 重构为三层架构（全部完成）
+- ✅ App.vue 并行加载所有 Store 数据（Promise.all，5个）
 - ✅ 架构设计文档 + CLAUDE.md 规范更新
 
-**仍需迁移的 Store**（次要功能，优先级最低）：
-- ⏸️ **store/planning.js**：规划CRUD，需创建 PlanningRepository（管理 planning_records 表）
-  - 注：规划功能使用频率低，可后续迁移
+**三层架构迁移状态**：🎉 **全部完成**
+- 所有 Store 已迁移到三层架构（Component → Store → Repository）
+- 离线优先、乐观锁、指数退避重试机制全部实施
+- 数据持久化（memoryCache + localStorage + operationQueue）全部完成
 
-### P0 - 下一个Claude应该做的（2个选项，建议优先级：选项A > 选项B）
+### P0 - 下一个Claude应该做的（推荐优先级：选项A > 选项B）
 
-**选项A：执行 index.vue 架构评估任务1 - 紧急Bug识别报告**（推荐，2小时）
+**选项A：执行 index.vue 架构评估任务1 - 紧急Bug识别报告**（强烈推荐，2小时）
 - 目标：基于评估报告，生成详细的P0级Bug修复清单
 - 输入：读取 `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md` 中的问题1和问题2
 - 工作内容：
@@ -315,12 +331,16 @@
   2. 定位所有变量重复声明的精确位置
   3. 分析影响范围和潜在风险
   4. 生成详细修复清单（按优先级排序）
+- 输出文档：`docs/06-AI协作日志/03-Bug分析记录/BUG-001-index.vue重复声明问题汇总.md`
 
-**选项B：继续三层架构迁移 - 创建 LogRepository**（1.5小时）
-- 目标：将 store/log.js 改造为三层架构
-- 创建 `frontend/Planning-app/repositories/LogRepository.js`
-- 管理日志数据的 CRUD 和持久化
-- 重构 store/log.js 调用 Repository
+**选项B：创建三层架构实施完成总结文档**（1小时）
+- 目标：总结三层架构迁移的完整过程和成果
+- 工作内容：
+  1. 汇总5个 Repository 的设计模式和特点
+  2. 统计代码行数、文件变更、commit 记录
+  3. 总结经验教训和最佳实践
+  4. 提供完整的架构图和数据流图
+- 输出文档：`docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-04-三层架构实施完成总结.md`
 
 ---
 
