@@ -21,7 +21,7 @@
  *   // 加载真实数据
  * }
  */
-import { useUserStore } from '@/store/modules/user';
+import { useUserStore } from '@/store/user';
 
 export function useAuthGuard() {
   const userStore = useUserStore();

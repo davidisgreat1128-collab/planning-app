@@ -1906,7 +1906,7 @@ async function deleteTaskRecurrence(taskId, scope) {
   // TODO: 调用后端API删除重复任务
   await taskStore.removeTask(taskId);
 }
-}
+
 
 /** 关闭子任务弹窗 */
 function closeSubtaskPopup() {
