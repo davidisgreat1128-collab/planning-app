@@ -1425,95 +1425,101 @@ async function handleCheckboxClick(task) {
   }
 }
 
-/**
- * 处理删除任务确认（从 DeleteTaskDialog 组件回调）
- */
-async function handleDeleteTaskConfirm(option) {
-  const task = dragState.value.task;
-  if (!task) return;
+// /**
+//  * 处理删除任务确认（从 DeleteTaskDialog 组件回调）
+//  */
+// async function handleDeleteTaskConfirm(option) {
+	
+// 	 console.log('🔴 执行的是 Version A (第1431行)'); // ← 添加此行
+	
+//   const task = dragState.value.task;
+//   if (!task) return;
 
-  try {
-    if (option === 1) {
-      await taskStore.removeTask(task.id);
-    } else if (option === 2) {
-      await taskStore.removeTask(task.id);
-    } else if (option === 3) {
-      await taskStore.removeTask(task.id);
-    }
-    await taskStore.fetchTasksByDate(selectedDate.value);
-    uni.showToast({ title: '已删除', icon: 'success' });
-  } catch (err) {
-    console.error('[Delete] 删除任务失败:', err);
-    uni.showToast({ title: '删除失败', icon: 'none' });
-  }
+//   try {
+//     if (option === 1) {
+//       await taskStore.removeTask(task.id);
+//     } else if (option === 2) {
+//       await taskStore.removeTask(task.id);
+//     } else if (option === 3) {
+//       await taskStore.removeTask(task.id);
+//     }
+//     await taskStore.fetchTasksByDate(selectedDate.value);
+//     uni.showToast({ title: '已删除', icon: 'success' });
+//   } catch (err) {
+//     console.error('[Delete] 删除任务失败:', err);
+//     uni.showToast({ title: '删除失败', icon: 'none' });
+//   }
 
-  showDeleteTaskDialog.value = false;
-  deleteTaskOption.value = 1;
-}
+//   showDeleteTaskDialog.value = false;
+//   deleteTaskOption.value = 1;
+// }
 
-/**
- * 关闭更改象限对话框
- */
-function closeChangeQuadrantDialog() {
-  showChangeQuadrantDialog.value = false;
-  changeQuadrantOption.value = 1;
-}
+// /**
+//  * 关闭更改象限对话框
+//  */
+// function closeChangeQuadrantDialog() {
+//   showChangeQuadrantDialog.value = false;
+//   changeQuadrantOption.value = 1;
+// }
 
-/**
- * 确认更改象限
- */
-async function confirmChangeQuadrant() {
-  const task = dragState.value.task;
-  const newQuadrant = targetQuadrant.value;
-  const option = changeQuadrantOption.value;
+// /**
+//  * 确认更改象限
+//  */
+// async function confirmChangeQuadrant() {
+//   const task = dragState.value.task;
+//   const newQuadrant = targetQuadrant.value;
+//   const option = changeQuadrantOption.value;
 
-  if (!task || !newQuadrant) return;
+//   if (!task || !newQuadrant) return;
 
-  // 根据目标象限设置isUrgent和isImportant
-  let isUrgent, isImportant;
-  if (newQuadrant === 'q1') { isUrgent = true; isImportant = true; }
-  else if (newQuadrant === 'q2') { isUrgent = false; isImportant = true; }
-  else if (newQuadrant === 'q3') { isUrgent = true; isImportant = false; }
-  else if (newQuadrant === 'q4') { isUrgent = false; isImportant = false; }
+//   // 根据目标象限设置isUrgent和isImportant
+//   let isUrgent, isImportant;
+//   if (newQuadrant === 'q1') { isUrgent = true; isImportant = true; }
+//   else if (newQuadrant === 'q2') { isUrgent = false; isImportant = true; }
+//   else if (newQuadrant === 'q3') { isUrgent = true; isImportant = false; }
+//   else if (newQuadrant === 'q4') { isUrgent = false; isImportant = false; }
 
-  try {
-    // 对于重复任务，使用 taskId（原始任务ID），否则使用 id
-    const taskIdToUpdate = task.taskId || task.id;
+//   try {
+//     // 对于重复任务，使用 taskId（原始任务ID），否则使用 id
+//     const taskIdToUpdate = task.taskId || task.id;
 
-    // 根据选项更新任务
-    if (option === 1) {
-      // 完整更改此条重复计划
-      await taskStore.editTask(taskIdToUpdate, { isUrgent, isImportant });
-    } else if (option === 2) {
-      // 更改当天及未来计划
-      // TODO: 后续需要实现"仅更改当天及未来"的API
-      await taskStore.editTask(taskIdToUpdate, { isUrgent, isImportant });
-    }
+//     // 根据选项更新任务
+//     if (option === 1) {
+//       // 完整更改此条重复计划
+//       await taskStore.editTask(taskIdToUpdate, { isUrgent, isImportant });
+//     } else if (option === 2) {
+//       // 更改当天及未来计划
+//       // TODO: 后续需要实现"仅更改当天及未来"的API
+//       await taskStore.editTask(taskIdToUpdate, { isUrgent, isImportant });
+//     }
 
-    // 刷新任务列表
-    await taskStore.fetchTasksByDate(selectedDate.value);
+//     // 刷新任务列表
+//     await taskStore.fetchTasksByDate(selectedDate.value);
 
-    uni.showToast({ title: '已更改', icon: 'success' });
-  } catch (err) {
-    console.error('[Drag] 更改象限失败:', err);
-    uni.showToast({ title: '更改失败', icon: 'none' });
-  }
+//     uni.showToast({ title: '已更改', icon: 'success' });
+//   } catch (err) {
+//     console.error('[Drag] 更改象限失败:', err);
+//     uni.showToast({ title: '更改失败', icon: 'none' });
+//   }
 
-  closeChangeQuadrantDialog();
-}
+//   closeChangeQuadrantDialog();
+// }
 
 /**
  * 四象限视图：直接切换完成状态（不跳转）
  */
+
+
+// 访客模式：禁止修改演示数据
 async function toggleTaskDone(task) {
-async function toggleTaskDone(task) {
-  // 访客模式：禁止修改演示数据
+	//访客模式检查: 如果是访客（token === 'guest'），禁止修改，显示提示
   if (userStore.token === 'guest') {
     uni.showToast({ title: '访客模式下无法修改任务，请登录后使用', icon: 'none', duration: 2000 });
     return;
   }
 
   try {
+	  //调用后端APL-切换任务状态
     await taskStore.toggleDone(task.id, task.status);
     // 若弹窗中父任务被切换，同步弹窗状态
     if (subtaskPopup.value.task && subtaskPopup.value.task.id === task.id) {
@@ -1522,10 +1528,12 @@ async function toggleTaskDone(task) {
         status: task.status === 'completed' ? 'pending' : 'completed'
       };
     }
-  } catch (err) {
+  } 
+	//错误处理: catch 错误并显示 toast 提示
+	catch (err) {
     uni.showToast({ title: err.message || '操作失败', icon: 'none' });
   }
-}
+
 
 // ============================================================
 // 拖拽相关函数
@@ -1870,13 +1878,16 @@ async function confirmChangeQuadrant() {
   else if (newQuadrant === 'q4') { isUrgent = false; isImportant = false; }
 
   try {
+	  // 对于重复任务，使用 taskId（原始任务ID），否则使用 id
+	       const taskIdToUpdate = task.taskId || task.id;
+	  
     // 根据选项更新任务
     if (option === 1) {
       // 完整更改此条重复计划
-      await updateTaskRecurrence(task.id, { isUrgent, isImportant }, 'all');
+      await updateTaskRecurrence(taskIdToUpdate, { isUrgent, isImportant }, 'all');
     } else if (option === 2) {
       // 更改当天及未来计划
-      await updateTaskRecurrence(task.id, { isUrgent, isImportant }, 'future');
+      await updateTaskRecurrence(taskIdToUpdate, { isUrgent, isImportant }, 'future');
     }
 
     // 刷新任务列表
@@ -1903,6 +1914,9 @@ function closeDeleteTaskDialog() {
  * 处理删除任务确认（从组件回调）
  */
 async function handleDeleteTaskConfirm(option) {
+	// Version B (1905行后面)
+	console.log('✅ 执行的是 Version B (第1905行)'); // ← 添加此行
+	
   const task = dragState.value.task;
 
   if (!task) return;
@@ -2122,13 +2136,13 @@ let _h5RafPending = false;     // rAF 节流标志
 let _h5LastMoveX = 0;
 let _h5LastMoveY = 0;
 
-// 任务拖拽相关变量
-let mouseDownTask = null;
-let mouseDownQuadrant = '';
-let mouseDownTimer = null;
-let mouseDownX = 0;
-let mouseDownY = 0;
-let mouseMoved = false;
+// 任务拖拽相关变量（H5专用，避免与全局变量冲突）
+let _h5CalMouseDownTask = null;
+let _h5CalMouseDownQuadrant = '';
+let _h5CalMouseDownTimer = null;
+let _h5CalMouseDownX = 0;
+let _h5CalMouseDownY = 0;
+let _h5CalMouseMoved = false;
 
 function _fakeTouch(clientX, clientY) {
   return { touches: [{ clientX, clientY }], changedTouches: [{ clientX, clientY }] };
@@ -2201,30 +2215,30 @@ function _onMouseDown(e) {
       e.preventDefault();
       e.stopPropagation();
 
-      mouseDownTask = task;
-      mouseDownQuadrant = quadrant;
-      mouseDownX = e.clientX;
-      mouseDownY = e.clientY;
-      mouseMoved = false;
+      _h5CalMouseDownTask = task;
+      _h5CalMouseDownQuadrant = quadrant;
+      _h5CalMouseDownX = e.clientX;
+      _h5CalMouseDownY = e.clientY;
+      _h5CalMouseMoved = false;
 
       // 清除之前的定时器
-      if (mouseDownTimer) {
-        clearTimeout(mouseDownTimer);
+      if (_h5CalMouseDownTimer) {
+        clearTimeout(_h5CalMouseDownTimer);
       }
 
       // 500ms后触发长按
-      mouseDownTimer = setTimeout(() => {
-        if (!mouseMoved && mouseDownTask) {
+      _h5CalMouseDownTimer = setTimeout(() => {
+        if (!_h5CalMouseMoved && _h5CalMouseDownTask) {
           // 直接实现拖拽开始逻辑（内联startDrag）
           dragState.value = {
             dragging: true,
-            task: mouseDownTask,
-            fromQuadrant: mouseDownQuadrant,
-            x: mouseDownX,
-            y: mouseDownY,
+            task: _h5CalMouseDownTask,
+            fromQuadrant: _h5CalMouseDownQuadrant,
+            x: _h5CalMouseDownX,
+            y: _h5CalMouseDownY,
             overDelete: false,
-            startX: mouseDownX,
-            startY: mouseDownY,
+            startX: _h5CalMouseDownX,
+            startY: _h5CalMouseDownY,
           };
 
           // 震动反馈
@@ -2290,17 +2304,17 @@ function _onMouseUp(e) {
  * 任务拖拽：鼠标移动（检测是否移动超过阈值）
  */
 function _onTaskMouseMove(e) {
-  if (!mouseDownTask) return;
+  if (!_h5CalMouseDownTask) return;
 
-  const dx = Math.abs(e.clientX - mouseDownX);
-  const dy = Math.abs(e.clientY - mouseDownY);
+  const dx = Math.abs(e.clientX - _h5CalMouseDownX);
+  const dy = Math.abs(e.clientY - _h5CalMouseDownY);
 
   // 移动超过5px则取消长按
   if (dx > 5 || dy > 5) {
-    mouseMoved = true;
-    if (mouseDownTimer) {
-      clearTimeout(mouseDownTimer);
-      mouseDownTimer = null;
+    _h5CalMouseMoved = true;
+    if (_h5CalMouseDownTimer) {
+      clearTimeout(_h5CalMouseDownTimer);
+      _h5CalMouseDownTimer = null;
     }
   }
 
@@ -2332,9 +2346,9 @@ function _onTaskMouseMove(e) {
  */
 function _onTaskMouseUp(e) {
   // 清除定时器
-  if (mouseDownTimer) {
-    clearTimeout(mouseDownTimer);
-    mouseDownTimer = null;
+  if (_h5CalMouseDownTimer) {
+    clearTimeout(_h5CalMouseDownTimer);
+    _h5CalMouseDownTimer = null;
   }
 
   // 如果正在拖拽，触发拖拽结束
@@ -2399,9 +2413,9 @@ function _onTaskMouseUp(e) {
   }
 
   // 清除状态
-  mouseDownTask = null;
-  mouseDownQuadrant = '';
-  mouseMoved = false;
+  _h5CalMouseDownTask = null;
+  _h5CalMouseDownQuadrant = '';
+  _h5CalMouseMoved = false;
 
   // 移除事件监听
   document.removeEventListener('mousemove', _onTaskMouseMove);
