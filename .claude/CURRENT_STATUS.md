@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-04（第17次会话，三层架构实施完成）
+> **最后更新**: 2026-03-04（第17次会话，UserRepository 三层架构实施完成）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 5bd51ce（完成三层架构集成 - App.vue 数据水合和 TaskStore 重构）
+> **最新commit**: e1a2056（实施 UserRepository 三层架构）
 
 ---
 
@@ -108,13 +108,13 @@
   - `openTaskDetail(task)`：有子任务时展开弹窗，无子任务时跳转编辑
   - `closeSubtaskPopup()` / `toggleSubtask(sub)` / `getQuadrantClass(task)`
 
-### Phase 3k - 三层架构实施（第17次会话，commit: 5bd51ce）
+### Phase 3k - 三层架构实施（第17次会话，commit: e1a2056）
 完整实施 Component → Store → Repository 三层架构，离线优先、乐观锁、指数退避重试：
 - ✅ **架构设计文档**（commit: 9dfb3f1）：
   - `docs/02-技术设计/三层架构设计.md`：当前实施指南（数据流图、CategoryRepository 完整示例、迁移检查清单、FAQ）
   - `docs/02-技术设计/企业级数据流架构（支持10万+用户）.md`：未来演进路线图（DTO、Validator、RepositoryFactory、ErrorRecovery、PerformanceMonitor 标注⏸️待办）
   - 更新 `.claude/CLAUDE.md` v1.2 → v1.3：新增 7.9 节"三层架构规范"（强制规范、禁止行为、代码示例）
-- ✅ **Repository 层**（commit: 558cfc3）：
+- ✅ **Repository 层**（commit: 558cfc3 + e1a2056）：
   - `frontend/Planning-app/repositories/CategoryRepository.js`（285行）：
     - memoryCache (Map结构，O(1)查找) + localStorage持久化
     - operationQueue 离线队列（指数退避重试：1s→2s→4s→8s→16s，最多5次）
@@ -127,7 +127,13 @@
     - 简化版 CategoryRepository（单用户场景，version可选）
     - 新增 `getByDate(date)` 方法按日期过滤
     - taskDate 字段替代 dueDate
-- ✅ **Store 层重构**（commit: 558cfc3 + 5bd51ce）：
+  - `frontend/Planning-app/repositories/UserRepository.js`（270行，commit: e1a2056）：
+    - 简化设计（用户数据无需 memoryCache/operationQueue）
+    - 管理 token、userInfo、guest_mode 持久化
+    - 集成登录/注册/登出 API 调用
+    - 支持访客模式（token = 'guest'）
+    - hydrate() 数据完整性检查
+- ✅ **Store 层重构**（commit: 558cfc3 + 5bd51ce + e1a2056）：
   - `frontend/Planning-app/store/category.js`（190行）：
     - Pinia Composition API，computed 自动映射 Repository.getAll()
     - hydrate() / createCategory() / updateCategory() / deleteCategory() / reorderCategories() 全部调用 Repository
@@ -138,11 +144,21 @@
     - 保留所有 computed 属性（urgentImportant、notUrgentImportant、doneTasks 等）
     - fetchTasksByDate() 改用 TaskRepository.getByDate()
     - addTask/updateTask/deleteTask 全部调用 Repository
-- ✅ **App.vue 数据水合**（commit: 5bd51ce）：
-  - onLaunch 改为 async，导入 useCategoryStore 和 useTaskStore
-  - 启动时调用 `categoryStore.hydrate()` + `taskStore.hydrate()`
+  - `frontend/Planning-app/store/user.js`（重构，commit: e1a2056）：
+    - Options API → Composition API
+    - 移除所有直接 API 调用和 localStorage 操作
+    - 全部改为调用 UserRepository 方法
+    - 新增 _syncFromRepository() 同步响应式状态
+    - 新增 isGuest 计算属性
+- ✅ **App.vue 数据水合**（commit: 5bd51ce + e1a2056）：
+  - onLaunch 改为 async，导入 3 个 Store
+  - 启动时 Promise.all 并行调用 `userStore.hydrate()` + `categoryStore.hydrate()` + `taskStore.hydrate()`
   - 加载缓存 + 同步服务器 + 重放离线队列
-  - 添加错误处理和日志记录
+  - 简化登录状态判断（使用 userStore.isLoggedIn）
+- ✅ **修复 profile.vue**（commit: e1a2056）：
+  - 移除直接给 userStore.token 赋值（违反三层架构）
+  - 使用 userStore.isLoggedIn 和 isGuest 计算属性
+  - 移除冗余的 getToken 导入
 
 ### Phase 3g - 可折叠日历条（第11次会话，commit: fb742ef）
 - ✅ **calendar/index.vue 完整重写**：实现周/月双模式日历条，手势驱动展开/折叠
@@ -264,80 +280,38 @@
 
 ## 🔄 待完成（下一步）
 
-### ⚠️ 重要提示：三层架构迁移仍在进行中
+### ⚠️ 重要提示：三层架构核心迁移已完成
 
-**本次会话已完成**：
-- ✅ CategoryRepository + TaskRepository 创建（离线优先、乐观锁、指数退避重试）
-- ✅ category.js Store 和 task.js Store 重构为调用 Repository
-- ✅ App.vue 数据水合集成
+**本次会话已完成**（commit: e1a2056）：
+- ✅ CategoryRepository + TaskRepository + UserRepository 创建（3个核心 Repository）
+- ✅ category.js + task.js + user.js Store 重构为三层架构
+- ✅ App.vue 并行加载所有 Store 数据（Promise.all）
 - ✅ 架构设计文档 + CLAUDE.md 规范更新
 
-**仍需迁移的 Store**（后续会话）：
-- ⏸️ **store/user.js**：用户登录/注册状态，需创建 UserRepository（管理 token、userInfo、guest_mode）
+**仍需迁移的 Store**（次要功能，优先级较低）：
 - ⏸️ **store/log.js**：日志CRUD，需创建 LogRepository（管理 journal_logs 表数据）
 - ⏸️ **store/planning.js**：规划CRUD，需创建 PlanningRepository（管理 planning_records 表）
 
 **迁移优先级**（建议顺序）：
-1. **UserRepository**（P0，最高优先级）：登录状态管理影响所有功能
-2. **LogRepository**（P1）：日志功能相对独立
-3. **PlanningRepository**（P1）：规划功能依赖用户状态
+1. **LogRepository**（P1）：日志功能相对独立
+2. **PlanningRepository**（P1）：规划功能依赖用户状态
 
 ### P0 - 下一个Claude应该做的（2个选项，建议优先级：选项A > 选项B）
 
-**选项A：继续三层架构迁移 - 创建 UserRepository**（推荐，1.5小时）
-- 目标：将 store/user.js 改造为三层架构
-- 创建 `frontend/Planning-app/repositories/UserRepository.js`
-- 管理：token、userInfo、guest_mode 的 localStorage 持久化
-- 重构 store/user.js 的 login/register/logout/enterGuestMode 方法
-- 更新相关组件调用（login.vue、register.vue、profile.vue）
-
-**选项B：执行 index.vue 架构评估任务1 - 紧急Bug识别报告**（2小时）
-- **目标**：基于评估报告，生成详细的P0级Bug修复清单
-- **输入**：读取 `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md` 中的问题1和问题2
-- **工作内容**：
+**选项A：执行 index.vue 架构评估任务1 - 紧急Bug识别报告**（推荐，2小时）
+- 目标：基于评估报告，生成详细的P0级Bug修复清单
+- 输入：读取 `docs/02-技术设计/index.vue企业级架构评估报告-完整版.md` 中的问题1和问题2
+- 工作内容：
   1. 定位所有函数重复声明的精确位置（文件名:行号）
   2. 定位所有变量重复声明的精确位置
-  3. 分析每处重复声明的影响范围
-  4. 设计修复方案（保留哪个声明、删除哪个）
-  5. 评估修复风险
-- **输出文档**：`docs/06-AI协作日志/03-Bug分析记录/BUG-001-index.vue重复声明问题汇总.md`
-- **下一步**：完成后可继续执行任务2或直接修复Bug
+  3. 分析影响范围和潜在风险
+  4. 生成详细修复清单（按优先级排序）
 
-**选项B：执行架构评估任务2 - 职责拆解方案设计**（推荐，2.5小时）
-- **目标**：基于9大职责领域，设计具体的组件拆分方案
-- **输入**：读取评估报告中的职责拆解部分
-- **工作内容**：
-  1. 为每个职责领域设计独立的Composable（useCalendarRender、useQuadrant等）
-  2. 设计组件拆分结构（拆成哪些.vue文件）
-  3. 设计状态管理方案（哪些状态提升到Pinia）
-  4. 设计接口边界（props/emits/provide/inject）
-- **输出文档**：`docs/02-技术设计/index.vue重构方案-职责拆解设计.md`
-- **下一步**：完成后可继续执行任务3或开始实施重构
-
-**选项C：直接修复P0级Bug**（高风险，5小时）
-- **目标**：直接修复函数和变量重复声明
-- **风险**：未做详细分析，可能遗漏影响范围或引入新Bug
-- **建议**：先执行选项A生成Bug清单后再修复，更安全
-- **验证**：修复后运行 `npm run lint` 确保无错误
-
-**选项D：继续前端业务功能开发**（可选）
-1. **AddTaskPanel.vue 时间段/重复/提醒 功能实现**（用户已确认这3个按钮目前是 placeholder）：
-   - `onTimeTap()`：实现时间段选择弹窗（开始时间 + 结束时间，对应 isAllDay=false）
-   - `onRepeatTap()`：实现重复规则底部 list 弹窗（复用 task-edit.vue 的重复弹窗逻辑）
-   - `onReminderTap()`：实现提醒时间选择弹窗
-   - 注意：这是快速添加面板，保持轻量，选完即关闭弹窗
-
-2. **实际联调验证**（需要用户启动后端服务）：
-   - 在 HBuilderX 中运行到 H5 浏览器
-   - 先注册账号，确认注册/登录流程
-   - 登录后默认显示四象限视图，创建任务验证象限分类
-
-3. **闹铃功能**（Phase 4）：
-   - 前端闹铃设置页面
-   - 调用后端 `/api/v1/alarms` 接口
-
-4. **TabBar 图标配置**：
-   - `pages.json` 中 TabBar 的 `iconPath` 和 `selectedIconPath` 需配置真实图标文件
+**选项B：继续三层架构迁移 - 创建 LogRepository**（1.5小时）
+- 目标：将 store/log.js 改造为三层架构
+- 创建 `frontend/Planning-app/repositories/LogRepository.js`
+- 管理日志数据的 CRUD 和持久化
+- 重构 store/log.js 调用 Repository
 
 ---
 
