@@ -861,6 +861,258 @@ plus.device.getInfo(...)
 
 ---
 
+### 7.9 三层架构规范 ⭐ (重要，2026-03-04新增)
+
+#### 架构层次划分
+
+**Component 层（UI 层）**
+- 职责：用户交互、数据展示
+- 只能调用 Store，禁止直接调用 Repository 或 API
+- 示例：category-drawer.vue、task-edit.vue、index.vue
+
+**Store 层（状态管理层）**
+- 职责：全局状态管理、调用 Repository
+- 使用 Pinia defineStore
+- 提供计算属性（computed）和 actions
+- 示例：store/category.js、store/task.js
+
+**Repository 层（数据访问层）**
+- 职责：数据 CRUD、缓存、离线队列、同步
+- 管理 memoryCache（Map结构）、localStorage、operationQueue
+- 处理版本冲突（乐观锁，version 字段）
+- 示例：repositories/CategoryRepository.js、repositories/TaskRepository.js
+
+#### 数据流向
+
+**读取流程**：
+```
+用户打开页面 → Component 调用 Store.hydrate()
+  → Store 调用 Repository.hydrate()
+  → Repository 从 localStorage 加载缓存
+  → Repository 从服务器同步最新数据
+  → Repository 更新 memoryCache
+  → Store 通过 computed 自动更新
+  → Component 自动重新渲染
+```
+
+**写入流程**：
+```
+用户点击"保存" → Component 调用 Store.createCategory(data)
+  → Store 调用 Repository.create(data)
+  → Repository 更新 memoryCache
+  → Repository 写入 localStorage（debounce 500ms）
+  → Repository 添加操作到 operationQueue
+  → Repository 后台同步到服务器（debounce 500ms）
+  → 服务器返回成功
+  → Repository 清理 operationQueue
+  → Store 自动更新
+  → Component 自动重新渲染
+```
+
+#### 强制规范
+
+**禁止行为 ❌**
+- ❌ Component 直接调用 API（绕过 Store）
+- ❌ Component 直接访问 Repository（破坏分层）
+- ❌ Store 直接操作 localStorage（应由 Repository 管理）
+- ❌ Repository 访问 Vue 实例或 DOM（应保持纯逻辑）
+- ❌ 在路由文件（routes/）内写内联业务逻辑
+
+**必须执行 ✅**
+- ✅ Component 只调用 Store 的 actions
+- ✅ Store 调用 Repository 的方法
+- ✅ Repository 管理所有数据持久化逻辑
+- ✅ 所有异步操作返回 Promise
+- ✅ App 启动时调用 Store.hydrate()
+
+#### Repository 标准接口
+
+每个 Repository 必须实现以下方法：
+
+```javascript
+class BaseRepository {
+  async hydrate() { ... }       // 启动时加载数据（localStorage + 服务器）
+  getAll() { ... }              // 获取全部（从 memoryCache，已排序）
+  getById(id) { ... }           // 按 ID 获取
+  async create(data) { ... }    // 创建
+  async update(id, data) { ... } // 更新
+  async delete(id) { ... }      // 删除（软删除，标记 deletedAt）
+  async sync() { ... }          // 同步到服务器
+}
+```
+
+#### CategoryRepository 企业级实现（完整功能）
+
+```javascript
+class CategoryRepository {
+  constructor() {
+    this.memoryCache = new Map()       // 内存缓存（Map: id → category）
+    this.operationQueue = []           // 离线操作队列
+    this.saveTimer = null              // Debounce 定时器
+    this.isSyncing = false             // 同步状态
+    this.lastSyncTime = null           // 最后同步时间
+  }
+
+  // 核心功能：
+  // 1. memoryCache：Map 结构，O(1) 查找性能
+  // 2. localStorage：持久化备份，debounce 500ms 写入
+  // 3. operationQueue：离线队列，指数退避重试（1s→2s→4s→8s→16s）
+  // 4. version 字段：乐观锁，冲突时本地优先
+  // 5. sortOrder 字段：支持拖拽排序
+  // 6. deletedAt 字段：软删除，保留数据便于撤销
+}
+```
+
+详细设计见：`docs/02-技术设计/三层架构设计.md`
+
+#### 离线操作队列规范
+
+**队列结构**：
+```javascript
+{
+  id: 'op_uuid',                      // 操作唯一 ID
+  type: 'create' | 'update' | 'delete', // 操作类型
+  entityId: 'cat_001',                // 实体 ID
+  data: { ... },                      // 操作数据
+  timestamp: 1234567890,              // 操作时间戳
+  status: 'pending' | 'syncing' | 'failed', // 状态
+  retryCount: 0                       // 重试次数（0-5）
+}
+```
+
+**重试策略**：指数退避
+- 第1次失败：1秒后重试
+- 第2次失败：2秒后重试
+- 第3次失败：4秒后重试
+- 第4次失败：8秒后重试
+- 第5次失败：16秒后重试
+- 超过5次：放弃并从队列移除
+
+#### 版本冲突解决
+
+**策略**：本地优先（单用户场景）
+
+```javascript
+// 本地修改
+localCategory = { id: 1, name: 'A', version: 5 }
+
+// 服务器最新数据
+serverCategory = { id: 1, name: 'B', version: 6 }
+
+// 冲突判断
+if (serverCategory.version > localCategory.version) {
+  // 服务器版本更新 → 使用服务器版本（覆盖本地）
+  this.memoryCache.set(id, serverCategory)
+  console.warn(`版本冲突：${serverCategory.name}，使用服务器版本`)
+}
+// 否则保留本地版本
+```
+
+未来多用户场景：改为弹窗让用户选择（详见企业级架构文档）
+
+#### 缓存策略
+
+**Memory Cache**：Map 结构（快速查找，O(1)性能）
+
+**LocalStorage**：持久化备份
+- Key: `planning_app_categories` / `planning_app_tasks` / `planning_app_category_queue`
+- Debounce 写入：500ms 延迟（避免频繁磁盘I/O）
+- 容量限制：5MB（约可存储5000条分类数据）
+
+**同步触发时机**：
+1. App 启动时（hydrate）
+2. 用户操作后（debounce 500ms）
+3. 网络恢复时（online 事件）
+4. 定时轮询（可选，每30秒）
+
+#### 使用示例
+
+**Component 层（旧写法 vs 新写法）**：
+
+```javascript
+// ❌ 旧写法（直接调用 API）
+import { categoryApi } from '@/api/category'
+
+const categories = ref([])
+
+async function saveCategory() {
+  const res = await categoryApi.create({ name: form.value.name })
+  categories.value.push(res.data)  // 手动更新数组
+}
+
+// ✅ 新写法（调用 Store）
+import { useCategoryStore } from '@/store/category'
+
+const categoryStore = useCategoryStore()
+const categories = categoryStore.categories  // 响应式，自动更新
+
+async function saveCategory() {
+  await categoryStore.createCategory({ name: form.value.name })
+  // 无需手动更新，categories 自动同步
+}
+```
+
+**App 启动时（必须调用 hydrate）**：
+
+```javascript
+// App.vue
+import { useCategoryStore } from '@/store/category'
+import { useTaskStore } from '@/store/task'
+
+export default {
+  async onLaunch() {
+    const categoryStore = useCategoryStore()
+    const taskStore = useTaskStore()
+
+    // 加载数据
+    await categoryStore.hydrate()
+    await taskStore.hydrate()
+  }
+}
+```
+
+#### 阶段2 增强功能（⏸️ 待办，后续添加）
+
+以下为企业级增强功能，当前阶段（2026 Q1）暂不实施：
+
+- ⏸️ **DTO 层**（Data Transfer Object）：统一数据格式，屏蔽前后端差异
+- ⏸️ **Validator 层**：数据验证，客户端拦截无效请求（预计减少30%无效API请求）
+- ⏸️ **RepositoryFactory**：自动选择最佳存储（内存/LocalStorage/IndexedDB）
+- ⏸️ **ErrorRecovery**：容错降级（服务器异常时自动降级到本地模式）
+- ⏸️ **PerformanceMonitor**：性能监控（操作耗时、缓存命中率、同步成功率）
+
+详细设计见：`docs/02-技术设计/企业级数据流架构（支持10万+用户）.md`
+
+#### 迁移检查清单
+
+**迁移现有代码时，必须完成以下步骤**：
+
+- [ ] 创建 Repository 类（实现标准接口）
+- [ ] 创建 Store（调用 Repository）
+- [ ] 移除 Component 中的 `import { xxxApi }` 引用
+- [ ] 改为 `import { useXxxStore }`
+- [ ] 将所有 `xxxApi.xxx()` 改为 `xxxStore.xxx()`
+- [ ] 删除手动更新数组的代码（如 `array.push(...)`）
+- [ ] 在 App.vue 的 onLaunch 中调用 `xxxStore.hydrate()`
+- [ ] 测试离线模式（关闭服务器，操作后重新上线）
+- [ ] 测试缓存恢复（刷新页面，数据仍在）
+
+#### 常见陷阱
+
+**陷阱1：忘记调用 hydrate()**
+- 现象：页面空白，数据为空
+- 解决：在 App.vue 的 onLaunch 中调用 `store.hydrate()`
+
+**陷阱2：手动更新数组**
+- 现象：数据重复（Repository 已更新，Component 又手动 push）
+- 解决：删除手动更新代码，依赖 computed 自动更新
+
+**陷阱3：直接调用 API**
+- 现象：数据不同步、无离线支持、无缓存
+- 解决：移除 API 引用，改为调用 Store
+
+---
+
 ## 8. 🚨 关键注意事项
 
 ### 绝对禁止 ❌
@@ -1015,6 +1267,6 @@ Claude实例 | 2026-02-17
 
 ---
 
-**文档版本**: v1.1 | **创建**: 2026-02-17 | **最后更新**: 2026-02-18 | **作者**: Claude Sonnet 4.5
+**文档版本**: v1.3 | **创建**: 2026-02-17 | **最后更新**: 2026-03-04 | **作者**: Claude Sonnet 4.5
 
 **有任何疑问，优先查阅本文档。实在不确定，询问唐伯虎。**
