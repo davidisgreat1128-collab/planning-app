@@ -1719,7 +1719,7 @@ function onTaskTouchEnd(e) {
       const isUrgent = target === 'q1' || target === 'q3';
       const isImportant = target === 'q1' || target === 'q2';
 
-      taskStore.editTask(task.id, { isUrgent, isImportant })
+      taskStore.updateTask(task.id, { isUrgent, isImportant })
         .then(() => {
           taskStore.fetchTasksByDate(selectedDate.value);
           uni.showToast({ title: '已更改', icon: 'success' });
@@ -2310,7 +2310,7 @@ function _onTaskMouseUp(e) {
           const isUrgent = target === 'q1' || target === 'q3';
           const isImportant = target === 'q1' || target === 'q2';
 
-          taskStore.editTask(task.id, { isUrgent, isImportant })
+          taskStore.updateTask(task.id, { isUrgent, isImportant })
             .then(() => {
               taskStore.fetchTasksByDate(selectedDate.value);
               uni.showToast({ title: '已更改', icon: 'success' });
