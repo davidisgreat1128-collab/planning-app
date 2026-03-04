@@ -3,6 +3,7 @@ import { useUserStore } from '@/store/user.js';
 import { useCategoryStore } from '@/store/category.js';
 import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
+import { usePlanningStore } from '@/store/planning.js';
 
 export default {
   async onLaunch() {
@@ -28,6 +29,7 @@ export default {
     const categoryStore = useCategoryStore();
     const taskStore = useTaskStore();
     const logStore = useLogStore();
+    const planningStore = usePlanningStore();
 
     try {
       // 并行加载所有 Store 数据
@@ -35,7 +37,8 @@ export default {
         userStore.hydrate(),      // 加载用户数据（token + userInfo）
         categoryStore.hydrate(),  // 加载分类数据
         taskStore.hydrate(),      // 加载任务数据
-        logStore.hydrate()        // 加载日志数据
+        logStore.hydrate(),       // 加载日志数据
+        planningStore.hydrate()   // 加载规划数据
       ]);
       console.log('[App] 所有 Repository 数据加载完成');
     } catch (err) {
