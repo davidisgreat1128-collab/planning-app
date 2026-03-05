@@ -253,8 +253,8 @@ class PlanningRepository {
     console.log('[PlanningRepository] 开始同步服务器数据')
 
     try {
-      // 获取所有规划（分页拉取，最多200条）
-      const result = await getPlanningListApi({ page: 1, pageSize: 200 })
+      // 获取所有规划（分页拉取，最多100条，受后端Joi验证限制）
+      const result = await getPlanningListApi({ page: 1, pageSize: 100 })
       const serverPlannings = result.list || []
 
       // 合并到 memoryCache（服务器数据优先）

@@ -395,7 +395,7 @@ async function handleDrop(e, toQuadrant) {
   const { task, fromQuadrant } = dragDropComposable.dragState.value;
 
   if (!task || fromQuadrant === toQuadrant) {
-    dragDropComposable.endDrag();
+    dragDropComposable.cancelDrag();
     return;
   }
 
@@ -407,7 +407,7 @@ async function handleDrop(e, toQuadrant) {
     calendarComposable.selectedDate.value
   );
 
-  dragDropComposable.endDrag();
+  dragDropComposable.cancelDrag();
 }
 
 async function confirmChangeQuadrant() {

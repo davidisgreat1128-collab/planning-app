@@ -116,3 +116,13 @@ export const uncategorizeTasks = (categoryId) =>
  */
 export const deleteCategoryTasks = (categoryId) =>
   del(`/tasks/category/${categoryId}`);
+
+/**
+ * 更新重复任务的象限属性（批量更新）
+ * @param {number} taskId - 原始任务ID
+ * @param {object} data - 更新数据 { isUrgent, isImportant }
+ * @param {string} scope - 更新范围 'all'（全部更改）| 'future'（当天及未来）
+ * @returns {Promise<object>}
+ */
+export const updateTaskRecurrence = (taskId, data, scope) =>
+  patch(`/tasks/${taskId}/recurrence`, { ...data, scope });
