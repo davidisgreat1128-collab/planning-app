@@ -94,10 +94,18 @@ function getQuadrant(task) {
 // ============================================================
 
 export function useCalendar() {
+  console.log('[useCalendar] ========== Composable 初始化 ==========');
+
   // ============ Stores ============
   const taskStore = useTaskStore();
   const planStore = usePlanningStore();
   const logStore = useLogStore();
+
+  console.log('[useCalendar] Stores 已获取:', {
+    taskStore: !!taskStore,
+    planStore: !!planStore,
+    logStore: !!logStore
+  });
 
   // ============ 状态 ============
   /** 当前选中日期 YYYY-MM-DD */
@@ -150,7 +158,13 @@ export function useCalendar() {
    * 当前周7天(周一~周日)
    */
   const currentWeekDates = computed(() => {
-    if (!currentWeekStart.value) return [];
+    console.log('[useCalendar] currentWeekDates 计算属性被调用, currentWeekStart:', currentWeekStart.value);
+
+    if (!currentWeekStart.value) {
+      console.log('[useCalendar] currentWeekStart 为空,返回空数组');
+      return [];
+    }
+
     return Array.from({ length: 7 }, (_, i) => {
       const d = new Date(currentWeekStart.value);
       d.setDate(d.getDate() + i);
@@ -237,46 +251,74 @@ export function useCalendar() {
    * @param {string} end - 结束日期 YYYY-MM-DD
    */
   async function _loadHolidayRange(start, end) {
-    const [holidayRes, lunarRes] = await Promise.all([
-      getHolidaysByRange(start, end),
-      getLunarInfoRange(start, end)
-    ]);
+    console.log(`[useCalendar] _loadHolidayRange 开始加载, 范围: ${start} ~ ${end}`);
 
-    // 节日:优先展示法定节假日/节气
-    const hMap = holidayRes?.holidayMap || {};
-    Object.entries(hMap).forEach(([date, list]) => {
-      if (Array.isArray(list) && list.length > 0) {
-        const sorted = [...list].sort((a, b) => {
-          const priority = { holiday: 1, solar_term: 2, other: 3 };
-          return (priority[a.type] || 999) - (priority[b.type] || 999);
-        });
-        holidayMap.value[date] = sorted[0].name;
-      }
-    });
+    try {
+      const [holidayRes, lunarRes] = await Promise.all([
+        getHolidaysByRange(start, end),
+        getLunarInfoRange(start, end)
+      ]);
 
-    // 农历:如果该日期无节日,则显示农历
-    const lMap = lunarRes?.lunarMap || {};
-    Object.entries(lMap).forEach(([date, info]) => {
-      if (!holidayMap.value[date]) {
-        // 优先显示农历节日,其次显示月日
-        holidayMap.value[date] = info.lunarFestival || info.lunarDayName || '';
-      }
-    });
+      console.log('[useCalendar] API 响应:', {
+        holidayRes,
+        lunarRes
+      });
+
+      // 节日:优先展示法定节假日/节气
+      const hMap = holidayRes?.holidayMap || {};
+      let holidayCount = 0;
+      Object.entries(hMap).forEach(([date, list]) => {
+        if (Array.isArray(list) && list.length > 0) {
+          const sorted = [...list].sort((a, b) => {
+            const priority = { holiday: 1, solar_term: 2, other: 3 };
+            return (priority[a.type] || 999) - (priority[b.type] || 999);
+          });
+          holidayMap.value[date] = sorted[0].name;
+          holidayCount++;
+        }
+      });
+
+      // 农历:如果该日期无节日,则显示农历
+      const lMap = lunarRes?.lunarMap || {};
+      let lunarCount = 0;
+      Object.entries(lMap).forEach(([date, info]) => {
+        if (!holidayMap.value[date]) {
+          // 优先显示农历节日,其次显示月日
+          holidayMap.value[date] = info.lunarFestival || info.lunarDayName || '';
+          lunarCount++;
+        }
+      });
+
+      console.log('[useCalendar] _loadHolidayRange 完成, 节日数:', holidayCount, ', 农历数:', lunarCount);
+      console.log('[useCalendar] 最终 holidayMap:', holidayMap.value);
+    } catch (err) {
+      console.error('[useCalendar] _loadHolidayRange 错误:', err);
+      throw err;
+    }
   }
 
   /**
    * 加载当前周的节日+农历
    */
   async function loadHolidays() {
+    console.log('[useCalendar] loadHolidays 被调用');
+
     try {
-      if (!currentWeekStart.value) return;
+      if (!currentWeekStart.value) {
+        console.warn('[useCalendar] loadHolidays 失败: currentWeekStart 为空');
+        return;
+      }
+
       const weekEnd = new Date(currentWeekStart.value);
       weekEnd.setDate(weekEnd.getDate() + 6);
       const start = formatDate(currentWeekStart.value);
       const end = formatDate(weekEnd);
+
+      console.log('[useCalendar] loadHolidays 即将加载节日范围:', start, '~', end);
       await _loadHolidayRange(start, end);
+      console.log('[useCalendar] loadHolidays 完成');
     } catch (err) {
-      console.warn('[useCalendar] 节日农历加载失败:', err);
+      console.error('[useCalendar] 节日农历加载失败:', err);
     }
   }
 
@@ -377,8 +419,12 @@ export function useCalendar() {
    * @param {string} dateStr - YYYY-MM-DD 格式
    */
   async function selectDate(dateStr) {
+    console.log(`[useCalendar] selectDate 被调用, 日期: ${dateStr}`);
+
     selectedDate.value = dateStr;
     taskStore.selectedDate = dateStr;
+
+    console.log('[useCalendar] selectDate - 已更新 selectedDate 和 taskStore.selectedDate');
 
     // 月模式下点击日期后折叠回周,并对齐到该日期所在周
     if (calendarMode.value === 'month') {
@@ -436,15 +482,25 @@ export function useCalendar() {
    * 初始化日历(应在组件挂载时调用)
    */
   function init() {
+    console.log('[useCalendar] ========== init 初始化开始 ==========');
+
     // 初始化为当前周
     currentWeekStart.value = getWeekMonday(new Date());
     currentMonthFirst.value = getMonthFirst(new Date());
+
+    console.log('[useCalendar] init - 已初始化周/月起始:', {
+      currentWeekStart: currentWeekStart.value,
+      currentMonthFirst: currentMonthFirst.value,
+      todayStr
+    });
 
     // 选中今天
     selectDate(todayStr);
 
     // 加载节日数据
     loadHolidays();
+
+    console.log('[useCalendar] ========== init 初始化完成 ==========');
   }
 
   // ============ 返回 API ============

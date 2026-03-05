@@ -440,17 +440,35 @@ watch(
 
 // 生命周期
 onMounted(async () => {
-  // 获取状态栏高度
-  // #ifdef APP-PLUS
-  const systemInfo = uni.getSystemInfoSync();
-  statusBarHeight.value = systemInfo.statusBarHeight || 0;
-  // #endif
+  console.log('[index.vue] ========== onMounted 开始 ==========');
+  console.log('[index.vue] 当前选中日期:', calendarComposable.selectedDate.value);
+  console.log('[index.vue] 日历模式:', calendarComposable.calendarMode.value);
+  console.log('[index.vue] 当周日期数据:', calendarComposable.currentWeekDates.value);
 
-  // 加载节日数据
-  await calendarComposable.loadHolidays();
+  try {
+    // 获取状态栏高度
+    // #ifdef APP-PLUS
+    const systemInfo = uni.getSystemInfoSync();
+    statusBarHeight.value = systemInfo.statusBarHeight || 0;
+    console.log('[index.vue] APP状态栏高度:', statusBarHeight.value);
+    // #endif
 
-  // 加载今日任务
-  await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
+    // 加载节日数据
+    console.log('[index.vue] 开始加载节日数据...');
+    await calendarComposable.loadHolidays();
+    console.log('[index.vue] 节日数据加载完成, holidayMap:', calendarComposable.holidayMap.value);
+
+    // 加载今日任务
+    console.log('[index.vue] 开始加载任务数据...');
+    await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
+    console.log('[index.vue] 任务数据加载完成, 任务数量:', taskStore.tasks.length);
+    console.log('[index.vue] 任务列表:', taskStore.tasks);
+
+    console.log('[index.vue] ========== onMounted 完成 ==========');
+  } catch (error) {
+    console.error('[index.vue] onMounted 执行出错:', error);
+    console.error('[index.vue] 错误堆栈:', error.stack);
+  }
 });
 </script>
 

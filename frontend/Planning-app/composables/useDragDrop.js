@@ -51,10 +51,17 @@ const DRAG_THRESHOLD = 5;
 // ============================================================
 
 export function useDragDrop(options = {}) {
+  console.log('[useDragDrop] ========== Composable 初始化 ==========');
+
   const {
     onDragEnd = () => {},
     onDragCancel = () => {}
   } = options;
+
+  console.log('[useDragDrop] 回调函数已接收:', {
+    hasOnDragEnd: typeof onDragEnd === 'function',
+    hasOnDragCancel: typeof onDragCancel === 'function'
+  });
 
   // ============ 状态 ============
 
@@ -101,9 +108,13 @@ export function useDragDrop(options = {}) {
    * @param {string} quadrant - 来源象限 q1/q2/q3/q4
    */
   function startDrag(e, task, quadrant) {
+    console.log('[useDragDrop] startDrag 被调用, 任务:', task?.title, ', 象限:', quadrant);
+
     const touch = e.touches?.[0] || e.changedTouches?.[0] || e;
     const x = touch.clientX || e.clientX || 0;
     const y = touch.clientY || e.clientY || 0;
+
+    console.log('[useDragDrop] startDrag - 起始坐标:', { x, y });
 
     dragState.value = {
       dragging: true,
@@ -115,6 +126,8 @@ export function useDragDrop(options = {}) {
       startX: x,
       startY: y
     };
+
+    console.log('[useDragDrop] startDrag - dragState 已更新:', dragState.value);
 
     // 震动反馈
     uni.vibrateShort?.({ type: 'medium' });
@@ -132,6 +145,8 @@ export function useDragDrop(options = {}) {
    * @param {string} quadrant - 来源象限
    */
   function onTaskLongPress(e, task, quadrant) {
+    console.log('[useDragDrop] onTaskLongPress 被触发, 任务:', task?.title);
+
     // 防止触发点击事件
     e.preventDefault?.();
     e.stopPropagation?.();
@@ -221,6 +236,8 @@ export function useDragDrop(options = {}) {
    * @param {object} e - 触摸/鼠标事件
    */
   function onTaskTouchEnd(e) {
+    console.log('[useDragDrop] onTaskTouchEnd 被调用, dragging:', dragState.value.dragging);
+
     if (!dragState.value.dragging) return;
 
     e.preventDefault?.();
@@ -228,23 +245,34 @@ export function useDragDrop(options = {}) {
 
     const { task, fromQuadrant, overDelete, x, y } = dragState.value;
 
+    console.log('[useDragDrop] onTaskTouchEnd - 状态:', {
+      task: task?.title,
+      fromQuadrant,
+      overDelete,
+      position: { x, y }
+    });
+
     // 重置拖拽状态
     dragState.value.dragging = false;
 
     // 如果在删除区域上方,返回标识让调用方显示删除对话框
     if (overDelete) {
+      console.log('[useDragDrop] onTaskTouchEnd - 检测到在删除区域,触发删除');
       onDragEnd(task, fromQuadrant, null, { shouldDelete: true });
       return;
     }
 
     // 检测拖拽到哪个象限
     const target = detectQuadrantAtPosition(x, y);
+    console.log('[useDragDrop] onTaskTouchEnd - 检测到目标象限:', target);
 
     if (target && target !== fromQuadrant) {
       // 通知调用方处理象限变更
+      console.log('[useDragDrop] onTaskTouchEnd - 触发象限变更:', fromQuadrant, '→', target);
       onDragEnd(task, fromQuadrant, target, { shouldDelete: false });
     } else {
       // 未移动或回到原象限,取消拖拽
+      console.log('[useDragDrop] onTaskTouchEnd - 无效移动,取消拖拽');
       onDragCancel();
     }
   }

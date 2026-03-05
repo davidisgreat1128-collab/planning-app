@@ -188,6 +188,12 @@ function onTouchStart(e) {
   touchStartY = e.touches[0].clientY;
   touchMoved = false;
   touchDir = '';
+
+  console.log('[CalendarBar] onTouchStart - 起始坐标:', {
+    x: touchStartX,
+    y: touchStartY,
+    mode: props.mode
+  });
 }
 
 /**
@@ -212,24 +218,39 @@ function onTouchMove(e) {
  * 触摸结束 (触发手势事件)
  */
 function onTouchEnd(e) {
-  if (!touchMoved || touchDir === '') return; // 未达到方向判断阈值,视为点击
+  console.log('[CalendarBar] onTouchEnd - 状态:', {
+    touchMoved,
+    touchDir,
+    mode: props.mode
+  });
+
+  if (!touchMoved || touchDir === '') {
+    console.log('[CalendarBar] onTouchEnd - 未达到方向判断阈值,视为点击');
+    return; // 未达到方向判断阈值,视为点击
+  }
 
   const dx = e.changedTouches[0].clientX - touchStartX;
   const dy = e.changedTouches[0].clientY - touchStartY;
 
+  console.log('[CalendarBar] onTouchEnd - 滑动距离:', { dx, dy });
+
   if (touchDir === 'h' && Math.abs(dx) > 40) {
     // 水平滑动: 切换周/月
     if (dx < 0) {
+      console.log('[CalendarBar] onTouchEnd - 触发左滑 (下一周/月)');
       emit('swipe-left'); // 左滑 (下一周/月)
     } else {
+      console.log('[CalendarBar] onTouchEnd - 触发右滑 (上一周/月)');
       emit('swipe-right'); // 右滑 (上一周/月)
     }
   } else if (touchDir === 'v') {
     if (props.mode === 'week' && dy > 50) {
       // 周模式下向下拉 → 展开月视图
+      console.log('[CalendarBar] onTouchEnd - 触发展开月视图');
       emit('expand');
     } else if (props.mode === 'month' && dy < -50) {
       // 月模式下向上滑 → 折叠回周视图
+      console.log('[CalendarBar] onTouchEnd - 触发折叠回周视图');
       emit('collapse');
     }
   }
@@ -239,6 +260,7 @@ function onTouchEnd(e) {
  * 处理日期点击
  */
 function handleDateClick(dateStr) {
+  console.log('[CalendarBar] handleDateClick - 选中日期:', dateStr);
   emit('date-click', dateStr);
 }
 </script>

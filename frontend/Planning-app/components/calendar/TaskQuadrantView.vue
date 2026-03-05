@@ -263,18 +263,22 @@ const touchStartY = ref(0);
 
 // 方法
 function handleTaskClick(task) {
+  console.log('[TaskQuadrantView] handleTaskClick - 任务:', task?.title);
   emit('task-click', task);
 }
 
 function handleCheckboxClick(task) {
+  console.log('[TaskQuadrantView] handleCheckboxClick - 任务:', task?.title, ', 当前状态:', task?.status);
   emit('checkbox-click', task);
 }
 
 function handleDragStart(e, task, quadrant) {
+  console.log('[TaskQuadrantView] handleDragStart - 任务:', task?.title, ', 象限:', quadrant);
   emit('drag-start', e, task, quadrant);
 }
 
 function handleQuadrantTouchStart(e, quadrant) {
+  console.log('[TaskQuadrantView] handleQuadrantTouchStart - 象限:', quadrant);
   touchStartY.value = e.touches[0].clientY;
 }
 
@@ -284,11 +288,13 @@ function handleQuadrantTouchMove(e) {
 }
 
 function handleQuadrantTouchEnd(e, quadrant) {
+  console.log('[TaskQuadrantView] handleQuadrantTouchEnd - 象限:', quadrant);
   // 触发放置事件
   emit('drop', e, quadrant);
 }
 
 function handleGoalsClick() {
+  console.log('[TaskQuadrantView] handleGoalsClick - 点击目标和分类');
   emit('goals-click');
 }
 </script>
