@@ -479,6 +479,10 @@ export function useCalendar() {
     goToday,
 
     // 初始化
-    init
+    init,
+
+    // 节日加载（修复：index.vue onMounted 中需要调用此方法）
+    loadHolidays,
+    loadHolidaysForMonth
   };
 }
