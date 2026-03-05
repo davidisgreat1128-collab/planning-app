@@ -9,7 +9,11 @@
       "Bash(awk:*)",
       "Bash(npm run lint:*)",
       "Bash(cat:*)",
-      "Bash(git push:*)"
+      "Bash(git push:*)",
+      "Read(//d/MyProject/Planning设计/测试日志/**)",
+      "Bash(npx eslint:*)",
+      "Bash(test:*)",
+      "Bash(npx eslint@8:*)"
     ],
     "deny": [],
     "ask": []
