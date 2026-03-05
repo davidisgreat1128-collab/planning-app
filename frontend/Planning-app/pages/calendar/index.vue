@@ -48,13 +48,6 @@
       @touchmove="onContentTouchMove"
       @touchend="onContentTouchEnd"
     >
-      <!-- 空状态 -->
-      <view v-if="!taskStore.loading && taskStore.tasks.length === 0" class="empty-state">
-        <text class="empty-icon">📋</text>
-        <text class="empty-text">今天还没有任何安排</text>
-        <text class="empty-hint">点击右下角 + 添加任务</text>
-      </view>
-
       <!-- 时间轴视图 -->
       <timeline-view
         v-if="currentView === 'timeline'"
@@ -441,9 +434,6 @@ watch(
 // 生命周期
 onMounted(async () => {
   console.log('[index.vue] ========== onMounted 开始 ==========');
-  console.log('[index.vue] 当前选中日期:', calendarComposable.selectedDate.value);
-  console.log('[index.vue] 日历模式:', calendarComposable.calendarMode.value);
-  console.log('[index.vue] 当周日期数据:', calendarComposable.currentWeekDates.value);
 
   try {
     // 获取状态栏高度
@@ -453,16 +443,13 @@ onMounted(async () => {
     console.log('[index.vue] APP状态栏高度:', statusBarHeight.value);
     // #endif
 
-    // 加载节日数据
-    console.log('[index.vue] 开始加载节日数据...');
-    await calendarComposable.loadHolidays();
-    console.log('[index.vue] 节日数据加载完成, holidayMap:', calendarComposable.holidayMap.value);
-
-    // 加载今日任务
-    console.log('[index.vue] 开始加载任务数据...');
-    await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
-    console.log('[index.vue] 任务数据加载完成, 任务数量:', taskStore.tasks.length);
-    console.log('[index.vue] 任务列表:', taskStore.tasks);
+    // 初始化日历（这会设置 currentWeekStart、selectedDate，并触发 loadHolidays）
+    console.log('[index.vue] 开始初始化日历...');
+    calendarComposable.init();
+    console.log('[index.vue] 日历初始化完成');
+    console.log('[index.vue] 当前选中日期:', calendarComposable.selectedDate.value);
+    console.log('[index.vue] 日历模式:', calendarComposable.calendarMode.value);
+    console.log('[index.vue] 当周日期数据:', calendarComposable.currentWeekDates.value);
 
     console.log('[index.vue] ========== onMounted 完成 ==========');
   } catch (error) {
