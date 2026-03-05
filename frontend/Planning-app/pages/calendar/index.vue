@@ -30,6 +30,7 @@
       :month-rows="calendarComposable.monthRows.value"
       :today-str="todayStr"
       :week-days="weekDays"
+      :month-label="calendarComposable.currentMonthLabel.value"
       @date-click="calendarComposable.selectDate"
       @swipe-left="handleCalendarSwipeLeft"
       @swipe-right="handleCalendarSwipeRight"
