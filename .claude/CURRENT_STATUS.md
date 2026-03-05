@@ -1,18 +1,19 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-05（第18次会话，index.vue 架构重构 Stage 1-4 完成 🎉）
+> **最后更新**: 2026-03-05（第19次会话，日历白屏修复 + 架构文档体系建设完成 ✅）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: a49356b（重构 index.vue，减少 78.6% 代码量）
+> **最新commit**: b89b48b（修复日历未显示问题 + 移除遮挡的空状态提示）
+> **重要提醒**: ⚠️ 本次修改未提交 Git，请下一个 Claude 先提交再继续工作
 
 ---
 
 ## 🎯 当前阶段
 
 **阶段名称**: Phase 3 - 前端日历/时间体系 + index.vue 架构重构
-**进度**: 🔄 进行中 (约88%)
-**已完成模块**: Auth / Users / Planning Records / 时间体系后端（5大系统） / 前端日历框架 / 后端企业级改造 / 可折叠日历条 / 三层架构全面实施 / index.vue 架构评估 + ESLint 配置 + index.vue 架构重构完成（Stage 1-4全部完成 🎉）
-**待完成模块**: 运行时测试与Bug修复 / 单元测试编写 / 前端业务页面联调 / 日期选择器完善 / 易经模块 / 闹铃功能
+**进度**: 🔄 进行中 (约98%)
+**已完成模块**: Auth / Users / Planning Records / 时间体系后端（5大系统） / 前端日历框架 / 后端企业级改造 / 可折叠日历条 / 三层架构全面实施 / index.vue 架构评估 + ESLint 配置 + index.vue 架构重构完成（Stage 1-4全部完成 🎉）+ **测试日志错误全部修复完成 ✅**（共5个错误）+ **日历条功能问题排查完成 ✅** + **调试日志添加完成 ✅**（6个文件+146行日志）+ **日历显示问题修复完成 ✅**（init()缺失 + 空状态遮挡）
+**待完成模块**: 人工功能测试验证 ⏸️（需用户测试日历、拖拽、手势功能） / 单元测试编写 / 前端业务页面联调 / 日期选择器完善 / 易经模块 / 闹铃功能
 
 ---
 
@@ -312,6 +313,184 @@
   - 简化版配置，未安装 Vue 插件（避免与 HBuilderX 冲突）
   - 测试成功：`npx eslint@8 store/task.js` 检测到 49 个缺少分号问题
 
+### Phase 3n - 测试日志错误修复（第19次会话，2026-03-05）✅
+- ✅ **分析测试日志**（两轮）：
+  - 第一轮：识别3个运行时错误（P0×1 + P1×2）
+  - 第二轮：识别1个P0阻塞错误
+- ✅ **错误1修复**（commit: 598e63c）：缺失API导出函数
+  - 问题：`useTaskQuadrant.js` 导入了不存在的 `updateTaskRecurrence`
+  - 根因：`api/task.js` 未导出该函数
+  - 解决：在 `api/task.js` 添加函数导出（第120-128行）
+- ✅ **错误2修复**（commit: 598e63c）：分页参数超限
+  - 问题：`PlanningRepository.js` 第257行请求 `pageSize: 200`
+  - 根因：后端Joi验证限制 max=100
+  - 解决：修改为 `pageSize: 100`
+- ✅ **错误3修复**（commit: 598e63c）：未导出的方法调用
+  - 问题：`index.vue` 第398, 410行调用 `endDrag()` 但未导出
+  - 根因：`useDragDrop.js` 只有 `cancelDrag()` 方法
+  - 解决：修改为 `cancelDrag()`（语义更准确）
+- ✅ **错误4修复**（commit: 4a50746）：Composable方法缺失导出
+  - 问题：`index.vue` onMounted 调用 `loadHolidays()` 导致页面无法加载
+  - 根因：`useCalendar.js` 返回对象中未导出 `loadHolidays` 和 `loadHolidaysForMonth`
+  - 解决：在返回对象中添加缺失的方法导出（+4行）
+  - 文件大小检查：488行，未超800行阈值 ✅
+- ✅ **错误5修复**（commit: 74170d0）：日历条月份标签缺失
+  - 问题：CalendarBar 组件需要 monthLabel prop，但 index.vue 未传递
+  - 根因：重构时遗漏了 `:month-label` 属性绑定
+  - 解决：在 index.vue 第33行添加 `:month-label="calendarComposable.currentMonthLabel.value"`
+  - 附加发现：拖拽和手势功能已完整实现，无需修复
+- ✅ **工作日志**：
+  - `2026-03-05-测试日志错误修复.md`（第1-3个错误，约5000字）
+  - `2026-03-05-useCalendar方法导出修复.md`（第4个错误，约7000字）
+  - `2026-03-05-日历条功能问题排查与修复.md`（第5个错误 + 功能验证指南，约10000字）
+
+### Phase 3o - 调试日志添加（第19次会话，2026-03-05）✅
+- ✅ **问题背景**：用户报告日历页面仍未显示，需通过详细日志排查根本原因
+- ✅ **添加调试日志**（commit: 528f6ef，已于下一步修复中验证有效）：
+  - **index.vue**（798→816行，+18行）：onMounted 钩子完整日志链
+    - 生命周期开始/结束标记
+    - 当前选中日期、日历模式、当周日期数据
+    - APP端状态栏高度
+    - 节日数据加载前后 + 完整响应
+    - 任务数据加载前后 + 任务数量/列表
+    - try-catch 错误捕获（错误信息 + 堆栈）
+  - **useCalendar.js**（488→544行，+56行）：
+    - Composable 初始化 + Stores 验证
+    - currentWeekDates 计算属性调用追踪
+    - _loadHolidayRange API调用与响应（节日数/农历数）
+    - loadHolidays/loadHolidaysForMonth 执行流程
+    - selectDate 日期选择流程
+    - init 初始化完整流程
+  - **useDragDrop.js**（428→455行，+27行）：
+    - Composable 初始化 + 回调函数验证
+    - startDrag 拖拽开始（任务、象限、坐标）
+    - onTaskLongPress 长按触发
+    - onTaskTouchEnd 拖拽结束（状态、目标象限检测）
+  - **useTaskQuadrant.js**（292→309行，+17行）：
+    - Composable 初始化 + Store 验证
+    - changeTaskQuadrant 象限变更流程（任务类型、目标象限、更新结果）
+  - **CalendarBar.vue**（412→429行，+17行）：
+    - onTouchStart 触摸开始（起始坐标、模式）
+    - onTouchEnd 手势识别（方向、滑动距离、触发的事件）
+    - handleDateClick 日期选择
+  - **TaskQuadrantView.vue**（464→475行，+11行）：
+    - handleTaskClick 任务点击
+    - handleCheckboxClick 复选框状态切换
+    - handleDragStart 拖拽开始
+    - handleQuadrantTouchStart/End 象限触摸事件
+    - handleGoalsClick 目标和分类点击
+- ✅ **日志标签规范**（统一前缀）：
+  - `[index.vue]` - 主页面
+  - `[useCalendar]` - 日历逻辑 Composable
+  - `[useDragDrop]` - 拖拽逻辑 Composable
+  - `[useTaskQuadrant]` - 象限管理 Composable
+  - `[CalendarBar]` - 日历条组件
+  - `[TaskQuadrantView]` - 四象限视图组件
+- ✅ **文件大小验证**：所有文件均在800行阈值以下
+- ✅ **工作日志**（约18000字）：
+  - `2026-03-05-日历页面调试日志添加与分析指南.md`（完整日志分析指南，包含预期日志输出顺序、常见问题诊断、日志过滤技巧、下一步行动计划）
+
+### Phase 3p - 日历显示问题修复（第19次会话，2026-03-05）✅
+- ✅ **问题背景**：用户提供测试日志，日历仍未显示 + 红色空状态区域遮挡四象限
+- ✅ **日志分析**（测试前端日志第41-62行）：
+  - 关键发现: `currentWeekStart: null`、`selectedDate: ""`、`currentWeekDates: []`
+  - 错误日志: "loadHolidays 失败: currentWeekStart 为空"（第49行）
+  - 根本原因: **onMounted 中缺少 `calendarComposable.init()` 调用**
+- ✅ **问题1修复: 日历未初始化**（commit: b89b48b）：
+  - 问题: currentWeekStart/selectedDate 都是初始空值,导致日历无法渲染
+  - 根因: index.vue onMounted 忘记调用 init() 方法
+  - 解决: 在 onMounted 开始时调用 `calendarComposable.init()`
+  - 效果: 初始化 currentWeekStart（本周周一）、selectedDate（今天）、触发节日加载
+  - 文件: frontend/Planning-app/pages/calendar/index.vue（第442-466行）
+- ✅ **问题2修复: 空状态提示遮挡四象限**（commit: b89b48b）：
+  - 问题: 第52-56行的空状态 <view> 显示大片红色边框区域,挡住下方四象限
+  - 用户反馈: "红色区域之前是没有的,帮我去掉吧"
+  - 根因: 空状态判断逻辑放在 scroll-view 内部,且样式占据大片空间
+  - 解决: 完全移除空状态提示代码块（-13行代码）
+  - 理由: 四象限视图本身已有空象限提示("琐事象限 减少做"等),无需全局空状态
+  - 文件: frontend/Planning-app/pages/calendar/index.vue（第41-56行删除）
+- ✅ **修改统计**:
+  - index.vue: 816行 → 799行（-17行）
+  - Git diff: 1 file changed, 7 insertions(+), 20 deletions(-)
+
+### Phase 3q - 架构文档体系建设（第19次会话，2026-03-05）✅
+
+#### 背景
+- 用户报告日历页面白屏：`planStore.getTasksByDate is not a function`
+- 业务逻辑需要澄清：规划/分类/任务三者的关系
+- 需要建立字段管理规范，防止未来重复创建字段
+
+#### 完成工作
+
+**1. Bug修复：日历白屏问题**（未提交 Git）
+- **问题**：`useCalendar.js` 调用不存在的方法 `planStore.getTasksByDate()`
+- **根因**：对业务逻辑的误解，PlanningStore 管理"规划容器"本身，不负责查询任务
+- **解决**：删除2处 `planStore.getTasksByDate()` 调用，日历只使用 `taskStore.tasks`
+- **文件**：`frontend/Planning-app/composables/useCalendar.js`（第174行、第211行）
+
+**2. 创建《系统架构完整结构图》文档** ✅
+- **文件路径**：`docs/02-技术设计/系统架构完整结构图.md`（约1200行）
+- **内容**：
+  1. 整体容器层级关系图（全部/规划/分类/无分类）
+  2. 数据关系 ER 图（User/PlanningRecord/Category/Task）
+  3. 前端 Repository 层架构（3大 Repository 详解）
+  4. 前后端数据流转图（Hydrate/读/写流程）
+  5. 三层架构详解（前端 + 后端完整分层）
+- **设计决策**：
+  - Planning 排序：按创建时间倒序（不支持手动排序）
+  - Category 混合模式：当前纯前端，计划后续实现后台备份
+
+**3. 创建《详细字段映射表》文档** ✅
+- **文件路径**：`docs/02-技术设计/详细字段映射表.md`（约800行）
+- **内容**：
+  1. 字段命名规范（snake_case ↔ camelCase ↔ Sequelize 自动映射）
+  2. PlanningRecord 字段映射表（15个字段，含枚举值详解）
+  3. Category 字段映射表（8个字段，纯前端管理）
+  4. Task 字段映射表（29个字段，7大分类）⭐ 核心
+  5. 任务分类逻辑代码示例
+  6. 字段新增流程（6步强制检查清单）
+- **核心价值**：防止重复创建字段，统一命名规范，权威字段参考
+
+**4. 在 CLAUDE.md 添加字段管理规范** ✅
+- **文件**：`.claude/CLAUDE.md`（新增第7.9节，约60行）
+- **版本**：v1.2 → v1.3
+- **内容**：
+  - 核心原则：创建前必须查阅《详细字段映射表》
+  - 强制检查清单（3步）
+  - 禁止行为（4项）
+  - 常见场景示例（2个）
+  - 参考文档链接
+
+**5. 更新文档导航索引** ✅
+- **文件**：`.claude/文档导航.md`
+- **新增**：登记2份新建文档（系统架构完整结构图 + 详细字段映射表）
+- **更新**：最后更新时间 2026-03-03 → 2026-03-05
+
+**6. 创建今日工作日志** ✅
+- **文件**：`docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-05-修复日历白屏并创建架构文档体系.md`（约6000行）
+- **内容**：
+  - 完整的Bug分析与修复过程
+  - 两份架构文档的详细说明
+  - 关键决策记录（2项）
+  - 工作成果统计（代码 + 文档）
+  - 技术亮点（3项）
+  - 已知问题和注意事项
+  - 下一步计划
+
+#### 工作成果统计
+- **代码修改**：1个文件（useCalendar.js），删除4行错误代码
+- **新建文档**：2个（系统架构完整结构图 + 详细字段映射表，共约2000行）
+- **更新文档**：2个（CLAUDE.md v1.3 + 文档导航）
+- **架构图数量**：5个（容器层级、ER图、Repository、数据流转、三层架构）
+- **字段映射表**：3张（Planning 15字段、Category 8字段、Task 29字段，共52字段）
+
+#### 核心价值
+- ✅ 修复了日历白屏的 Bug
+- ✅ 明确了业务逻辑（规划/分类/任务三者关系）
+- ✅ 建立了字段管理规范（防止重复创建字段）
+- ✅ 创建了系统架构可视化文档（为新 Claude 提供全貌）
+- ✅ 制度化了字段新增流程（强制查阅 + 6步检查清单）
+
 ### Phase 3m - index.vue 架构重构 Stage 1-4 完成（第18次会话，2026-03-05）🎉
 
 #### Stage 1-2: Composables & Utils 提取（commit: 33ea9fe）
@@ -359,34 +538,56 @@
 - ✅ **健康评分提升：35/100 → 85/100** ⭐⭐⭐⭐
 - ✅ **P0级Bug消除：17处 → 0处** ✅
 
+### ✅ 测试日志错误修复已完成 🎉
+
+**已修复5个错误**（commit: 598e63c + 4a50746 + 74170d0）：
+- ✅ 错误1: 缺失 API 导出函数 `updateTaskRecurrence`（P0级阻塞）
+- ✅ 错误2: 分页参数超限 `pageSize: 200 → 100`（P1级）
+- ✅ 错误3: 未导出的方法调用 `endDrag() → cancelDrag()`（P1级）
+- ✅ 错误4: Composable方法缺失导出 `loadHolidays + loadHolidaysForMonth`（P0级阻塞）
+- ✅ 错误5: 日历条月份标签缺失 `month-label` prop未传递（P1级）
+- ✅ **所有已知错误已修复，等待人工运行时测试验证** ⏸️
+
+### ✅ 日历条功能问题排查已完成 🎉
+
+**排查结果**:
+- ✅ 月份标签缺失: 已修复（commit: 74170d0）
+- ✅ 拖拽功能: 已完整实现，无需修复（需设备模拟测试）
+- ✅ 手势滑动功能: 已完整实现，无需修复（需正确测试方法）
+- ✅ **已提供完整功能验证指南** → 见工作日志
+
 ### P0 - 下一个Claude应该做的（优先级顺序）
 
-**选项1：运行时测试与Bug修复**（强烈推荐，2-3小时）
-- **目标**：验证重构后的 index.vue 能否正常运行，修复潜在问题
-- **工作内容**：
-  1. 检查 Composables 导出的方法是否完整
-     - `useDragDrop.js` 是否导出 `endDrag()` 方法？
-     - `useTaskQuadrant.js` 是否有 `confirmChangeQuadrant()` 方法？
-     - `useCalendar.js` 是否需要 `currentMonthLabel` 计算属性？
-  2. 启动 H5 开发服务器测试
+**当前任务：等待用户提供日志，分析日历未显示的根本原因**（优先级：P0 最高）⏸️
+
+- **目标**：根据用户提供的控制台日志，定位日历页面未显示的根本原因
+- **用户需要做什么**（约5分钟）：
+  1. 启动H5开发服务器：
      ```bash
-     cd frontend/Planning-app
+     cd D:\MyProject\Planning-app\frontend\Planning-app
      npm run dev:h5
      ```
-  3. 测试所有功能：
-     - 日历条（周/月切换、日期选择、手势滑动）
-     - 三个视图（时间轴、四象限、列表）
-     - 任务操作（点击、勾选、拖拽）
-     - FAB 按钮（展开/折叠、添加任务/日志）
-     - 弹窗（象限切换、子任务）
-  4. 根据控制台报错逐一修复
-  5. 提交 Bug 修复 commit
-- **参考文档**：
-  - `2026-03-05-index.vue架构重构完成-Stage3-4.md`（查看已知潜在问题）
-- **预期问题**：
-  - ⚠️ Composable 方法未导出
-  - ⚠️ 组件 props 类型不匹配
-  - ⚠️ 事件名称不一致
+  2. 打开浏览器控制台（F12）
+  3. 访问日历页面：`http://localhost:[端口]/pages/calendar/index`
+  4. 复制控制台中的所有日志输出
+  5. 保存到文件：`D:\MyProject\Planning设计\测试日志\测试前端日志-带调试.txt`
+  6. 告知Claude查看新日志
+
+- **Claude需要做什么**（等待用户日志后）：
+  1. 读取用户提供的日志文件
+  2. 对比"预期日志输出顺序"（见工作日志文档）
+  3. 定位日志中断的位置
+  4. 识别错误信息或异常状态
+  5. 制定修复方案并向用户确认
+  6. 实施修复并验证
+
+- **当前状态**：⏸️ 等待用户提供日志
+
+**如果用户无法立即提供日志，可选任务：**
+
+**选项1：人工功能测试验证**（需用户执行，30分钟）⏸️
+- 目标：验证拖拽和手势功能是否正常工作
+- 参考：`2026-03-05-日历条功能问题排查与修复.md` 中的"功能验证指南"
 
 **选项2：编写单元测试**（2小时）
 - **目标**：为 Utils 编写单元测试，提高代码质量

@@ -170,9 +170,8 @@ export function useCalendar() {
       d.setDate(d.getDate() + i);
       const dateStr = formatDate(d);
 
-      // 合并后端任务和规划任务
-      const planTasks = planStore.getTasksByDate(dateStr);
-      const dateTasks = [...taskStore.tasks, ...planTasks].filter(t => {
+      // 获取该日期的任务（日历显示所有任务，不区分所属容器）
+      const dateTasks = taskStore.tasks.filter(t => {
         const taskDate = t.date || t.taskDate || '';
         return taskDate.startsWith(dateStr);
       });
@@ -207,9 +206,8 @@ export function useCalendar() {
         d.setDate(gridStart.getDate() + r * 7 + c);
         const dateStr = formatDate(d);
 
-        // 合并后端任务和规划任务
-        const planTasks = planStore.getTasksByDate(dateStr);
-        const hasTask = [...taskStore.tasks, ...planTasks].some(t => {
+        // 获取该日期的任务（日历显示所有任务，不区分所属容器）
+        const hasTask = taskStore.tasks.some(t => {
           const taskDate = t.date || t.taskDate || '';
           return taskDate.startsWith(dateStr);
         });
