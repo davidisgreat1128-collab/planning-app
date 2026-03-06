@@ -109,16 +109,12 @@ function handleCheckboxClick() {
 function handleTouchStart(e) {
   if (!props.draggable) return;
 
-  console.log('[TaskCard] handleTouchStart 被调用, 任务:', props.task?.title);
-
   // 触发拖拽开始事件（App端触摸）
   emit('drag-start', e, props.task);
 }
 
 function handleMouseDown(e) {
   if (!props.draggable) return;
-
-  console.log('[TaskCard] handleMouseDown 被调用（H5环境）, 任务:', props.task?.title);
 
   // 触发拖拽开始事件（H5端鼠标）
   emit('mouse-drag-start', e, props.task);

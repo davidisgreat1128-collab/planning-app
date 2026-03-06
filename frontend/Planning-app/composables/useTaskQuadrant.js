@@ -124,12 +124,8 @@ export function getQuadrantProperties(quadrantKey) {
 // ============================================================
 
 export function useTaskQuadrant() {
-  console.log('[useTaskQuadrant] ========== Composable 初始化 ==========');
-
   // ============ Stores ============
   const taskStore = useTaskStore();
-
-  console.log('[useTaskQuadrant] taskStore 已获取:', !!taskStore);
 
   // ============ 状态 ============
 
@@ -193,10 +189,6 @@ export function useTaskQuadrant() {
       // 对于重复任务,使用 taskId (原始任务ID),否则使用 id
       const taskIdToUpdate = task.taskId || task.id;
 
-      console.log('[useTaskQuadrant] confirmChangeQuadrant - 更新任务:', taskIdToUpdate);
-      console.log('[useTaskQuadrant] confirmChangeQuadrant - 选项:', option, '(1=全部, 2=未来)');
-      console.log('[useTaskQuadrant] confirmChangeQuadrant - 新属性:', { isUrgent, isImportant });
-
       // ⚠️ 临时方案：后端API /tasks/:id/recurrence 尚未实现
       // 目前使用普通updateTask，仅更新当前实例
       // TODO: 待后端实现批量更新API后，恢复以下代码：
@@ -207,7 +199,6 @@ export function useTaskQuadrant() {
       // }
 
       // 临时方案：使用taskStore.updateTask仅更新当前实例
-      console.log('[useTaskQuadrant] ⚠️ 使用临时方案：仅更新当前任务实例（后端API待实现）');
       await taskStore.updateTask(task.id, { isUrgent, isImportant });
 
       // 刷新任务列表
@@ -233,35 +224,23 @@ export function useTaskQuadrant() {
    * @param {string} selectedDate - 当前选中日期
    */
   async function changeTaskQuadrant(task, from, to, selectedDate) {
-    console.log('[useTaskQuadrant] changeTaskQuadrant 被调用:', {
-      task: task?.title,
-      from,
-      to,
-      selectedDate
-    });
-
     if (from === to) {
-      console.log('[useTaskQuadrant] changeTaskQuadrant - 象限相同,无需更改');
       return;
     }
 
     // 检查任务是否为重复任务
     const isRecurring = task.isRecurring || task.rrule;
-    console.log('[useTaskQuadrant] changeTaskQuadrant - 任务类型:', isRecurring ? '重复任务' : '普通任务');
 
     if (isRecurring) {
       // 重复任务:显示对话框让用户选择
-      console.log('[useTaskQuadrant] changeTaskQuadrant - 打开重复任务对话框');
       openChangeQuadrantDialog(task, from, to);
     } else {
       // 普通任务:直接更改象限
       const { isUrgent, isImportant } = getQuadrantProperties(to);
-      console.log('[useTaskQuadrant] changeTaskQuadrant - 更新普通任务象限:', { isUrgent, isImportant });
 
       try {
         await taskStore.updateTask(task.id, { isUrgent, isImportant });
         await taskStore.fetchTasksByDate(selectedDate);
-        console.log('[useTaskQuadrant] changeTaskQuadrant - 更新成功');
         uni.showToast({ title: '已更改', icon: 'success' });
       } catch (err) {
         console.error('[useTaskQuadrant] 更改象限失败:', err);
