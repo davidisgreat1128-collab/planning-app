@@ -183,7 +183,7 @@ export function useCalendar() {
 
       const hasTask = dateTasks.length > 0;
       return {
-        workDay: workDayMap.value[dateStr] || null, // 工作日信息 { type, holidayName, remark }
+        workDay: workDayMap.value[dateStr] || null, // 工作日信息
         dateStr,
         day: d.getDate(),
         lunarLabel: holidayMap.value[dateStr] || '',
@@ -261,15 +261,14 @@ export function useCalendar() {
     try {
       const [holidayRes, lunarRes, workDayRes] = await Promise.all([
         getHolidaysByRange(start, end),
-        getLunarInfoRange(start, end)
+        getLunarInfoRange(start, end),
         getWorkDaysByRange(start, end)
       ]);
 
+      console.log('[useCalendar] API 响应:', {
         holidayRes,
         lunarRes,
         workDayRes
-        holidayRes,
-        lunarRes
       });
 
       // 节日:按优先级排序（中国节日 > 西方节日 > 节气 > 国际节日）
@@ -293,15 +292,24 @@ export function useCalendar() {
         if (!holidayMap.value[date]) {
           // 优先显示农历节日,其次显示月日
           holidayMap.value[date] = info.lunarFestival || info.lunarDayName || '';
-      // 工作日调整:存储到workDayMap      const wMap = workDayRes?.workDayMap || {};      let workDayCount = 0;      Object.entries(wMap).forEach(([date, info]) => {        workDayMap.value[date] = info; // { type, holidayName, remark }        workDayCount++;      });
           lunarCount++;
         }
       });
 
-      console.log('[useCalendar] _loadHolidayRange 完成, 节日数:', holidayCount, ', 农历数:', lunarCount);
-      console.log('[useCalendar] 最终 holidayMap:', holidayMap.value);
-    } catch (err) {
+      // 工作日调整:存储到workDayMap
+      const wMap = workDayRes?.workDayMap || {};
+      let workDayCount = 0;
+      Object.entries(wMap).forEach(([date, info]) => {
+        workDayMap.value[date] = info; // { type, holidayName, remark }
+        workDayCount++;
+      });
+
+
       console.log('[useCalendar] _loadHolidayRange 完成, 节日数:', holidayCount, ', 农历数:', lunarCount, ', 工作日数:', workDayCount);
+      console.log('[useCalendar] 最终 holidayMap:', holidayMap.value);
+      console.log('[useCalendar] 最终 workDayMap:', workDayMap.value);
+    } catch (err) {
+      console.error('[useCalendar] _loadHolidayRange 错误:', err);
       throw err;
     }
   }
