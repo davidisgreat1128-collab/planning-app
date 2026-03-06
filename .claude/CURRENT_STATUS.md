@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-05（第19次会话，日历白屏修复 + 架构文档体系建设完成 ✅，已提交Git）
+> **最后更新**: 2026-03-06（第20次会话，日历点击日期报错修复 ✅）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 744f0a8（更新Claude工具权限配置）
+> **最新commit**: 410631c（修复日历点击特定日期报错）
 > **Git状态**: ✅ 工作区干净，所有修改已提交
 
 ---
@@ -413,6 +413,54 @@
   - index.vue: 816行 → 799行（-17行）
   - Git diff: 1 file changed, 7 insertions(+), 20 deletions(-)
 
+### Phase 3r - 日历点击日期报错修复（第20次会话，2026-03-06）✅
+
+#### 问题背景
+- **用户报告**: 点击3月4日、5日报错，点击2号、3号、7号、8号正常
+- **错误信息**: `TypeError: planStore.getTasksByDate is not a function`
+- **错误位置**: `useCalendar.js` 第144行 `getTaskDots()` 函数
+
+#### 根本原因分析
+项目存在**两个不同的规划Store**，职责完全不同：
+1. **usePlanningStore** (`store/planning.js`)
+   - 职责: 管理 PlanningRecord 实体（规划记录）
+   - API: Composition API（符合三层架构）
+   - ❌ **没有** `getTasksByDate()` 方法
+2. **usePlanStore** (`store/plan.js`)
+   - 职责: 管理规划生成的任务（generatedTasks）
+   - API: Options API（⚠️ 未迁移到三层架构）
+   - ✅ **有** `getTasksByDate()` 方法
+
+**代码错误**: `useCalendar.js` 第31行导入了 `usePlanningStore`，导致第144行调用不存在的方法
+
+#### 修复内容（commit: 410631c）
+**文件**: `frontend/Planning-app/composables/useCalendar.js`（544行 → 545行）
+
+**修改1**: 第31-34行，新增导入正确的Store
+```javascript
+// 新增导入 usePlanStore（规划任务Store）
+import { usePlanStore } from '@/store/plan';
+// 保留 usePlanningStore（规划记录Store）
+import { usePlanningStore } from '@/store/planning';
+```
+
+**修改2**: 第102-110行，使用正确的Store初始化
+```javascript
+const planStore = usePlanStore();              // ✅ 修改
+const planningStore = usePlanningStore();      // ✅ 保留供未来使用
+```
+
+**影响范围**:
+- 修改行数: +4行
+- 第144行 `planStore.getTasksByDate()` 调用无需修改（方法已存在）
+- 文件大小: ✅ 545行（<800行阈值）
+
+#### 技术债务
+⚠️ **usePlanStore 未迁移到三层架构**
+- 当前状态: Options API + 直接操作localStorage
+- 建议优化: 创建 PlanRepository.js，迁移到三层架构（P2级任务）
+- 影响: 功能正常，无阻塞
+
 ### Phase 3q - 架构文档体系建设（第19次会话，2026-03-05）✅
 
 #### 背景
@@ -422,11 +470,11 @@
 
 #### 完成工作
 
-**1. Bug修复：日历白屏问题**（未提交 Git）
+**1. Bug修复：日历白屏问题**（已在Phase 3r中完整修复）
 - **问题**：`useCalendar.js` 调用不存在的方法 `planStore.getTasksByDate()`
-- **根因**：对业务逻辑的误解，PlanningStore 管理"规划容器"本身，不负责查询任务
-- **解决**：删除2处 `planStore.getTasksByDate()` 调用，日历只使用 `taskStore.tasks`
-- **文件**：`frontend/Planning-app/composables/useCalendar.js`（第174行、第211行）
+- **临时修复**（Phase 3q）：删除2处 `planStore.getTasksByDate()` 调用
+- **完整修复**（Phase 3r）：使用正确的 `usePlanStore` 恢复规划任务合并功能
+- **文件**：`frontend/Planning-app/composables/useCalendar.js`
 
 **2. 创建《系统架构完整结构图》文档** ✅
 - **文件路径**：`docs/02-技术设计/系统架构完整结构图.md`（约1200行）
@@ -556,12 +604,21 @@
 - ✅ 手势滑动功能: 已完整实现，无需修复（需正确测试方法）
 - ✅ **已提供完整功能验证指南** → 见工作日志
 
+### ✅ 日历点击日期报错已修复 🎉
+
+**已修复Bug**（commit: 410631c）：
+- ✅ Bug: 点击3月4日、5日报错 `TypeError: planStore.getTasksByDate is not a function`
+- ✅ 根因: 导入了错误的Store（usePlanningStore 无getTasksByDate方法）
+- ✅ 修复: 使用正确的 usePlanStore（有getTasksByDate方法）
+- ✅ 文件: `frontend/Planning-app/composables/useCalendar.js`（+4行，545行总计）
+- ⏸️ **等待用户测试验证修复结果**
+
 ### P0 - 下一个Claude应该做的（优先级顺序）
 
-**当前任务：等待用户提供日志，分析日历未显示的根本原因**（优先级：P0 最高）⏸️
+**当前任务：等待用户测试日历点击和拖拽功能**（优先级：P0 最高）⏸️
 
-- **目标**：根据用户提供的控制台日志，定位日历页面未显示的根本原因
-- **用户需要做什么**（约5分钟）：
+- **目标**：验证Bug修复结果 + 测试拖拽功能是否生效
+- **用户需要做什么**（约10分钟）：
   1. 启动H5开发服务器：
      ```bash
      cd D:\MyProject\Planning-app\frontend\Planning-app
@@ -569,25 +626,33 @@
      ```
   2. 打开浏览器控制台（F12）
   3. 访问日历页面：`http://localhost:[端口]/pages/calendar/index`
-  4. 复制控制台中的所有日志输出
-  5. 保存到文件：`D:\MyProject\Planning设计\测试日志\测试前端日志-带调试.txt`
-  6. 告知Claude查看新日志
+  4. **测试日历点击**：
+     - 依次点击3月2日、3日、4日、5日、6日、7日、8日
+     - 确认所有日期点击均无报错
+     - 确认日历条任务标记点颜色正确显示
+  5. **测试拖拽功能**：
+     - 在四象限视图中长按任务卡片（500ms）
+     - 尝试拖拽到其他象限
+     - 观察控制台是否有 `[useDragDrop]` 相关日志
+  6. 复制控制台中的所有日志输出
+  7. 将测试结果和日志发送给Claude
 
-- **Claude需要做什么**（等待用户日志后）：
-  1. 读取用户提供的日志文件
-  2. 对比"预期日志输出顺序"（见工作日志文档）
-  3. 定位日志中断的位置
-  4. 识别错误信息或异常状态
-  5. 制定修复方案并向用户确认
-  6. 实施修复并验证
+- **Claude需要做什么**（等待用户测试后）：
+  1. 确认日历点击功能修复成功
+  2. 分析拖拽功能是否正常（基于日志判断）
+  3. 如拖拽失效，添加详细调试日志后让用户重新测试
+  4. 如拖拽正常，标记Phase 3完成
 
-- **当前状态**：⏸️ 等待用户提供日志
+- **当前状态**：⏸️ 等待用户测试验证
 
-**如果用户无法立即提供日志，可选任务：**
+**后续可选任务：**
 
-**选项1：人工功能测试验证**（需用户执行，30分钟）⏸️
-- 目标：验证拖拽和手势功能是否正常工作
-- 参考：`2026-03-05-日历条功能问题排查与修复.md` 中的"功能验证指南"
+**选项1：usePlanStore迁移到三层架构**（2-3小时，P2优先级）
+- 目标：将usePlanStore迁移到三层架构，消除技术债务
+- 工作内容：
+  1. 创建 `PlanRepository.js`（管理generatedTasks）
+  2. 重构 `store/plan.js`（Options API → Composition API）
+  3. 更新 `App.vue` 数据水合流程
 
 **选项2：编写单元测试**（2小时）
 - **目标**：为 Utils 编写单元测试，提高代码质量
