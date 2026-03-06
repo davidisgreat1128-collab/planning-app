@@ -444,10 +444,6 @@ async function handleDeleteTaskConfirm(option) {
       icon: 'none'
     });
   }
-
-  // 关闭对话框
-  showDeleteTaskDialog.value = false;
-  deleteTaskOption.value = 1;
 }
 
 function goToPlanningCategory() {

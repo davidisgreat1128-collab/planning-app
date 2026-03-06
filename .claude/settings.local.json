@@ -13,7 +13,8 @@
       "Read(//d/MyProject/Planning设计/测试日志/**)",
       "Bash(npx eslint:*)",
       "Bash(test:*)",
-      "Bash(npx eslint@8:*)"
+      "Bash(npx eslint@8:*)",
+      "Read(//d/MyProject/Planning设计/**)"
     ],
     "deny": [],
     "ask": []

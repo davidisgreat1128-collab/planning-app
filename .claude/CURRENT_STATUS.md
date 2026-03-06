@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-06（第20次会话，日历点击日期报错修复 ✅）
+> **最后更新**: 2026-03-06（第20次会话，日历点击日期报错修复 ✅ + H5拖拽功能修复 ✅）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 410631c（修复日历点击特定日期报错）
+> **最新commit**: e19f190（修复H5环境四象限拖拽功能 - 添加鼠标事件支持）
 > **Git状态**: ✅ 工作区干净，所有修改已提交
 
 ---
@@ -613,12 +613,24 @@ const planningStore = usePlanningStore();      // ✅ 保留供未来使用
 - ✅ 文件: `frontend/Planning-app/composables/useCalendar.js`（+4行，545行总计）
 - ⏸️ **等待用户测试验证修复结果**
 
+### ✅ H5四象限拖拽功能已修复 🎉
+
+**已修复Bug**（commit: e19f190）：
+- ✅ Bug: H5环境下鼠标长按任务500ms无任何拖拽日志
+- ✅ 根因: 组件仅绑定触摸事件(@touchstart)，未绑定H5鼠标事件(@mousedown)
+- ✅ 修复: 补全鼠标事件绑定链路（TaskCard → TaskQuadrantView → index.vue → useDragDrop）
+- ✅ 文件:
+  - `TaskCard.vue`（285行，+9行）：添加 @mousedown + handleMouseDown + mouse-drag-start emit
+  - `TaskQuadrantView.vue`（489行，+9行）：8个TaskCard添加 @mouse-drag-start + handleMouseDragStart
+  - `index.vue`（804行，+1行）：添加 @mouse-drag-start 连接到 useDragDrop.handleTaskMouseDown
+- ⏸️ **等待用户测试验证修复结果**（H5浏览器长按拖拽）
+
 ### P0 - 下一个Claude应该做的（优先级顺序）
 
-**当前任务：等待用户测试日历点击和拖拽功能**（优先级：P0 最高）⏸️
+**当前任务：等待用户测试日历点击和H5拖拽功能**（优先级：P0 最高）⏸️
 
-- **目标**：验证Bug修复结果 + 测试拖拽功能是否生效
-- **用户需要做什么**（约10分钟）：
+- **目标**：验证两个Bug修复结果（日历点击 + H5鼠标拖拽）
+- **用户需要做什么**（约15分钟）：
   1. 启动H5开发服务器：
      ```bash
      cd D:\MyProject\Planning-app\frontend\Planning-app
@@ -626,24 +638,38 @@ const planningStore = usePlanningStore();      // ✅ 保留供未来使用
      ```
   2. 打开浏览器控制台（F12）
   3. 访问日历页面：`http://localhost:[端口]/pages/calendar/index`
-  4. **测试日历点击**：
+  4. **测试日历点击**（验证commit: 410631c）：
      - 依次点击3月2日、3日、4日、5日、6日、7日、8日
-     - 确认所有日期点击均无报错
-     - 确认日历条任务标记点颜色正确显示
-  5. **测试拖拽功能**：
-     - 在四象限视图中长按任务卡片（500ms）
-     - 尝试拖拽到其他象限
-     - 观察控制台是否有 `[useDragDrop]` 相关日志
+     - ✅ 预期：所有日期点击均无报错
+     - ✅ 预期：日历条任务标记点颜色正确显示（红/蓝/黄/绿）
+     - ❌ 如报错：控制台应无 `TypeError: planStore.getTasksByDate is not a function`
+  5. **测试H5鼠标拖拽**（验证commit: e19f190）：
+     - 在四象限视图中**鼠标左键长按**任务卡片（持续500ms以上）
+     - ✅ 预期日志顺序：
+       ```
+       [TaskCard] handleMouseDown 被调用（H5环境）, 任务: xxx
+       [TaskQuadrantView] handleMouseDragStart (H5鼠标) - 任务: xxx, 象限: qX
+       [useDragDrop] onTaskMouseDown - 开始监听鼠标移动
+       [useDragDrop] 鼠标长按检测计时器已启动
+       [useDragDrop] 长按成功,进入拖拽状态
+       ```
+     - ✅ 预期行为：
+       - 任务卡片样式变为拖拽态（半透明、阴影）
+       - 鼠标移动时任务卡片跟随鼠标位置
+       - 释放鼠标后更新任务象限
   6. 复制控制台中的所有日志输出
   7. 将测试结果和日志发送给Claude
 
 - **Claude需要做什么**（等待用户测试后）：
   1. 确认日历点击功能修复成功
-  2. 分析拖拽功能是否正常（基于日志判断）
-  3. 如拖拽失效，添加详细调试日志后让用户重新测试
-  4. 如拖拽正常，标记Phase 3完成
+  2. 确认H5鼠标拖拽功能生效（基于日志判断）
+  3. 如仍有问题，分析日志并修复
+  4. 如两个功能均正常，标记Phase 3完成
 
-- **当前状态**：⏸️ 等待用户测试验证
+- **当前状态**：⏸️ 等待用户测试验证（两个Bug已修复，等待验证）
+- **相关工作日志**：
+  - `2026-03-06-日历点击日期报错修复.md`
+  - `2026-03-06-H5四象限拖拽功能修复.md`
 
 **后续可选任务：**
 
