@@ -245,10 +245,62 @@ function calcSpecialRuleDate(year, rule) {
   return null;
 }
 
+// ============================================================
+// 工作日查询（法定节假日+调休补班）
+// ============================================================
+
+/**
+ * 获取指定年份的工作日调整数据
+ * @param {number} year - 年份
+ * @returns {Promise<Array>} 工作日列表
+ */
+async function getWorkDaysByYear(year) {
+  const { WorkDay } = require('../models');
+  const workDays = await WorkDay.findAll({
+    where: { year },
+    order: [['date', 'ASC']]
+  });
+  return workDays.map(wd => wd.toJSON());
+}
+
+/**
+ * 获取指定日期范围的工作日调整数据（用于日历显示）
+ * @param {string} startDate - YYYY-MM-DD
+ * @param {string} endDate - YYYY-MM-DD
+ * @returns {Promise<Object>} key=YYYY-MM-DD, value={ type, holidayName, remark }
+ */
+async function getWorkDaysByRange(startDate, endDate) {
+  const { WorkDay } = require('../models');
+  const { Op } = require('sequelize');
+
+  const workDays = await WorkDay.findAll({
+    where: {
+      date: {
+        [Op.between]: [startDate, endDate]
+      }
+    },
+    order: [['date', 'ASC']]
+  });
+
+  // 转换为Map结构 { "YYYY-MM-DD": { type, holidayName, remark } }
+  const map = {};
+  for (const wd of workDays) {
+    const data = wd.toJSON();
+    map[data.date] = {
+      type: data.type,           // 'holiday' | 'workday'
+      holidayName: data.holidayName,
+      remark: data.remark
+    };
+  }
+  return map;
+}
+
 module.exports = {
   getHolidaysByYear,
   getHolidaysByMonth,
   getHolidaysByRange,
   getLunarInfo,
-  getLunarInfoRange
+  getLunarInfoRange,
+  getWorkDaysByYear,
+  getWorkDaysByRange
 };

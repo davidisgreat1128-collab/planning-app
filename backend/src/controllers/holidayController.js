@@ -98,9 +98,45 @@ async function getLunarInfoRange(req, res, next) {
 }
 
 module.exports = {
+  getWorkDaysByYear,
+  getWorkDaysByRange,
   getByYear,
   getByMonth,
   getByRange,
   getLunarInfo,
   getLunarInfoRange
 };
+
+/**
+ * GET /api/v1/holidays/workdays/year/:year
+ * 获取指定年份的工作日调整数据（法定节假日+调休补班）
+ */
+async function getWorkDaysByYear(req, res, next) {
+  try {
+    const year = parseInt(req.params.year);
+    if (isNaN(year) || year < 2000 || year > 2100) {
+      throw new ValidationError('年份需在2000-2100之间');
+    }
+    const workDays = await holidayService.getWorkDaysByYear(year);
+    return success(res, { year, workDays });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/holidays/workdays/range?start=2026-02-01&end=2026-02-28
+ * 获取日期范围内的工作日调整数据（日历显示用）
+ */
+async function getWorkDaysByRange(req, res, next) {
+  try {
+    const { start, end } = req.query;
+    if (!start || !end || start > end) {
+      throw new ValidationError('请提供有效的start和end日期参数（YYYY-MM-DD）');
+    }
+    const workDayMap = await holidayService.getWorkDaysByRange(start, end);
+    return success(res, { start, end, workDayMap });
+  } catch (err) {
+    next(err);
+  }
+}

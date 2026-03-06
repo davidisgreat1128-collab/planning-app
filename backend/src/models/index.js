@@ -6,6 +6,7 @@ const initUserModel = require('./user');
 const initPlanningRecordModel = require('./planningRecord');
 const initHolidayModel = require('./holiday');
 const initTaskModel = require('./task');
+const initWorkDayModel = require('./workDay');
 const initTaskOccurrenceModel = require('./taskOccurrence');
 const initAlarmSoundModel = require('./alarmSound');
 const initAlarmModel = require('./alarm');
@@ -44,6 +45,7 @@ async function testConnection() {
 // ============================================================
 const User = initUserModel(sequelize);
 const PlanningRecord = initPlanningRecordModel(sequelize);
+const WorkDay = initWorkDayModel(sequelize);
 const Holiday = initHolidayModel(sequelize);
 const Task = initTaskModel(sequelize);
 const TaskOccurrence = initTaskOccurrenceModel(sequelize);
@@ -103,6 +105,7 @@ const db = {
   testConnection,
   User,
   PlanningRecord,
+  WorkDay,
   Holiday,
   Task,
   TaskOccurrence,
