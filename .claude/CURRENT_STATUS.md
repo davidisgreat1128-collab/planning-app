@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-06（第20次会话，日历点击日期报错修复 ✅ + H5拖拽功能修复 ✅）
+> **最后更新**: 2026-03-06（第20次会话，日历点击日期报错修复 ✅ + H5拖拽功能修复 ✅ + 拖拽蒙层组件拆分 ✅ + Bug修复 ✅）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: e19f190（修复H5环境四象限拖拽功能 - 添加鼠标事件支持）
+> **最新commit**: 61354d2（fix(calendar): 移除index.vue中未定义的删除对话框变量引用）
 > **Git状态**: ✅ 工作区干净，所有修改已提交
 
 ---
@@ -615,15 +615,43 @@ const planningStore = usePlanningStore();      // ✅ 保留供未来使用
 
 ### ✅ H5四象限拖拽功能已修复 🎉
 
-**已修复Bug**（commit: e19f190）：
-- ✅ Bug: H5环境下鼠标长按任务500ms无任何拖拽日志
+**已修复Bug**（commit: e19f190 + a859031 + 4eb98a7 + 61354d2）：
+- ✅ Bug 1: H5环境下鼠标长按任务500ms无任何拖拽日志
 - ✅ 根因: 组件仅绑定触摸事件(@touchstart)，未绑定H5鼠标事件(@mousedown)
 - ✅ 修复: 补全鼠标事件绑定链路（TaskCard → TaskQuadrantView → index.vue → useDragDrop）
 - ✅ 文件:
   - `TaskCard.vue`（285行，+9行）：添加 @mousedown + handleMouseDown + mouse-drag-start emit
   - `TaskQuadrantView.vue`（489行，+9行）：8个TaskCard添加 @mouse-drag-start + handleMouseDragStart
   - `index.vue`（804行，+1行）：添加 @mouse-drag-start 连接到 useDragDrop.handleTaskMouseDown
-- ⏸️ **等待用户测试验证修复结果**（H5浏览器长按拖拽）
+
+**补全缺失拖拽功能**（commit: a859031）：
+- ✅ 问题: 重构后缺少删除区域、对话框、拖拽结束逻辑
+- ✅ 修复: 对比旧版index.vue(commit a49356b^, 3728行)，补全所有拖拽相关功能：
+  1. 删除区域UI（底部圆形虚线边框，hover放大1.15倍）
+  2. 重复任务象限切换对话框（2个选项：全部更改 / 仅未来）
+  3. 删除任务确认对话框（DeleteTaskDialog组件，3个选项）
+  4. 完整handleDragEnd逻辑（3种场景：删除/取消/象限切换）
+- ✅ index.vue: 797行 → 948行（+151行拖拽UI）
+
+**拖拽蒙层组件拆分**（commit: 4eb98a7）：
+- ✅ 目标: index.vue超过800行阈值（948行，18.5%超标）
+- ✅ 解决: 创建独立的DragOverlay.vue组件（368行）
+- ✅ 内容: 拖拽浮层 + 删除区域 + 重复任务对话框 + 删除确认对话框
+- ✅ 架构: Props/Emits接口 + defineExpose暴露showDeleteDialog方法
+- ✅ index.vue: 948行 → 767行（-181行，符合CLAUDE.md规范 ✅）
+
+**Bug修复: 未定义变量引用**（commit: 61354d2）：
+- ✅ 问题: handleDeleteTaskConfirm函数引用了showDeleteTaskDialog和deleteTaskOption变量
+- ✅ 根因: DragOverlay组件拆分时移除了这两个状态变量，但忘记删除引用
+- ✅ 修复: 移除lines 449-450对不存在变量的引用
+- ✅ index.vue: 767行 → 763行（-4行）
+
+**文件大小最终验证**（2026-03-06）：
+- ✅ index.vue: **763行**（<800行阈值，健康状态 ✅）
+- ✅ DragOverlay.vue: **368行**（健康状态 ✅）
+- ✅ 总计: 1131行（拆分后合计，符合CLAUDE.md管理规范）
+
+- ⏸️ **等待用户测试验证修复结果**（H5浏览器长按拖拽 + 删除区域 + 对话框）
 
 ### P0 - 下一个Claude应该做的（优先级顺序）
 
