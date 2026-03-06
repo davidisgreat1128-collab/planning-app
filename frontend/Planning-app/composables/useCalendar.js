@@ -265,13 +265,13 @@ export function useCalendar() {
         lunarRes
       });
 
-      // 节日:优先展示法定节假日/节气
+      // 节日:按优先级排序（中国节日 > 西方节日 > 节气 > 国际节日）
       const hMap = holidayRes?.holidayMap || {};
       let holidayCount = 0;
       Object.entries(hMap).forEach(([date, list]) => {
         if (Array.isArray(list) && list.length > 0) {
           const sorted = [...list].sort((a, b) => {
-            const priority = { holiday: 1, solar_term: 2, other: 3 };
+            const priority = { cn_solar: 1, cn_lunar: 1, western: 2, solar_term: 3, intl: 4 };
             return (priority[a.type] || 999) - (priority[b.type] || 999);
           });
           holidayMap.value[date] = sorted[0].name;

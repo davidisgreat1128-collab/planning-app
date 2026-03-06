@@ -55,3 +55,21 @@ export const getLunarInfo = (date) =>
  */
 export const getLunarInfoRange = (start, end) =>
   get('/holidays/lunar/range', { start, end });
+
+/**
+ * 获取指定年份的工作日调整数据（法定节假日+调休补班）
+ * @param {number} year - 年份
+ * @returns {Promise<object>} { year, workDays: [{ date, type, holidayName, remark }] }
+ */
+export const getWorkDaysByYear = (year) =>
+  get(`/holidays/workdays/year/${year}`);
+
+/**
+ * 获取日期范围内的工作日调整数据（日历显示用）
+ * @param {string} start - YYYY-MM-DD
+ * @param {string} end   - YYYY-MM-DD
+ * @returns {Promise<object>} { workDayMap: { "YYYY-MM-DD": { type, holidayName, remark } } }
+ *   type: 'holiday' (休) | 'workday' (班)
+ */
+export const getWorkDaysByRange = (start, end) =>
+  get('/holidays/workdays/range', { start, end });
