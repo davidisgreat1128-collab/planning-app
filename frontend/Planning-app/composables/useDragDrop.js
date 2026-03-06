@@ -341,8 +341,17 @@ export function useDragDrop(options = {}) {
    * H5端:鼠标按下任务项 (内部实现)
    */
   function onTaskMouseDown(e, task, quadrant) {
+    console.log('[useDragDrop] 🖱️ onTaskMouseDown 被调用');
+    console.log('[useDragDrop] 🖱️ e.button:', e.button, '(0=左键, 1=中键, 2=右键)');
+    console.log('[useDragDrop] 🖱️ 任务:', task?.title);
+    console.log('[useDragDrop] 🖱️ 象限:', quadrant);
+    console.log('[useDragDrop] 🖱️ 鼠标坐标:', e.clientX, e.clientY);
+
     // 只处理左键
-    if (e.button !== 0) return;
+    if (e.button !== 0) {
+      console.log('[useDragDrop] ⚠️ 不是左键，忽略');
+      return;
+    }
 
     e.preventDefault();
     e.stopPropagation();
@@ -353,23 +362,38 @@ export function useDragDrop(options = {}) {
     mouseDownY = e.clientY;
     mouseMoved = false;
 
+    console.log('[useDragDrop] 🖱️ 已保存鼠标按下状态');
+    console.log('[useDragDrop] 🖱️ mouseDownTask:', mouseDownTask?.title);
+    console.log('[useDragDrop] 🖱️ mouseDownQuadrant:', mouseDownQuadrant);
+
     // 清除之前的定时器
     if (mouseDownTimer) {
+      console.log('[useDragDrop] 🖱️ 清除之前的定时器');
       clearTimeout(mouseDownTimer);
     }
 
     // 500ms后触发长按
+    console.log('[useDragDrop] ⏰ 启动长按检测定时器 (500ms)');
     mouseDownTimer = setTimeout(() => {
+      console.log('[useDragDrop] ⏰ 长按定时器触发！');
+      console.log('[useDragDrop] ⏰ mouseMoved:', mouseMoved);
+      console.log('[useDragDrop] ⏰ mouseDownTask:', mouseDownTask?.title);
+
       if (!mouseMoved && mouseDownTask) {
+        console.log('[useDragDrop] ✅ 长按成功！准备开始拖拽');
         // 使用保存的坐标创建模拟事件对象
         const fakeEvent = {
           clientX: mouseDownX,
           clientY: mouseDownY
         };
+        console.log('[useDragDrop] 📍 调用 startDrag，坐标:', mouseDownX, mouseDownY);
         startDrag(fakeEvent, mouseDownTask, mouseDownQuadrant);
+      } else {
+        console.log('[useDragDrop] ❌ 长按失败：mouseMoved=', mouseMoved, ', mouseDownTask=', mouseDownTask?.title);
       }
     }, LONG_PRESS_DELAY);
 
+    console.log('[useDragDrop] 🖱️ 开始监听 mousemove 和 mouseup 事件');
     // 监听鼠标移动和松开
     document.addEventListener('mousemove', onTaskMouseMove);
     document.addEventListener('mouseup', onTaskMouseUp);
@@ -379,14 +403,22 @@ export function useDragDrop(options = {}) {
    * H5端:鼠标移动 (检测是否移动超过阈值)
    */
   function onTaskMouseMove(e) {
-    if (!mouseDownTask) return;
+    if (!mouseDownTask) {
+      console.log('[useDragDrop] 🖱️ onTaskMouseMove: mouseDownTask为空，忽略');
+      return;
+    }
 
     const dx = Math.abs(e.clientX - mouseDownX);
     const dy = Math.abs(e.clientY - mouseDownY);
 
+    console.log('[useDragDrop] 🖱️ onTaskMouseMove: 移动距离 dx=', dx, ', dy=', dy, ', 阈值=', DRAG_THRESHOLD);
+
     // 移动超过阈值则取消长按
     if (dx > DRAG_THRESHOLD || dy > DRAG_THRESHOLD) {
-      mouseMoved = true;
+      if (!mouseMoved) {
+        console.log('[useDragDrop] 🖱️ 检测到移动超过阈值，取消长按定时器');
+        mouseMoved = true;
+      }
       if (mouseDownTimer) {
         clearTimeout(mouseDownTimer);
         mouseDownTimer = null;
@@ -395,6 +427,7 @@ export function useDragDrop(options = {}) {
 
     // 如果已经开始拖拽,更新拖拽位置
     if (dragState.value.dragging) {
+      console.log('[useDragDrop] 🖱️ 已在拖拽中，更新位置:', e.clientX, e.clientY);
       onTaskTouchMove({
         touches: [{ clientX: e.clientX, clientY: e.clientY }],
         preventDefault: () => e.preventDefault(),
@@ -407,26 +440,37 @@ export function useDragDrop(options = {}) {
    * H5端:鼠标松开
    */
   function onTaskMouseUp(e) {
+    console.log('[useDragDrop] 🖱️ onTaskMouseUp 被调用');
+    console.log('[useDragDrop] 🖱️ dragState.dragging:', dragState.value.dragging);
+    console.log('[useDragDrop] 🖱️ mouseMoved:', mouseMoved);
+    console.log('[useDragDrop] 🖱️ mouseDownTimer:', mouseDownTimer ? '存在' : 'null');
+
     // 清除定时器
     if (mouseDownTimer) {
+      console.log('[useDragDrop] 🖱️ 清除长按定时器（用户提前松开）');
       clearTimeout(mouseDownTimer);
       mouseDownTimer = null;
     }
 
     // 如果正在拖拽,结束拖拽
     if (dragState.value.dragging) {
+      console.log('[useDragDrop] 🖱️ 正在拖拽中，调用 onTaskTouchEnd 结束拖拽');
       onTaskTouchEnd({
         preventDefault: () => e.preventDefault(),
         stopPropagation: () => e.stopPropagation()
       });
+    } else {
+      console.log('[useDragDrop] 🖱️ 未进入拖拽状态，直接清理');
     }
 
     // 清除状态
+    console.log('[useDragDrop] 🖱️ 清除鼠标按下状态');
     mouseDownTask = null;
     mouseDownQuadrant = '';
     mouseMoved = false;
 
     // 移除监听
+    console.log('[useDragDrop] 🖱️ 移除 mousemove 和 mouseup 监听');
     document.removeEventListener('mousemove', onTaskMouseMove);
     document.removeEventListener('mouseup', onTaskMouseUp);
   }
