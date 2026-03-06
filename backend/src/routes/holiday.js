@@ -22,7 +22,8 @@ router.get('/lunar', holidayController.getLunarInfo);
 
 // GET /api/v1/holidays/lunar/range?start=2026-02-01&end=2026-02-28 - 批量获取农历信息
 router.get('/lunar/range', holidayController.getLunarInfoRange);
-n// GET /api/v1/holidays/workdays/year/:year - 获取指定年份工作日调整数据
+
+// GET /api/v1/holidays/workdays/year/:year - 获取指定年份工作日调整数据
 router.get('/workdays/year/:year', holidayController.getWorkDaysByYear);
 
 // GET /api/v1/holidays/workdays/range?start=2026-02-01&end=2026-02-28 - 获取日期范围工作日调整
