@@ -194,13 +194,6 @@ let mouseDir = ''; // 'h' | 'v' | ''
  * 触摸开始
  */
 function onTouchStart(e) {
-  console.log('[CalendarBar] 📱 onTouchStart - 触摸开始');
-  console.log('[CalendarBar] 📱 触摸坐标:', {
-    x: e.touches[0].clientX,
-    y: e.touches[0].clientY
-  });
-  console.log('[CalendarBar] 📱 当前模式:', props.mode);
-
   touchStartX = e.touches[0].clientX;
   touchStartY = e.touches[0].clientY;
   touchMoved = false;
@@ -218,59 +211,39 @@ function onTouchMove(e) {
   const adx = Math.abs(dx);
   const ady = Math.abs(dy);
 
-  console.log('[CalendarBar] 📱 onTouchMove - 移动距离:', { dx, dy, adx, ady });
-
   // 阈值 12px,且水平/垂直比例差距足够大才锁定方向,避免斜向误判
-  if (adx < 12 && ady < 12) {
-    console.log('[CalendarBar] 📱 onTouchMove - 未达到阈值12px,继续等待');
-    return;
-  }
+  if (adx < 12 && ady < 12) return;
 
   touchMoved = true;
   touchDir = adx > ady * 1.2 ? 'h' : (ady > adx * 1.2 ? 'v' : '');
-  console.log('[CalendarBar] 📱 onTouchMove - 方向已锁定:', touchDir, '(h=水平, v=垂直)');
 }
 
 /**
  * 触摸结束 (触发手势事件)
  */
 function onTouchEnd(e) {
-  console.log('[CalendarBar] 📱 onTouchEnd - 触摸结束');
-  console.log('[CalendarBar] 📱 状态:', { touchMoved, touchDir });
-
   if (!touchMoved || touchDir === '') {
-    console.log('[CalendarBar] 📱 onTouchEnd - 未达到方向判断阈值,视为点击,不触发滑动');
     return; // 未达到方向判断阈值,视为点击
   }
 
   const dx = e.changedTouches[0].clientX - touchStartX;
   const dy = e.changedTouches[0].clientY - touchStartY;
 
-  console.log('[CalendarBar] 📱 onTouchEnd - 最终距离:', { dx, dy });
-
   if (touchDir === 'h' && Math.abs(dx) > 40) {
     // 水平滑动: 切换周/月
     if (dx < 0) {
-      console.log('[CalendarBar] 📱 ✅ 触发左滑事件 (下一周/月)');
       emit('swipe-left'); // 左滑 (下一周/月)
     } else {
-      console.log('[CalendarBar] 📱 ✅ 触发右滑事件 (上一周/月)');
       emit('swipe-right'); // 右滑 (上一周/月)
     }
   } else if (touchDir === 'v') {
     if (props.mode === 'week' && dy > 50) {
       // 周模式下向下拉 → 展开月视图
-      console.log('[CalendarBar] 📱 ✅ 触发展开月视图事件');
       emit('expand');
     } else if (props.mode === 'month' && dy < -50) {
       // 月模式下向上滑 → 折叠回周视图
-      console.log('[CalendarBar] 📱 ✅ 触发折叠回周视图事件');
       emit('collapse');
-    } else {
-      console.log('[CalendarBar] 📱 ⚠️ 垂直滑动距离不足:', { mode: props.mode, dy, 需要: props.mode === 'week' ? '>50' : '<-50' });
     }
-  } else {
-    console.log('[CalendarBar] 📱 ⚠️ 水平滑动距离不足:', { dx, 需要: '>40' });
   }
 }
 
@@ -288,28 +261,16 @@ function handleDateClick(dateStr) {
  * H5端: 鼠标按下 (启动滑动监听)
  */
 function onMouseDown(e) {
-  console.log('[CalendarBar] 🖱️ onMouseDown - 鼠标按下');
-  console.log('[CalendarBar] 🖱️ e.button:', e.button, '(0=左键, 1=中键, 2=右键)');
-  console.log('[CalendarBar] 🖱️ 鼠标坐标:', { x: e.clientX, y: e.clientY });
-  console.log('[CalendarBar] 🖱️ 当前模式:', props.mode);
-  console.log('[CalendarBar] 🖱️ 点击目标:', e.target.tagName, e.target.className);
-
   // 只处理左键（注意：UniApp H5中e.button可能是undefined，这种情况也视为左键）
   if (e.button !== undefined && e.button !== 0) {
-    console.log('[CalendarBar] 🖱️ ⚠️ 不是左键(button=' + e.button + '),忽略');
     return;
   }
-
-  console.log('[CalendarBar] 🖱️ ✅ 左键检测通过(button=' + e.button + ')，undefined视为左键');
 
   // 如果点击的是日期单元格,不处理滑动(让点击事件生效)
   const dateCell = e.target.closest?.('.date-cell');
   if (dateCell) {
-    console.log('[CalendarBar] 🖱️ ⚠️ 点击的是日期单元格,不处理滑动');
     return;
   }
-
-  console.log('[CalendarBar] 🖱️ ✅ 非日期单元格,开始监听滑动');
 
   e.preventDefault();
 
@@ -318,9 +279,6 @@ function onMouseDown(e) {
   mouseStartY = e.clientY;
   mouseMoved = false;
   mouseDir = '';
-
-  console.log('[CalendarBar] 🖱️ 已保存起始坐标:', { mouseStartX, mouseStartY });
-  console.log('[CalendarBar] 🖱️ 开始监听 document 的 mousemove 和 mouseup 事件');
 
   // 监听document上的move和up,确保鼠标移出组件后仍能触发
   document.addEventListener('mousemove', onMouseMove);
@@ -331,10 +289,7 @@ function onMouseDown(e) {
  * H5端: 鼠标移动 (判断滑动方向)
  */
 function onMouseMove(e) {
-  if (!mouseDown) {
-    console.log('[CalendarBar] 🖱️ onMouseMove - mouseDown=false,忽略');
-    return;
-  }
+  if (!mouseDown) return;
   if (mouseMoved) return; // 方向已锁定
 
   const dx = e.clientX - mouseStartX;
@@ -342,77 +297,47 @@ function onMouseMove(e) {
   const adx = Math.abs(dx);
   const ady = Math.abs(dy);
 
-  console.log('[CalendarBar] 🖱️ onMouseMove - 移动距离:', { dx, dy, adx, ady });
-
   // 阈值 12px
-  if (adx < 12 && ady < 12) {
-    console.log('[CalendarBar] 🖱️ onMouseMove - 未达到阈值12px,继续等待');
-    return;
-  }
+  if (adx < 12 && ady < 12) return;
 
   mouseMoved = true;
   mouseDir = adx > ady * 1.2 ? 'h' : (ady > adx * 1.2 ? 'v' : '');
-  console.log('[CalendarBar] 🖱️ onMouseMove - 方向已锁定:', mouseDir, '(h=水平, v=垂直)');
-  console.log('[CalendarBar] 🖱️ onMouseMove - 计算:', {
-    水平优先条件: `adx(${adx}) > ady(${ady}) * 1.2 = ${ady * 1.2}`,
-    结果: adx > ady * 1.2,
-    垂直优先条件: `ady(${ady}) > adx(${adx}) * 1.2 = ${adx * 1.2}`,
-    结果: ady > adx * 1.2
-  });
 }
 
 /**
  * H5端: 鼠标松开 (触发手势事件)
  */
 function onMouseUp(e) {
-  console.log('[CalendarBar] 🖱️ onMouseUp - 鼠标松开');
-  console.log('[CalendarBar] 🖱️ 状态:', { mouseDown, mouseMoved, mouseDir });
-
-  if (!mouseDown) {
-    console.log('[CalendarBar] 🖱️ ⚠️ mouseDown=false,忽略');
-    return;
-  }
+  if (!mouseDown) return;
 
   mouseDown = false;
 
-  console.log('[CalendarBar] 🖱️ 移除 document 的 mousemove 和 mouseup 监听');
   // 移除document监听
   document.removeEventListener('mousemove', onMouseMove);
   document.removeEventListener('mouseup', onMouseUp);
 
   if (!mouseMoved || mouseDir === '') {
-    console.log('[CalendarBar] 🖱️ onMouseUp - 未达到方向判断阈值,视为点击,不触发滑动');
     return; // 未达到阈值,视为点击
   }
 
   const dx = e.clientX - mouseStartX;
   const dy = e.clientY - mouseStartY;
 
-  console.log('[CalendarBar] 🖱️ onMouseUp - 最终距离:', { dx, dy });
-
   if (mouseDir === 'h' && Math.abs(dx) > 40) {
     // 水平滑动: 切换周/月
     if (dx < 0) {
-      console.log('[CalendarBar] 🖱️ ✅ 触发左滑事件 swipe-left (下一周/月)');
       emit('swipe-left');
     } else {
-      console.log('[CalendarBar] 🖱️ ✅ 触发右滑事件 swipe-right (上一周/月)');
       emit('swipe-right');
     }
   } else if (mouseDir === 'v') {
     if (props.mode === 'week' && dy > 50) {
       // 周模式下向下拉 → 展开月视图
-      console.log('[CalendarBar] 🖱️ ✅ 触发展开月视图事件 expand');
       emit('expand');
     } else if (props.mode === 'month' && dy < -50) {
       // 月模式下向上滑 → 折叠回周视图
-      console.log('[CalendarBar] 🖱️ ✅ 触发折叠回周视图事件 collapse');
       emit('collapse');
-    } else {
-      console.log('[CalendarBar] 🖱️ ⚠️ 垂直滑动距离不足:', { mode: props.mode, dy, 需要: props.mode === 'week' ? '>50' : '<-50' });
     }
-  } else {
-    console.log('[CalendarBar] 🖱️ ⚠️ 水平滑动距离不足:', { dx, 需要: '>40' });
   }
 }
 
