@@ -193,19 +193,30 @@ export function useTaskQuadrant() {
       // 对于重复任务,使用 taskId (原始任务ID),否则使用 id
       const taskIdToUpdate = task.taskId || task.id;
 
-      // 根据选项更新任务
-      if (option === 1) {
-        // 完整更改此条重复计划
-        await updateTaskRecurrence(taskIdToUpdate, { isUrgent, isImportant }, 'all');
-      } else if (option === 2) {
-        // 更改当天及未来计划
-        await updateTaskRecurrence(taskIdToUpdate, { isUrgent, isImportant }, 'future');
-      }
+      console.log('[useTaskQuadrant] confirmChangeQuadrant - 更新任务:', taskIdToUpdate);
+      console.log('[useTaskQuadrant] confirmChangeQuadrant - 选项:', option, '(1=全部, 2=未来)');
+      console.log('[useTaskQuadrant] confirmChangeQuadrant - 新属性:', { isUrgent, isImportant });
+
+      // ⚠️ 临时方案：后端API /tasks/:id/recurrence 尚未实现
+      // 目前使用普通updateTask，仅更新当前实例
+      // TODO: 待后端实现批量更新API后，恢复以下代码：
+      // if (option === 1) {
+      //   await updateTaskRecurrence(taskIdToUpdate, { isUrgent, isImportant }, 'all');
+      // } else if (option === 2) {
+      //   await updateTaskRecurrence(taskIdToUpdate, { isUrgent, isImportant }, 'future');
+      // }
+
+      // 临时方案：使用taskStore.updateTask仅更新当前实例
+      console.log('[useTaskQuadrant] ⚠️ 使用临时方案：仅更新当前任务实例（后端API待实现）');
+      await taskStore.updateTask(task.id, { isUrgent, isImportant });
 
       // 刷新任务列表
       await taskStore.fetchTasksByDate(selectedDate);
 
-      uni.showToast({ title: '已更改', icon: 'success' });
+      uni.showToast({
+        title: option === 1 ? '已更改（当前实例）' : '已更改（当前实例）',
+        icon: 'success'
+      });
     } catch (err) {
       console.error('[useTaskQuadrant] 更改象限失败:', err);
       uni.showToast({ title: '更改失败', icon: 'none' });

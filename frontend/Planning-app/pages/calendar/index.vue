@@ -417,17 +417,17 @@ async function handleDeleteTaskConfirm(option) {
     if (option === 1) {
       // 仅删除当天计划
       console.log('[index.vue] 仅删除当天任务:', task.id);
-      await taskStore.deleteTask(task.id);
+      await taskStore.removeTask(task.id);
     } else if (option === 2) {
       // 完整清空此条重复计划 (删除整个重复系列)
       console.log('[index.vue] 完整清空重复任务:', task.id);
       // TODO: 调用后端API删除重复任务的所有实例
-      await taskStore.deleteTask(task.id);
+      await taskStore.removeTask(task.id);
     } else if (option === 3) {
       // 删除当天及未来计划
       console.log('[index.vue] 删除当天及未来任务:', task.id);
       // TODO: 调用后端API删除指定日期之后的所有实例
-      await taskStore.deleteTask(task.id);
+      await taskStore.removeTask(task.id);
     }
 
     // 刷新任务列表
