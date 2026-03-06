@@ -294,20 +294,22 @@ function onMouseDown(e) {
   console.log('[CalendarBar] 🖱️ 当前模式:', props.mode);
   console.log('[CalendarBar] 🖱️ 点击目标:', e.target.tagName, e.target.className);
 
-  // 只处理左键
-  if (e.button !== 0) {
-    console.log('[CalendarBar] 🖱️ ⚠️ 不是左键,忽略');
+  // 只处理左键（注意：UniApp H5中e.button可能是undefined，这种情况也视为左键）
+  if (e.button !== undefined && e.button !== 0) {
+    console.log('[CalendarBar] 🖱️ ⚠️ 不是左键(button=' + e.button + '),忽略');
     return;
   }
 
+  console.log('[CalendarBar] 🖱️ ✅ 左键检测通过(button=' + e.button + ')，undefined视为左键');
+
   // 如果点击的是日期单元格,不处理滑动(让点击事件生效)
-  const dateCell = e.target.closest('.date-cell');
+  const dateCell = e.target.closest?.('.date-cell');
   if (dateCell) {
     console.log('[CalendarBar] 🖱️ ⚠️ 点击的是日期单元格,不处理滑动');
     return;
   }
 
-  console.log('[CalendarBar] 🖱️ ✅ 左键检测通过,开始监听滑动');
+  console.log('[CalendarBar] 🖱️ ✅ 非日期单元格,开始监听滑动');
 
   e.preventDefault();
 
