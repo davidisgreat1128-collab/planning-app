@@ -293,7 +293,9 @@ export function useCalendar() {
           holidayCount++;
         } else {
           console.log(`[useCalendar] ${date} 节日数据无效:`, { isArray: Array.isArray(list), length: list?.length });
+        }
       });
+
 
       // 农历:如果该日期无节日,则显示农历
       const lMap = lunarRes?.lunarMap || {};
