@@ -75,7 +75,6 @@
         @checkbox-click="toggleTaskDone"
         @drag-start="dragDropComposable.startDrag"
         @mouse-drag-start="dragDropComposable.handleTaskMouseDown"
-        @drop="handleDrop"
         @goals-click="goToPlanningCategory"
       />
 
@@ -125,15 +124,26 @@
     </scroll-view>
 
     <!-- 拖拽中的任务浮层 -->
-    <view
-      v-if="dragDropComposable.dragState.value.dragging"
-      class="drag-overlay"
-      :style="{
-        left: dragDropComposable.dragState.value.x + 'px',
-        top: dragDropComposable.dragState.value.y + 'px'
-      }"
-    >
-      <text class="drag-text">{{ dragDropComposable.dragState.value.task?.title }}</text>
+    <view v-if="dragDropComposable.dragState.value.dragging" class="drag-overlay-container">
+      <!-- 半透明拖拽的任务副本 -->
+      <view
+        class="drag-overlay"
+        :style="{
+          left: dragDropComposable.dragState.value.x + 'px',
+          top: dragDropComposable.dragState.value.y + 'px'
+        }"
+      >
+        <text class="drag-text">{{ dragDropComposable.dragState.value.task?.title }}</text>
+      </view>
+
+      <!-- 删除区域 -->
+      <view
+        class="delete-zone"
+        :class="{ 'delete-zone-active': dragDropComposable.dragState.value.overDelete }"
+      >
+        <view class="delete-zone-icon">🗑️</view>
+        <text class="delete-zone-text">拖到此处删除</text>
+      </view>
     </view>
 
     <!-- FAB 悬浮按钮 -->
@@ -218,6 +228,13 @@
         </view>
       </view>
     </view>
+
+    <!-- 删除任务确认对话框 -->
+    <DeleteTaskDialog
+      v-model:show="showDeleteTaskDialog"
+      v-model:selectedOption="deleteTaskOption"
+      @confirm="handleDeleteTaskConfirm"
+    />
   </view>
 </template>
 
@@ -233,6 +250,7 @@ import CalendarBar from '@/components/calendar/CalendarBar.vue';
 import TaskQuadrantView from '@/components/calendar/TaskQuadrantView.vue';
 import TimelineView from '@/components/calendar/TimelineView.vue';
 import TaskCard from '@/components/calendar/TaskCard.vue';
+import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 
 // Store
 const taskStore = useTaskStore();
@@ -240,7 +258,7 @@ const taskStore = useTaskStore();
 // Composables
 const calendarComposable = useCalendar();
 const dragDropComposable = useDragDrop({
-  onDrop: handleDrop
+  onDragEnd: handleDragEnd
 });
 const quadrantComposable = useTaskQuadrant();
 
@@ -251,6 +269,10 @@ const fabExpanded = ref(false);
 const scrollTop = ref(0);
 const showSubtaskPopup = ref(false);
 const currentSubtaskParent = ref(null);
+
+// 删除任务对话框
+const showDeleteTaskDialog = ref(false);
+const deleteTaskOption = ref(1);
 
 // 内容区触摸状态
 const contentTouchStartY = ref(0);
@@ -386,27 +408,96 @@ async function toggleSubtask(subtask) {
   });
 }
 
-async function handleDrop(e, toQuadrant) {
-  const { task, fromQuadrant } = dragDropComposable.dragState.value;
+/**
+ * 拖拽结束处理 (由useDragDrop回调)
+ * @param {object} task - 被拖拽的任务
+ * @param {string} fromQuadrant - 来源象限
+ * @param {string|null} toQuadrant - 目标象限 (null表示删除)
+ * @param {object} options - 附加选项 { shouldDelete: boolean }
+ */
+async function handleDragEnd(task, fromQuadrant, toQuadrant, options = {}) {
+  console.log('[index.vue] handleDragEnd - 任务:', task?.title, ', 从:', fromQuadrant, ', 到:', toQuadrant, ', 选项:', options);
 
-  if (!task || fromQuadrant === toQuadrant) {
-    dragDropComposable.cancelDrag();
+  // 场景1: 拖拽到删除区域
+  if (options.shouldDelete || toQuadrant === null) {
+    console.log('[index.vue] handleDragEnd - 触发删除流程');
+    showDeleteTaskDialog.value = true;
     return;
   }
 
-  // 调用 Composable 的象限切换逻辑
+  // 场景2: 回到原象限或无效移动
+  if (!toQuadrant || fromQuadrant === toQuadrant) {
+    console.log('[index.vue] handleDragEnd - 无效移动,取消');
+    return;
+  }
+
+  // 场景3: 象限切换
+  console.log('[index.vue] handleDragEnd - 触发象限切换');
   await quadrantComposable.changeTaskQuadrant(
     task,
     fromQuadrant,
     toQuadrant,
     calendarComposable.selectedDate.value
   );
-
-  dragDropComposable.cancelDrag();
 }
 
+/**
+ * 确认象限切换 (重复任务对话框)
+ */
 async function confirmChangeQuadrant() {
   await quadrantComposable.confirmChangeQuadrant();
+  await calendarComposable.loadTasks(); // 刷新任务列表
+}
+
+/**
+ * 处理删除任务确认 (删除对话框)
+ * @param {number} option - 1=仅删除当天, 2=完整清空, 3=删除当天及未来
+ */
+async function handleDeleteTaskConfirm(option) {
+  const task = dragDropComposable.dragState.value.task;
+
+  if (!task) {
+    console.error('[index.vue] handleDeleteTaskConfirm - task为空');
+    return;
+  }
+
+  console.log('[index.vue] handleDeleteTaskConfirm - 删除选项:', option, ', 任务:', task.title);
+
+  try {
+    if (option === 1) {
+      // 仅删除当天计划
+      console.log('[index.vue] 仅删除当天任务:', task.id);
+      await taskStore.deleteTask(task.id);
+    } else if (option === 2) {
+      // 完整清空此条重复计划 (删除整个重复系列)
+      console.log('[index.vue] 完整清空重复任务:', task.id);
+      // TODO: 调用后端API删除重复任务的所有实例
+      await taskStore.deleteTask(task.id);
+    } else if (option === 3) {
+      // 删除当天及未来计划
+      console.log('[index.vue] 删除当天及未来任务:', task.id);
+      // TODO: 调用后端API删除指定日期之后的所有实例
+      await taskStore.deleteTask(task.id);
+    }
+
+    // 刷新任务列表
+    await calendarComposable.loadTasks();
+
+    uni.showToast({
+      title: '已删除',
+      icon: 'success'
+    });
+  } catch (err) {
+    console.error('[index.vue] handleDeleteTaskConfirm - 删除失败:', err);
+    uni.showToast({
+      title: '删除失败',
+      icon: 'none'
+    });
+  }
+
+  // 关闭对话框
+  showDeleteTaskDialog.value = false;
+  deleteTaskOption.value = 1;
 }
 
 function goToPlanningCategory() {
@@ -572,20 +663,73 @@ onMounted(async () => {
   display: block;
 }
 
-/* 拖拽浮层 */
+/* 拖拽浮层容器 */
+.drag-overlay-container {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 9998;
+  pointer-events: none;
+}
+
+/* 拖拽中的任务副本 */
 .drag-overlay {
   position: fixed;
-  z-index: 9999;
-  padding: 16rpx 24rpx;
-  background: rgba(0, 0, 0, 0.8);
-  border-radius: 12rpx;
+  z-index: 10000;
+  padding: 24rpx 32rpx;
+  background: rgba(66, 133, 244, 0.95);
+  border-radius: 16rpx;
   pointer-events: none;
   transform: translate(-50%, -50%);
+  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.3);
+  border: 6rpx solid #FF4D4F;
+  min-width: 200rpx;
 }
 
 .drag-text {
-  font-size: 28rpx;
+  font-size: 32rpx;
+  font-weight: 600;
   color: #FFFFFF;
+}
+
+/* 删除区域 */
+.delete-zone {
+  position: fixed;
+  bottom: 100rpx;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 9999;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 160rpx;
+  height: 160rpx;
+  background: rgba(255, 77, 79, 0.15);
+  border: 4rpx dashed #FF4D4F;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+  pointer-events: none;
+}
+
+.delete-zone-active {
+  background: rgba(255, 77, 79, 0.35);
+  border-color: #FF1744;
+  transform: translateX(-50%) scale(1.15);
+  box-shadow: 0 8rpx 32rpx rgba(255, 77, 79, 0.4);
+}
+
+.delete-zone-icon {
+  font-size: 64rpx;
+  margin-bottom: 8rpx;
+}
+
+.delete-zone-text {
+  font-size: 24rpx;
+  color: #FF4D4F;
+  font-weight: 600;
 }
 
 /* FAB 悬浮按钮 */
