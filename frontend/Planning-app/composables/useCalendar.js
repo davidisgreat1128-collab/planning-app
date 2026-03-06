@@ -28,6 +28,7 @@
 
 import { ref, computed } from 'vue';
 import { useTaskStore } from '@/store/task';
+import { usePlanStore } from '@/store/plan';
 import { usePlanningStore } from '@/store/planning';
 import { useLogStore } from '@/store/log';
 import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday';
@@ -98,12 +99,14 @@ export function useCalendar() {
 
   // ============ Stores ============
   const taskStore = useTaskStore();
-  const planStore = usePlanningStore();
+  const planStore = usePlanStore();
+  const planningStore = usePlanningStore();
   const logStore = useLogStore();
 
   console.log('[useCalendar] Stores 已获取:', {
     taskStore: !!taskStore,
     planStore: !!planStore,
+    planningStore: !!planningStore,
     logStore: !!logStore
   });
 
