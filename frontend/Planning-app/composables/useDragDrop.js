@@ -284,6 +284,8 @@ export function useDragDrop(options = {}) {
    * @returns {string|null} 'q1' | 'q2' | 'q3' | 'q4' | null
    */
   function detectQuadrantAtPosition(x, y) {
+    console.log('[useDragDrop] 🎯 detectQuadrantAtPosition - 检测坐标:', x, y);
+
     // #ifdef H5
     const quadrants = {
       q1: document.querySelector?.('.nb-q1'),
@@ -292,13 +294,29 @@ export function useDragDrop(options = {}) {
       q4: document.querySelector?.('.nb-q4')
     };
 
+    console.log('[useDragDrop] 🎯 H5环境 - 查询象限元素:');
     for (const [key, el] of Object.entries(quadrants)) {
+      console.log('[useDragDrop] 🎯   ', key, ':', el ? '✅ 找到' : '❌ 未找到');
       if (!el) continue;
       const rect = el.getBoundingClientRect();
+      console.log('[useDragDrop] 🎯   ', key, 'rect:', {
+        left: rect.left,
+        right: rect.right,
+        top: rect.top,
+        bottom: rect.bottom,
+        width: rect.width,
+        height: rect.height
+      });
+      console.log('[useDragDrop] 🎯   ', key, '坐标检测:', {
+        xInRange: x >= rect.left && x <= rect.right,
+        yInRange: y >= rect.top && y <= rect.bottom
+      });
       if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        console.log('[useDragDrop] 🎯 ✅ 检测到在', key, '象限内');
         return key;
       }
     }
+    console.log('[useDragDrop] 🎯 ❌ 未检测到任何象限');
     // #endif
 
     // #ifndef H5
