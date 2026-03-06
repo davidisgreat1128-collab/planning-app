@@ -74,6 +74,7 @@
         @task-click="openTask"
         @checkbox-click="toggleTaskDone"
         @drag-start="dragDropComposable.startDrag"
+        @mouse-drag-start="dragDropComposable.handleTaskMouseDown"
         @drop="handleDrop"
         @goals-click="goToPlanningCategory"
       />

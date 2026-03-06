@@ -44,6 +44,7 @@
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
               @drag-start="(e, task) => handleDragStart(e, task, 'q3')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q3')"
             />
 
             <!-- 已完成任务 -->
@@ -55,6 +56,7 @@
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
               @drag-start="(e, task) => handleDragStart(e, task, 'q3')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q3')"
             />
 
             <!-- 空状态 -->
@@ -91,6 +93,7 @@
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
               @drag-start="(e, task) => handleDragStart(e, task, 'q1')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q1')"
             />
 
             <task-card
@@ -101,6 +104,7 @@
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
               @drag-start="(e, task) => handleDragStart(e, task, 'q1')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q1')"
             />
 
             <view v-if="urgentImportant.length === 0 && urgentImportantDone.length === 0" class="empty-quadrant">
@@ -139,6 +143,7 @@
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
               @drag-start="(e, task) => handleDragStart(e, task, 'q4')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q4')"
             />
 
             <task-card
@@ -149,6 +154,7 @@
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
               @drag-start="(e, task) => handleDragStart(e, task, 'q4')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q4')"
             />
 
             <view v-if="notUrgentNotImportant.length === 0 && notUrgentNotImportantDone.length === 0" class="empty-quadrant">
@@ -184,6 +190,7 @@
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
               @drag-start="(e, task) => handleDragStart(e, task, 'q2')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q2')"
             />
 
             <task-card
@@ -194,6 +201,7 @@
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
               @drag-start="(e, task) => handleDragStart(e, task, 'q2')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q2')"
             />
 
             <view v-if="notUrgentImportant.length === 0 && notUrgentImportantDone.length === 0" class="empty-quadrant">
@@ -253,6 +261,7 @@ const emit = defineEmits([
   'task-click',
   'checkbox-click',
   'drag-start',
+  'mouse-drag-start',
   'drag-over',
   'drop',
   'goals-click'
@@ -275,6 +284,11 @@ function handleCheckboxClick(task) {
 function handleDragStart(e, task, quadrant) {
   console.log('[TaskQuadrantView] handleDragStart - 任务:', task?.title, ', 象限:', quadrant);
   emit('drag-start', e, task, quadrant);
+}
+
+function handleMouseDragStart(e, task, quadrant) {
+  console.log('[TaskQuadrantView] handleMouseDragStart (H5鼠标) - 任务:', task?.title, ', 象限:', quadrant);
+  emit('mouse-drag-start', e, task, quadrant);
 }
 
 function handleQuadrantTouchStart(e, quadrant) {
