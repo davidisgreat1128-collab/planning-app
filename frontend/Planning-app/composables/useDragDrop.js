@@ -162,10 +162,10 @@ export function useDragDrop(options = {}) {
   function updateQuadrantRects() {
     const query = uni.createSelectorQuery();
 
-    query.select('.nb-q1').boundingClientRect();
-    query.select('.nb-q2').boundingClientRect();
-    query.select('.nb-q3').boundingClientRect();
-    query.select('.nb-q4').boundingClientRect();
+    query.select('.quadrant-q1').boundingClientRect();
+    query.select('.quadrant-q2').boundingClientRect();
+    query.select('.quadrant-q3').boundingClientRect();
+    query.select('.quadrant-q4').boundingClientRect();
     query.select('.delete-zone').boundingClientRect();
 
     query.exec((res) => {
@@ -288,10 +288,10 @@ export function useDragDrop(options = {}) {
 
     // #ifdef H5
     const quadrants = {
-      q1: document.querySelector?.('.nb-q1'),
-      q2: document.querySelector?.('.nb-q2'),
-      q3: document.querySelector?.('.nb-q3'),
-      q4: document.querySelector?.('.nb-q4')
+      q1: document.querySelector?.('.quadrant-q1'),
+      q2: document.querySelector?.('.quadrant-q2'),
+      q3: document.querySelector?.('.quadrant-q3'),
+      q4: document.querySelector?.('.quadrant-q4')
     };
 
     console.log('[useDragDrop] 🎯 H5环境 - 查询象限元素:');
