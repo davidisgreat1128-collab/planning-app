@@ -347,14 +347,16 @@ export function useDragDrop(options = {}) {
     console.log('[useDragDrop] 🖱️ 象限:', quadrant);
     console.log('[useDragDrop] 🖱️ 鼠标坐标:', e.clientX, e.clientY);
 
-    // 只处理左键
-    if (e.button !== 0) {
-      console.log('[useDragDrop] ⚠️ 不是左键，忽略');
+    // 只处理左键（注意：UniApp H5中e.button可能是undefined，这种情况也视为左键）
+    if (e.button !== undefined && e.button !== 0) {
+      console.log('[useDragDrop] ⚠️ 不是左键（button=' + e.button + '），忽略');
       return;
     }
 
-    e.preventDefault();
-    e.stopPropagation();
+    console.log('[useDragDrop] ✅ 左键检测通过（button=' + e.button + '）');
+
+    e.preventDefault?.();
+    e.stopPropagation?.();
 
     mouseDownTask = task;
     mouseDownQuadrant = quadrant;
