@@ -123,29 +123,6 @@
       </view>
     </scroll-view>
 
-    <!-- 拖拽中的任务浮层 -->
-    <view v-if="dragDropComposable.dragState.value.dragging" class="drag-overlay-container">
-      <!-- 半透明拖拽的任务副本 -->
-      <view
-        class="drag-overlay"
-        :style="{
-          left: dragDropComposable.dragState.value.x + 'px',
-          top: dragDropComposable.dragState.value.y + 'px'
-        }"
-      >
-        <text class="drag-text">{{ dragDropComposable.dragState.value.task?.title }}</text>
-      </view>
-
-      <!-- 删除区域 -->
-      <view
-        class="delete-zone"
-        :class="{ 'delete-zone-active': dragDropComposable.dragState.value.overDelete }"
-      >
-        <view class="delete-zone-icon">🗑️</view>
-        <text class="delete-zone-text">拖到此处删除</text>
-      </view>
-    </view>
-
     <!-- FAB 悬浮按钮 -->
     <view class="fab-container">
       <view v-if="fabExpanded" class="fab-menu">
@@ -160,37 +137,6 @@
       </view>
       <view class="fab-btn" :class="{ expanded: fabExpanded }" @tap="toggleFab">
         <text class="fab-icon">{{ fabExpanded ? '×' : '+' }}</text>
-      </view>
-    </view>
-
-    <!-- 象限切换弹窗 -->
-    <view
-      v-if="quadrantComposable.showChangeQuadrantDialog.value"
-      class="modal-overlay"
-      @tap="quadrantComposable.closeChangeQuadrantDialog"
-    >
-      <view class="modal-content" @tap.stop>
-        <text class="modal-title">选择更改范围</text>
-        <view class="modal-options">
-          <view
-            class="modal-option"
-            :class="{ active: quadrantComposable.changeQuadrantOption.value === 1 }"
-            @tap="quadrantComposable.changeQuadrantOption.value = 1"
-          >
-            <text class="option-text">全部更改</text>
-          </view>
-          <view
-            class="modal-option"
-            :class="{ active: quadrantComposable.changeQuadrantOption.value === 2 }"
-            @tap="quadrantComposable.changeQuadrantOption.value = 2"
-          >
-            <text class="option-text">仅当天及未来</text>
-          </view>
-        </view>
-        <view class="modal-actions">
-          <text class="modal-btn modal-btn-cancel" @tap="quadrantComposable.closeChangeQuadrantDialog">取消</text>
-          <text class="modal-btn modal-btn-confirm" @tap="confirmChangeQuadrant">确定</text>
-        </view>
       </view>
     </view>
 
@@ -229,11 +175,16 @@
       </view>
     </view>
 
-    <!-- 删除任务确认对话框 -->
-    <DeleteTaskDialog
-      v-model:show="showDeleteTaskDialog"
-      v-model:selectedOption="deleteTaskOption"
-      @confirm="handleDeleteTaskConfirm"
+    <!-- 拖拽蒙层组件（包含拖拽UI、删除区域、对话框） -->
+    <DragOverlay
+      ref="dragOverlayRef"
+      :drag-state="dragDropComposable.dragState.value"
+      :show-change-quadrant-dialog="quadrantComposable.showChangeQuadrantDialog.value"
+      :change-quadrant-option="quadrantComposable.changeQuadrantOption.value"
+      @update:changeQuadrantOption="quadrantComposable.changeQuadrantOption.value = $event"
+      @close-change-quadrant-dialog="quadrantComposable.closeChangeQuadrantDialog"
+      @confirm-change-quadrant="confirmChangeQuadrant"
+      @confirm-delete="handleDeleteTaskConfirm"
     />
   </view>
 </template>
@@ -250,7 +201,7 @@ import CalendarBar from '@/components/calendar/CalendarBar.vue';
 import TaskQuadrantView from '@/components/calendar/TaskQuadrantView.vue';
 import TimelineView from '@/components/calendar/TimelineView.vue';
 import TaskCard from '@/components/calendar/TaskCard.vue';
-import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
+import DragOverlay from '@/components/calendar/DragOverlay.vue';
 
 // Store
 const taskStore = useTaskStore();
@@ -270,9 +221,8 @@ const scrollTop = ref(0);
 const showSubtaskPopup = ref(false);
 const currentSubtaskParent = ref(null);
 
-// 删除任务对话框
-const showDeleteTaskDialog = ref(false);
-const deleteTaskOption = ref(1);
+// DragOverlay组件ref
+const dragOverlayRef = ref(null);
 
 // 内容区触摸状态
 const contentTouchStartY = ref(0);
@@ -421,7 +371,7 @@ async function handleDragEnd(task, fromQuadrant, toQuadrant, options = {}) {
   // 场景1: 拖拽到删除区域
   if (options.shouldDelete || toQuadrant === null) {
     console.log('[index.vue] handleDragEnd - 触发删除流程');
-    showDeleteTaskDialog.value = true;
+    dragOverlayRef.value?.showDeleteDialog();
     return;
   }
 
@@ -663,75 +613,6 @@ onMounted(async () => {
   display: block;
 }
 
-/* 拖拽浮层容器 */
-.drag-overlay-container {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  z-index: 9998;
-  pointer-events: none;
-}
-
-/* 拖拽中的任务副本 */
-.drag-overlay {
-  position: fixed;
-  z-index: 10000;
-  padding: 24rpx 32rpx;
-  background: rgba(66, 133, 244, 0.95);
-  border-radius: 16rpx;
-  pointer-events: none;
-  transform: translate(-50%, -50%);
-  box-shadow: 0 8rpx 24rpx rgba(0, 0, 0, 0.3);
-  border: 6rpx solid #FF4D4F;
-  min-width: 200rpx;
-}
-
-.drag-text {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #FFFFFF;
-}
-
-/* 删除区域 */
-.delete-zone {
-  position: fixed;
-  bottom: 100rpx;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 9999;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  width: 160rpx;
-  height: 160rpx;
-  background: rgba(255, 77, 79, 0.15);
-  border: 4rpx dashed #FF4D4F;
-  border-radius: 50%;
-  transition: all 0.3s ease;
-  pointer-events: none;
-}
-
-.delete-zone-active {
-  background: rgba(255, 77, 79, 0.35);
-  border-color: #FF1744;
-  transform: translateX(-50%) scale(1.15);
-  box-shadow: 0 8rpx 32rpx rgba(255, 77, 79, 0.4);
-}
-
-.delete-zone-icon {
-  font-size: 64rpx;
-  margin-bottom: 8rpx;
-}
-
-.delete-zone-text {
-  font-size: 24rpx;
-  color: #FF4D4F;
-  font-weight: 600;
-}
-
 /* FAB 悬浮按钮 */
 .fab-container {
   position: fixed;
@@ -786,7 +667,7 @@ onMounted(async () => {
   line-height: 1;
 }
 
-/* 弹窗 */
+/* 子任务弹窗蒙层（保留，非拖拽相关） */
 .modal-overlay {
   position: fixed;
   top: 0;
@@ -798,68 +679,6 @@ onMounted(async () => {
   align-items: center;
   justify-content: center;
   z-index: 1000;
-}
-
-.modal-content {
-  width: 600rpx;
-  background: #FFFFFF;
-  border-radius: 24rpx;
-  padding: 40rpx 32rpx;
-}
-
-.modal-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #333333;
-  margin-bottom: 32rpx;
-  display: block;
-  text-align: center;
-}
-
-.modal-options {
-  margin-bottom: 32rpx;
-}
-
-.modal-option {
-  padding: 24rpx;
-  margin-bottom: 16rpx;
-  background: #F5F5F5;
-  border-radius: 12rpx;
-  border: 2rpx solid transparent;
-}
-
-.modal-option.active {
-  background: #E6F0FF;
-  border-color: #597EF7;
-}
-
-.option-text {
-  font-size: 28rpx;
-  color: #333333;
-}
-
-.modal-actions {
-  display: flex;
-  justify-content: space-between;
-}
-
-.modal-btn {
-  flex: 1;
-  padding: 24rpx;
-  text-align: center;
-  font-size: 28rpx;
-  border-radius: 12rpx;
-}
-
-.modal-btn-cancel {
-  background: #F0F0F0;
-  color: #666666;
-  margin-right: 16rpx;
-}
-
-.modal-btn-confirm {
-  background: #597EF7;
-  color: #FFFFFF;
 }
 
 /* 子任务弹窗 */
