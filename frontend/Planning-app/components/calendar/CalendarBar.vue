@@ -124,7 +124,7 @@
  * @author Claude Sonnet 4.5
  * @date 2026-03-05
  */
-import { ref } from 'vue';
+import { ref, watch, onMounted } from 'vue';
 
 // ============ Props ============
 const props = defineProps({
@@ -180,6 +180,33 @@ const emit = defineEmits([
   'expand',          // 向下拉展开为月视图
   'collapse'         // 向上滑折叠为周视图
 ]);
+
+
+// ============ 调试日志 ============
+// 监控currentWeekDates变化
+watch(() => props.currentWeekDates, (newVal) => {
+  console.log('[CalendarBar] currentWeekDates变化:', newVal);
+  if (newVal && newVal.length > 0) {
+    console.log('[CalendarBar] 第一个日期数据示例:', newVal[0]);
+    console.log('[CalendarBar] lunarLabel示例:', newVal.map(d => `${d.dateStr}: ${d.lunarLabel}`).join(', '));
+    console.log('[CalendarBar] workDay示例:', newVal.map(d => `${d.dateStr}: ${d.workDay ? d.workDay.type : '无'}`).join(', '));
+  }
+}, { immediate: true, deep: true });
+
+// 监控monthRows变化
+watch(() => props.monthRows, (newVal) => {
+  console.log('[CalendarBar] monthRows变化, 行数:', newVal?.length);
+  if (newVal && newVal.length > 0 && newVal[0].length > 0) {
+    console.log('[CalendarBar] 第一行第一个日期数据示例:', newVal[0][0]);
+  }
+}, { immediate: true, deep: true });
+
+onMounted(() => {
+  console.log('[CalendarBar] 组件已挂载');
+  console.log('[CalendarBar] 当前mode:', props.mode);
+  console.log('[CalendarBar] currentWeekDates数量:', props.currentWeekDates?.length);
+  console.log('[CalendarBar] monthRows数量:', props.monthRows?.length);
+});
 
 // ============ 触摸状态 ============
 let touchStartX = 0;

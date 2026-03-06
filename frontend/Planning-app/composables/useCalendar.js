@@ -265,33 +265,50 @@ export function useCalendar() {
         getWorkDaysByRange(start, end)
       ]);
 
-      console.log('[useCalendar] API 响应:', {
-        holidayRes,
-        lunarRes,
-        workDayRes
-      });
+      console.log('[useCalendar] ========== 开始处理节日数据 ==========');
+      console.log('[useCalendar] API 响应 holidayRes:', holidayRes);
+      console.log('[useCalendar] API 响应 lunarRes:', lunarRes);
+      console.log('[useCalendar] API 响应 workDayRes:', workDayRes);
+
 
       // 节日:按优先级排序（中国节日 > 西方节日 > 节气 > 国际节日）
       const hMap = holidayRes?.holidayMap || {};
+      console.log('[useCalendar] 节日Map原始数据 hMap:', hMap);
+      console.log('[useCalendar] hMap类型:', typeof hMap, ', 是否为对象:', hMap && typeof hMap === 'object');
+      console.log('[useCalendar] hMap keys数量:', Object.keys(hMap).length);
+
       let holidayCount = 0;
       Object.entries(hMap).forEach(([date, list]) => {
+        console.log(`[useCalendar] 处理日期 ${date}, 节日列表:`, list);
+
         if (Array.isArray(list) && list.length > 0) {
+          console.log(`[useCalendar] ${date} 有 ${list.length} 个节日:`, list.map(h => `${h.name}(${h.type})`).join(', '));
+
           const sorted = [...list].sort((a, b) => {
             const priority = { cn_solar: 1, cn_lunar: 1, western: 2, solar_term: 3, intl: 4 };
             return (priority[a.type] || 999) - (priority[b.type] || 999);
           });
+          console.log(`[useCalendar] ${date} 排序后最高优先级节日:`, sorted[0]);
           holidayMap.value[date] = sorted[0].name;
           holidayCount++;
-        }
+        } else {
+          console.log(`[useCalendar] ${date} 节日数据无效:`, { isArray: Array.isArray(list), length: list?.length });
       });
 
       // 农历:如果该日期无节日,则显示农历
       const lMap = lunarRes?.lunarMap || {};
+      console.log('[useCalendar] ========== 开始处理农历数据 ==========');
+      console.log('[useCalendar] 农历Map原始数据 lMap:', lMap);
+      console.log('[useCalendar] lMap keys数量:', Object.keys(lMap).length);
+
       let lunarCount = 0;
       Object.entries(lMap).forEach(([date, info]) => {
+        console.log(`[useCalendar] 处理农历日期 ${date}, 数据:`, info);
         if (!holidayMap.value[date]) {
           // 优先显示农历节日,其次显示月日
-          holidayMap.value[date] = info.lunarFestival || info.lunarDayName || '';
+          const lunarDisplay = info.lunarFestival || info.lunarDayName || '';
+          console.log(`[useCalendar] ${date} 显示农历: ${lunarDisplay}`);
+          holidayMap.value[date] = lunarDisplay;
           lunarCount++;
         }
       });
