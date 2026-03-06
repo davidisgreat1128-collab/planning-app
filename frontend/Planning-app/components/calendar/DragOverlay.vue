@@ -34,7 +34,7 @@
         <view
           class="modal-option"
           :class="{ active: changeQuadrantOption === 1 }"
-          @tap="changeQuadrantOption = 1"
+          @tap="emit('update:changeQuadrantOption', 1)"
         >
           <text class="option-text">完整更改此条重复计划</text>
           <view v-if="changeQuadrantOption === 1" class="option-check">✓</view>
@@ -42,7 +42,7 @@
         <view
           class="modal-option"
           :class="{ active: changeQuadrantOption === 2 }"
-          @tap="changeQuadrantOption = 2"
+          @tap="emit('update:changeQuadrantOption', 2)"
         >
           <text class="option-text">更改当天及未来计划</text>
           <text class="option-hint">不影响过去记录</text>
@@ -273,25 +273,25 @@ defineExpose({
 }
 
 .modal-content {
-  width: 640rpx;
-  max-width: 90vw;
+  width: 540rpx;
+  max-width: 85vw;
   background: #FFFFFF;
-  border-radius: 24rpx;
-  padding: 48rpx 40rpx 40rpx;
-  box-shadow: 0 16rpx 64rpx rgba(0, 0, 0, 0.3);
+  border-radius: 20rpx;
+  padding: 36rpx 32rpx 32rpx;
+  box-shadow: 0 12rpx 48rpx rgba(0, 0, 0, 0.25);
 }
 
 .modal-title {
-  font-size: 36rpx;
+  font-size: 32rpx;
   font-weight: 600;
   color: #333333;
   display: block;
-  margin-bottom: 32rpx;
+  margin-bottom: 28rpx;
   text-align: center;
 }
 
 .modal-options {
-  margin-bottom: 32rpx;
+  margin-bottom: 28rpx;
 }
 
 .modal-option {
@@ -299,12 +299,13 @@ defineExpose({
   flex-direction: column;
   align-items: flex-start;
   position: relative;
-  padding: 32rpx 80rpx 32rpx 32rpx;
-  margin-bottom: 16rpx;
+  padding: 24rpx 64rpx 24rpx 24rpx;
+  margin-bottom: 12rpx;
   background: #F5F5F5;
-  border-radius: 16rpx;
-  border: 3rpx solid transparent;
+  border-radius: 12rpx;
+  border: 2rpx solid transparent;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .modal-option.active {
@@ -313,28 +314,28 @@ defineExpose({
 }
 
 .option-text {
-  font-size: 30rpx;
+  font-size: 28rpx;
   font-weight: 500;
   color: #333333;
-  margin-bottom: 8rpx;
+  margin-bottom: 4rpx;
 }
 
 .option-hint {
-  font-size: 24rpx;
+  font-size: 22rpx;
   color: #999999;
 }
 
 .option-check {
   position: absolute;
-  right: 32rpx;
+  right: 24rpx;
   top: 50%;
   transform: translateY(-50%);
-  width: 48rpx;
-  height: 48rpx;
+  width: 40rpx;
+  height: 40rpx;
   border-radius: 50%;
   background: #597EF7;
   color: #FFFFFF;
-  font-size: 32rpx;
+  font-size: 28rpx;
   font-weight: bold;
   display: flex;
   align-items: center;
@@ -343,17 +344,18 @@ defineExpose({
 
 .modal-actions {
   display: flex;
-  gap: 24rpx;
+  gap: 16rpx;
 }
 
 .modal-btn {
   flex: 1;
-  padding: 28rpx;
+  padding: 22rpx;
   text-align: center;
-  border-radius: 12rpx;
-  font-size: 32rpx;
+  border-radius: 10rpx;
+  font-size: 28rpx;
   font-weight: 500;
   transition: all 0.2s ease;
+  cursor: pointer;
 }
 
 .modal-btn-cancel {

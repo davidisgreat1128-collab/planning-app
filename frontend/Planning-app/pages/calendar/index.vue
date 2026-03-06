@@ -396,7 +396,7 @@ async function handleDragEnd(task, fromQuadrant, toQuadrant, options = {}) {
  */
 async function confirmChangeQuadrant() {
   await quadrantComposable.confirmChangeQuadrant();
-  await calendarComposable.loadTasks(); // 刷新任务列表
+  await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value); // 刷新任务列表
 }
 
 /**
@@ -431,7 +431,7 @@ async function handleDeleteTaskConfirm(option) {
     }
 
     // 刷新任务列表
-    await calendarComposable.loadTasks();
+    await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
 
     uni.showToast({
       title: '已删除',
