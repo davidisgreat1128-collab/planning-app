@@ -31,7 +31,7 @@ import { useTaskStore } from '@/store/task';
 import { usePlanStore } from '@/store/plan';
 import { usePlanningStore } from '@/store/planning';
 import { useLogStore } from '@/store/log';
-import { getHolidaysByRange, getLunarInfoRange } from '@/api/holiday';
+import { getHolidaysByRange, getLunarInfoRange, getWorkDaysByRange } from '@/api/holiday';
 
 // ============================================================
 // 工具函数
@@ -125,6 +125,8 @@ export function useCalendar() {
 
   /** 节日农历缓存 key=YYYY-MM-DD */
   const holidayMap = ref({});
+  /** 工作日调整缓存 key=YYYY-MM-DD, value={ type: 'holiday'|'workday', holidayName, remark } */
+  const workDayMap = ref({});
 
   // ============ 常量 ============
   /** 周一到周日 */
@@ -181,6 +183,7 @@ export function useCalendar() {
 
       const hasTask = dateTasks.length > 0;
       return {
+        workDay: workDayMap.value[dateStr] || null, // 工作日信息 { type, holidayName, remark }
         dateStr,
         day: d.getDate(),
         lunarLabel: holidayMap.value[dateStr] || '',
@@ -216,6 +219,7 @@ export function useCalendar() {
         });
 
         row.push({
+          workDay: workDayMap.value[dateStr] || null, // 工作日信息
           dateStr,
           day: d.getDate(),
           lunarLabel: holidayMap.value[dateStr] || '',
@@ -255,12 +259,15 @@ export function useCalendar() {
     console.log(`[useCalendar] _loadHolidayRange 开始加载, 范围: ${start} ~ ${end}`);
 
     try {
-      const [holidayRes, lunarRes] = await Promise.all([
+      const [holidayRes, lunarRes, workDayRes] = await Promise.all([
         getHolidaysByRange(start, end),
         getLunarInfoRange(start, end)
+        getWorkDaysByRange(start, end)
       ]);
 
-      console.log('[useCalendar] API 响应:', {
+        holidayRes,
+        lunarRes,
+        workDayRes
         holidayRes,
         lunarRes
       });
@@ -286,6 +293,7 @@ export function useCalendar() {
         if (!holidayMap.value[date]) {
           // 优先显示农历节日,其次显示月日
           holidayMap.value[date] = info.lunarFestival || info.lunarDayName || '';
+      // 工作日调整:存储到workDayMap      const wMap = workDayRes?.workDayMap || {};      let workDayCount = 0;      Object.entries(wMap).forEach(([date, info]) => {        workDayMap.value[date] = info; // { type, holidayName, remark }        workDayCount++;      });
           lunarCount++;
         }
       });
@@ -293,7 +301,7 @@ export function useCalendar() {
       console.log('[useCalendar] _loadHolidayRange 完成, 节日数:', holidayCount, ', 农历数:', lunarCount);
       console.log('[useCalendar] 最终 holidayMap:', holidayMap.value);
     } catch (err) {
-      console.error('[useCalendar] _loadHolidayRange 错误:', err);
+      console.log('[useCalendar] _loadHolidayRange 完成, 节日数:', holidayCount, ', 农历数:', lunarCount, ', 工作日数:', workDayCount);
       throw err;
     }
   }

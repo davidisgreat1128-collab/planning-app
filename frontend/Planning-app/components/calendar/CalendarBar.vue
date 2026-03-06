@@ -29,6 +29,10 @@
         }"
         @tap="handleDateClick(item.dateStr)"
       >
+        <!-- 工作日角标（右上角） -->
+        <text v-if="item.workDay" class="work-badge" :class="item.workDay.type">
+          {{ item.workDay.type === 'holiday' ? '休' : '班' }}
+        </text>
         <text class="lunar-label">{{ item.lunarLabel }}</text>
         <view class="date-circle">
           <text class="date-num">{{ item.day }}</text>
@@ -64,6 +68,10 @@
           }"
           @tap="handleDateClick(item.dateStr)"
         >
+          <!-- 工作日角标（右上角） -->
+          <text v-if="item.workDay" class="work-badge" :class="item.workDay.type">
+            {{ item.workDay.type === 'holiday' ? '休' : '班' }}
+          </text>
           <text class="lunar-label">{{ item.lunarLabel }}</text>
           <view class="date-circle">
             <text class="date-num">{{ item.day }}</text>
@@ -414,6 +422,31 @@ function onMouseUp(e) {
 
 .month-cell {
   height: 96rpx;
+}
+
+/* 工作日角标（右上角） */
+.work-badge {
+  position: absolute;
+  top: 4rpx;
+  right: 4rpx;
+  font-size: 18rpx;
+  line-height: 28rpx;
+  width: 28rpx;
+  height: 28rpx;
+  border-radius: 4rpx;
+  text-align: center;
+  font-weight: 600;
+  z-index: 10;
+}
+
+.work-badge.holiday {
+  background-color: #FF4D4F;
+  color: #FFFFFF;
+}
+
+.work-badge.workday {
+  background-color: #FAAD14;
+  color: #FFFFFF;
 }
 
 /* 农历/节日标签 */
