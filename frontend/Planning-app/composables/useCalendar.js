@@ -103,12 +103,12 @@ export function useCalendar() {
   const planningStore = usePlanningStore();
   const logStore = useLogStore();
 
-  console.log('[useCalendar] Stores 已获取:', {
-    taskStore: !!taskStore,
-    planStore: !!planStore,
-    planningStore: !!planningStore,
-    logStore: !!logStore
-  });
+  // console.log('[useCalendar] Stores 已获取:',{
+  //   taskStore: !!taskStore,
+  //   planStore: !!planStore,
+  //   planningStore: !!planningStore,
+  //   logStore: !!logStore
+  // });
 
   // ============ 状态 ============
   /** 当前选中日期 YYYY-MM-DD */
@@ -163,7 +163,7 @@ export function useCalendar() {
    * 当前周7天(周一~周日)
    */
   const currentWeekDates = computed(() => {
-    console.log('[useCalendar] currentWeekDates 计算属性被调用, currentWeekStart:', currentWeekStart.value);
+    //console.log('[useCalendar] currentWeekDates 计算属性被调用, currentWeekStart:', currentWeekStart.value);
 
     if (!currentWeekStart.value) {
       console.log('[useCalendar] currentWeekStart 为空,返回空数组');
@@ -256,7 +256,7 @@ export function useCalendar() {
    * @param {string} end - 结束日期 YYYY-MM-DD
    */
   async function _loadHolidayRange(start, end) {
-    console.log(`[useCalendar] _loadHolidayRange 开始加载, 范围: ${start} ~ ${end}`);
+    //console.log(`[useCalendar] _loadHolidayRange 开始加载, 范围: ${start} ~ ${end}`);
 
     try {
       const [holidayRes, lunarRes, workDayRes] = await Promise.all([
@@ -328,9 +328,9 @@ export function useCalendar() {
       const start = formatDate(currentWeekStart.value);
       const end = formatDate(weekEnd);
 
-      console.log('[useCalendar] loadHolidays 即将加载节日范围:', start, '~', end);
+      //console.log('[useCalendar] loadHolidays 即将加载节日范围:', start, '~', end);
       await _loadHolidayRange(start, end);
-      console.log('[useCalendar] loadHolidays 完成');
+     // console.log('[useCalendar] loadHolidays 完成');
     } catch (err) {
       console.error('[useCalendar] 节日农历加载失败:', err);
     }
@@ -433,12 +433,12 @@ export function useCalendar() {
    * @param {string} dateStr - YYYY-MM-DD 格式
    */
   async function selectDate(dateStr) {
-    console.log(`[useCalendar] selectDate 被调用, 日期: ${dateStr}`);
+    //console.log(`[useCalendar] selectDate 被调用, 日期: ${dateStr}`);
 
     selectedDate.value = dateStr;
     taskStore.selectedDate = dateStr;
 
-    console.log('[useCalendar] selectDate - 已更新 selectedDate 和 taskStore.selectedDate');
+    //console.log('[useCalendar] selectDate - 已更新 selectedDate 和 taskStore.selectedDate');
 
     // 月模式下点击日期后折叠回周,并对齐到该日期所在周
     if (calendarMode.value === 'month') {
@@ -468,7 +468,7 @@ export function useCalendar() {
           return normalizedDate === dateStr;
         });
 
-        console.log(`[useCalendar] selectDate(${dateStr}) - 筛选出该日期的任务:`, selectedDateTasks.length, '个');
+       // console.log(`[useCalendar] selectDate(${dateStr}) - 筛选出该日期的任务:`, selectedDateTasks.length, '个');
 
         // 合并localStorage的任务到taskStore(避免重复)
         const existingIds = new Set(taskStore.tasks.map(t => t.id));
@@ -496,17 +496,17 @@ export function useCalendar() {
    * 初始化日历(应在组件挂载时调用)
    */
   function init() {
-    console.log('[useCalendar] ========== init 初始化开始 ==========');
+   // console.log('[useCalendar] ========== init 初始化开始 ==========');
 
     // 初始化为当前周
     currentWeekStart.value = getWeekMonday(new Date());
     currentMonthFirst.value = getMonthFirst(new Date());
 
-    console.log('[useCalendar] init - 已初始化周/月起始:', {
-      currentWeekStart: currentWeekStart.value,
-      currentMonthFirst: currentMonthFirst.value,
-      todayStr
-    });
+    // console.log('[useCalendar] init - 已初始化周/月起始:', {
+    //   currentWeekStart: currentWeekStart.value,
+    //   currentMonthFirst: currentMonthFirst.value,
+    //   todayStr
+    // });
 
     // 选中今天
     selectDate(todayStr);
@@ -514,7 +514,7 @@ export function useCalendar() {
     // 加载节日数据
     loadHolidays();
 
-    console.log('[useCalendar] ========== init 初始化完成 ==========');
+   // console.log('[useCalendar] ========== init 初始化完成 ==========');
   }
 
   // ============ 返回 API ============
