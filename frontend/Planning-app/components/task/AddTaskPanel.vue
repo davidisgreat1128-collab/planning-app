@@ -740,50 +740,25 @@ const customDateMonth = ref(new Date().getMonth() + 1);
 /** 自定义日期选择器的选中日期 */
 const customDateSelected = ref(null);
 
-/** 日期Tab列表（动态computed，根据customDate变化） */
-const dateTabs = computed(() => {
-  const tabs = [
-    { key: 'today',    label: '今天',   date: getTodayStr() },
-    { key: 'tomorrow', label: '明天',   date: getTomorrowStr() }
-  ];
-
-  // 如果有自定义日期，显示为"M.D"格式
-  if (customDate.value) {
-    const customDateObj = new Date(customDate.value);
-    const m = customDateObj.getMonth() + 1;
-    const d = customDateObj.getDate();
-    tabs.push({ key: 'custom', label: `${m}.${d}`, date: customDate.value });
-  } else if (props.presetDate) {
-    // 如果没有自定义日期，但有presetDate，显示presetDate
-    const presetDateObj = new Date(props.presetDate);
-    const m = presetDateObj.getMonth() + 1;
-    const d = presetDateObj.getDate();
-    tabs.push({ key: 'preset', label: `${m}.${d}`, date: props.presetDate });
-  } else {
-    // 都没有，显示"XX日期"
-    tabs.push({ key: 'placeholder', label: 'XX日期', date: '' });
-  }
-
-  tabs.push({ key: 'other', label: '其他日期', date: '' });
-
-  return tabs;
-});
+/** 日期Tab列表 - 已移除，改用 DateTabBar 组件 */
 
 /** 选择日期 Tab */
 /**
  * 处理 DateTabBar 组件的 tab-change 事件
- * @param {'today' | 'tomorrow' | 'other' | 'inbox'} tabKey - DateTabBar 组件传递的 tab 键值
+ * @param {'today' | 'tomorrow' | 'custom' | 'preset' | 'placeholder' | 'other'} tabKey - DateTabBar 组件传递的 tab 键值
  */
 function handleDateTabChange(tabKey) {
   if (tabKey === 'other') {
-    // 打开自定义日期选择器
+    // 点击"其他日期"，打开自定义日期选择器
     openCustomDatePicker();
     return;
   }
-  if (tabKey === 'inbox') {
-    // AddTaskPanel 不支持收集箱，忽略此选项
+  if (tabKey === 'placeholder') {
+    // 点击"XX日期"占位符，也打开自定义日期选择器
+    openCustomDatePicker();
     return;
   }
+  // 其他情况（today, tomorrow, custom, preset）直接切换Tab
   activeDateTab.value = tabKey;
 }
 

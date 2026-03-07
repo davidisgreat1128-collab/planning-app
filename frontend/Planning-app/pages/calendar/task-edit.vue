@@ -18,7 +18,7 @@
 
     <!-- ② 日期 Tab 栏 -->
     <view class="tep-date-tabs">
-      <DateTabBar :activeTab="activeDateTab" @tab-change="onDateTab" />
+      <DateTabBar :activeTab="activeDateTab" :customDate="customDate" @tab-change="onDateTab" />
     </view>
 
     <scroll-view class="tep-scroll" scroll-y>
@@ -492,6 +492,39 @@
       </view>
     </view>
 
+    <!-- 弹窗：自定义日期选择器（用于选择 taskDate） -->
+    <view v-if="showCustomDatePicker" class="tep-modal-mask" @tap.self="closeCustomDatePicker">
+      <view class="tep-modal-sheet">
+        <view class="cal-header">
+          <text class="cal-nav" @tap="customDatePrevMonth">‹</text>
+          <text class="cal-month-title">{{ customDateYear }}年{{ customDateMonth }}月</text>
+          <text class="cal-nav" @tap="customDateNextMonth">›</text>
+        </view>
+        <view class="cal-week-row">
+          <text v-for="d in weekLabels" :key="d" class="cal-week-cell">{{ d }}</text>
+        </view>
+        <view class="cal-body-simple">
+          <view
+            v-for="(cell, idx) in customDateCells"
+            :key="idx"
+            class="cal-cell-simple"
+            :class="{
+              'cal-cell-disabled': cell.isPast,
+              'cal-cell-selected': cell.isSelected,
+              'cal-cell-placeholder': cell.isPlaceholder
+            }"
+            @tap="onSelectCustomDate(cell)"
+          >
+            <text v-if="cell.day" class="cal-cell-num">{{ cell.day }}</text>
+          </view>
+        </view>
+        <view class="tep-modal-btns">
+          <text class="tep-modal-cancel" @tap="closeCustomDatePicker">取消</text>
+          <text class="tep-modal-confirm" @tap="confirmCustomDate">确定</text>
+        </view>
+      </view>
+    </view>
+
     <!-- 弹窗：提醒时间选择 -->
     <view v-if="showReminderPicker" class="tep-modal-mask" @tap.self="closeReminderPicker">
       <view class="tep-modal-sheet">
@@ -689,8 +722,11 @@ const presetDate = ref('');
 /** 当前任务是否已完成（页面内直接切换） */
 const taskDone = ref(false);
 
-/** 日期 Tab：today / tomorrow / other / inbox */
+/** 日期 Tab：today / tomorrow / custom / preset / other */
 const activeDateTab = ref('today');
+
+/** 用户自定义选择的日期（用于动态Tab显示，YYYY-MM-DD格式） */
+const customDate = ref('');
 
 /** 子计划列表 */
 const subtasks = ref([]);
@@ -769,25 +805,29 @@ const repeatModeLabel = computed(() => {
 // 新增方法
 // ============================================================
 
-/** 点击日期 Tab，更新 taskDate */
+/**
+ * 点击日期 Tab，更新 taskDate
+ * @param {'today' | 'tomorrow' | 'custom' | 'preset' | 'placeholder' | 'other'} tab - Tab标识
+ */
 function onDateTab(tab) {
-  activeDateTab.value = tab;
   const today = formatDate(new Date());
   const tomorrow = formatDate(new Date(Date.now() + 86400000));
+
   if (tab === 'today') {
     form.value.taskDate = today;
+    activeDateTab.value = 'today';
   } else if (tab === 'tomorrow') {
     form.value.taskDate = tomorrow;
+    activeDateTab.value = 'tomorrow';
+  } else if (tab === 'custom' || tab === 'preset') {
+    // 点击已选择的自定义日期，不做任何操作（已经是选中状态）
+    return;
+  } else if (tab === 'placeholder') {
+    // 点击"XX日期"占位符，打开自定义日期选择器
+    openCustomDatePicker();
   } else if (tab === 'other') {
-    // 打开日历选择器
-    const startDate = form.value.taskDate || today;
-    const d = new Date(startDate);
-    calYear.value  = d.getFullYear();
-    calMonth.value = d.getMonth();
-    tempEndDate.value = form.value.endDate || startDate;
-    showDaysPicker.value = true;
-  } else if (tab === 'inbox') {
-    form.value.taskDate = '';
+    // 点击"其他日期"，打开自定义日期选择器
+    openCustomDatePicker();
   }
 }
 
@@ -818,6 +858,88 @@ function handleToggleSubtaskDone(index) {
 /** 聚焦子任务输入框 */
 function focusSubtaskInput() {
   // UniApp 中 ref 聚焦通过 focus 属性控制，这里简单实现
+}
+
+// ============================================================
+// 自定义日期选择器函数
+// ============================================================
+
+/**
+ * 打开自定义日期选择器
+ */
+function openCustomDatePicker() {
+  const today = new Date();
+  if (customDate.value) {
+    // 如果已有自定义日期，初始化到该日期
+    const d = new Date(customDate.value);
+    customDateYear.value = d.getFullYear();
+    customDateMonth.value = d.getMonth() + 1;
+    customDateSelected.value = new Date(customDate.value);
+  } else if (form.value.taskDate) {
+    // 否则初始化到当前 taskDate
+    const d = new Date(form.value.taskDate);
+    customDateYear.value = d.getFullYear();
+    customDateMonth.value = d.getMonth() + 1;
+    customDateSelected.value = new Date(form.value.taskDate);
+  } else {
+    // 都没有则初始化到今天
+    customDateYear.value = today.getFullYear();
+    customDateMonth.value = today.getMonth() + 1;
+    customDateSelected.value = today;
+  }
+  showCustomDatePicker.value = true;
+}
+
+/**
+ * 确认自定义日期选择
+ */
+function confirmCustomDate() {
+  if (customDateSelected.value) {
+    customDate.value = formatDate(customDateSelected.value);
+    form.value.taskDate = customDate.value;
+    activeDateTab.value = 'custom';
+  }
+  showCustomDatePicker.value = false;
+}
+
+/**
+ * 关闭自定义日期选择器
+ */
+function closeCustomDatePicker() {
+  showCustomDatePicker.value = false;
+}
+
+/**
+ * 自定义日期选择器：上一个月
+ */
+function customDatePrevMonth() {
+  if (customDateMonth.value === 1) {
+    customDateYear.value--;
+    customDateMonth.value = 12;
+  } else {
+    customDateMonth.value--;
+  }
+}
+
+/**
+ * 自定义日期选择器：下一个月
+ */
+function customDateNextMonth() {
+  if (customDateMonth.value === 12) {
+    customDateYear.value++;
+    customDateMonth.value = 1;
+  } else {
+    customDateMonth.value++;
+  }
+}
+
+/**
+ * 选择自定义日期的某一天
+ * @param {object} cell - 日历单元格对象
+ */
+function onSelectCustomDate(cell) {
+  if (cell.isPast || cell.isPlaceholder) return;
+  customDateSelected.value = new Date(cell.date);
 }
 
 /** 跳转专注页面 */
@@ -1531,6 +1653,20 @@ const showLunar = ref(true);
 /** 临时选中的结束日期（日历弹窗内） */
 const tempEndDate = ref('');
 
+// ============================================================
+// 自定义日期选择器（用于选择 taskDate）
+// ============================================================
+
+/** 自定义日期选择器显示状态 */
+const showCustomDatePicker = ref(false);
+
+/** 自定义日期选择器的年月 */
+const customDateYear = ref(new Date().getFullYear());
+const customDateMonth = ref(new Date().getMonth() + 1); // 1-indexed
+
+/** 自定义日期选择器的临时选中日期 */
+const customDateSelected = ref(null);
+
 /** 计算天数（从开始日到结束日，含两端） */
 const daysCount = computed(() => {
   const start = form.value.taskDate || formatDate(new Date());
@@ -1589,6 +1725,46 @@ const calRows = computed(() => {
     rows.push(cells.slice(i * 7, i * 7 + 7));
   }
   return rows;
+});
+
+/**
+ * 自定义日期选择器的日历格子（扁平数组，不分行）
+ */
+const customDateCells = computed(() => {
+  const year = customDateYear.value;
+  const month = customDateMonth.value;
+  const firstDay = new Date(year, month - 1, 1);
+  const dow = firstDay.getDay(); // 0=周日
+  const daysInMonth = new Date(year, month, 0).getDate();
+
+  const cells = [];
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
+  // 填充前置空格（对齐到周日开始）
+  for (let i = 0; i < dow; i++) {
+    cells.push({ day: '', date: '', isPlaceholder: true });
+  }
+
+  // 填充日期
+  for (let day = 1; day <= daysInMonth; day++) {
+    const cellDate = new Date(year, month - 1, day);
+    cellDate.setHours(0, 0, 0, 0);
+
+    const isPast = cellDate < today;
+    const isSelected = customDateSelected.value &&
+                      customDateSelected.value.getTime() === cellDate.getTime();
+
+    cells.push({
+      day,
+      date: formatDate(cellDate),
+      isPast,
+      isSelected,
+      isPlaceholder: false
+    });
+  }
+
+  return cells;
 });
 
 /** 获取日历格子的CSS class */
@@ -2400,13 +2576,17 @@ onMounted(() => {
   const today    = formatDate(new Date());
   const tomorrow = formatDate(new Date(Date.now() + 86400000));
   if (!form.value.taskDate) {
-    activeDateTab.value = 'inbox';
+    // 取消"收集箱"功能，空日期默认为"今天"
+    activeDateTab.value = 'today';
+    form.value.taskDate = today;
   } else if (form.value.taskDate === today) {
     activeDateTab.value = 'today';
   } else if (form.value.taskDate === tomorrow) {
     activeDateTab.value = 'tomorrow';
   } else {
-    activeDateTab.value = 'other';
+    // 其他日期：设为 custom，并记录到 customDate
+    activeDateTab.value = 'custom';
+    customDate.value = form.value.taskDate;
   }
 
   // 保存原始表单数据和子任务数据用于检测变化
@@ -2793,6 +2973,39 @@ onMounted(() => {
 .cal-cell.is-start, .cal-cell.is-end { background-color: #1A1A2E; border-radius: 50%; }
 .cal-cell.is-start .cal-cell-num, .cal-cell.is-end .cal-cell-num { color: #FFFFFF; }
 .cal-cell.in-range { background-color: #E8EEFF; }
+
+/* 自定义日期选择器（简化版日历） */
+.cal-body-simple {
+  display: flex;
+  flex-wrap: wrap;
+  padding: 0 16rpx 16rpx;
+}
+.cal-cell-simple {
+  width: calc(100% / 7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 12rpx 0;
+  border-radius: 8rpx;
+}
+.cal-cell-simple .cal-cell-num {
+  font-size: 28rpx;
+  color: #333;
+}
+.cal-cell-disabled .cal-cell-num {
+  color: #DDD;
+}
+.cal-cell-selected {
+  background-color: #1A1A2E;
+  border-radius: 50%;
+}
+.cal-cell-selected .cal-cell-num {
+  color: #FFFFFF;
+  font-weight: bold;
+}
+.cal-cell-placeholder {
+  visibility: hidden;
+}
 
 /* 提醒弹窗 */
 .reminder-tabs { display: flex; flex-direction: row; margin-bottom: 16rpx; }
