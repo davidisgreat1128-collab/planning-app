@@ -753,6 +753,12 @@ function handleDateTabChange(tabKey) {
     openCustomDatePicker();
     return;
   }
+
+  // 切换到"今天"或"明天"时，清空自定义日期，恢复为3个Tab显示
+  if (tabKey === 'today' || tabKey === 'tomorrow') {
+    customDate.value = '';
+  }
+
   // 其他情况（today, tomorrow, custom, preset）直接切换Tab
   activeDateTab.value = tabKey;
 }

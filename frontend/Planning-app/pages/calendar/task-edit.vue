@@ -816,9 +816,11 @@ function onDateTab(tab) {
   if (tab === 'today') {
     form.value.taskDate = today;
     activeDateTab.value = 'today';
+    customDate.value = '';  // 清空自定义日期，恢复为3个Tab
   } else if (tab === 'tomorrow') {
     form.value.taskDate = tomorrow;
     activeDateTab.value = 'tomorrow';
+    customDate.value = '';  // 清空自定义日期，恢复为3个Tab
   } else if (tab === 'custom' || tab === 'preset') {
     // 点击已选择的自定义日期，不做任何操作（已经是选中状态）
     return;
