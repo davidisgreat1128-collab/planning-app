@@ -484,14 +484,14 @@ function onMouseUp(e) {
 .lunar-label {
   font-size: 20rpx;
   color: #999;
-  height: 24rpx;
   line-height: 24rpx;
   margin-top: 4rpx;
   width: 90rpx;
+  min-height: 24rpx;
   text-align: center;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  word-break: break-all;
+  word-wrap: break-word;
+  white-space: normal;
 }
 
 /* 日期圆圈 */
