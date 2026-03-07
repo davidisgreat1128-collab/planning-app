@@ -33,10 +33,12 @@
         <text v-if="item.workDay" class="work-badge" :class="item.workDay.type">
           {{ item.workDay.type === 'holiday' ? '休' : '班' }}
         </text>
-        <text class="lunar-label">{{ item.lunarLabel }}</text>
+        <!-- 日期数字在上 -->
         <view class="date-circle">
           <text class="date-num">{{ item.day }}</text>
         </view>
+        <!-- 节日/农历在下 -->
+        <text class="lunar-label">{{ item.lunarLabel }}</text>
         <!-- 多色任务点 (最多显示2个象限色) -->
         <view v-if="item.hasTask" class="task-dots">
           <view
@@ -72,10 +74,12 @@
           <text v-if="item.workDay" class="work-badge" :class="item.workDay.type">
             {{ item.workDay.type === 'holiday' ? '休' : '班' }}
           </text>
-          <text class="lunar-label">{{ item.lunarLabel }}</text>
+          <!-- 日期数字在上 -->
           <view class="date-circle">
             <text class="date-num">{{ item.day }}</text>
           </view>
+          <!-- 节日/农历在下 -->
+          <text class="lunar-label">{{ item.lunarLabel }}</text>
           <view v-if="item.hasTask" class="task-dots">
             <view
               v-for="(dot, di) in item.taskDots"
@@ -482,7 +486,12 @@ function onMouseUp(e) {
   color: #999;
   height: 24rpx;
   line-height: 24rpx;
-  margin-bottom: 4rpx;
+  margin-top: 4rpx;
+  width: 90rpx;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 /* 日期圆圈 */
