@@ -20,8 +20,9 @@
       <view v-if="activeTab === 'tomorrow'" class="date-tab-line"></view>
     </view>
 
-    <!-- Tab 3: 动态标签（显示选中的日期或"XX日期"占位符） -->
+    <!-- Tab 3: 动态标签（仅在有 customDate 或 presetDate 时显示） -->
     <view
+      v-if="hasCustomDate"
       class="date-tab"
       :class="{ 'date-tab-active': activeTab === 'custom' || activeTab === 'preset' }"
       @tap="onTabChange(dynamicTabKey)"
@@ -30,7 +31,7 @@
       <view v-if="activeTab === 'custom' || activeTab === 'preset'" class="date-tab-line"></view>
     </view>
 
-    <!-- Tab 4: 其他日期（点击后打开日期选择器） -->
+    <!-- Tab 4/3: 其他日期（点击后打开日期选择器） -->
     <view
       class="date-tab"
       @tap="onTabChange('other')"
@@ -105,18 +106,25 @@ const emit = defineEmits([
 ])
 
 /**
+ * 是否有自定义日期（决定是否显示第3个动态Tab）
+ */
+const hasCustomDate = computed(() => {
+  return !!(props.customDate || props.presetDate)
+})
+
+/**
  * 动态Tab的键值
- * 优先级：customDate > presetDate > placeholder
+ * 优先级：customDate > presetDate
  */
 const dynamicTabKey = computed(() => {
   if (props.customDate) return 'custom'
   if (props.presetDate) return 'preset'
-  return 'placeholder'
+  return 'placeholder'  // 理论上不会到这里，因为 v-if="hasCustomDate"
 })
 
 /**
- * 动态Tab的显示文字
- * 优先级：customDate > presetDate > "XX日期"
+ * 动态Tab的显示文字（M.D 格式，如 "3.7"）
+ * 优先级：customDate > presetDate
  */
 const dynamicTabLabel = computed(() => {
   if (props.customDate) {
@@ -127,7 +135,7 @@ const dynamicTabLabel = computed(() => {
     const d = new Date(props.presetDate)
     return `${d.getMonth() + 1}.${d.getDate()}`
   }
-  return 'XX日期'
+  return ''  // 理论上不会到这里，因为 v-if="hasCustomDate"
 })
 
 /**

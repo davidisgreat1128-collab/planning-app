@@ -745,16 +745,12 @@ const customDateSelected = ref(null);
 /** 选择日期 Tab */
 /**
  * 处理 DateTabBar 组件的 tab-change 事件
- * @param {'today' | 'tomorrow' | 'custom' | 'preset' | 'placeholder' | 'other'} tabKey - DateTabBar 组件传递的 tab 键值
+ * @param {'today' | 'tomorrow' | 'custom' | 'preset' | 'other'} tabKey - DateTabBar 组件传递的 tab 键值
  */
 function handleDateTabChange(tabKey) {
   if (tabKey === 'other') {
-    // 点击"其他日期"，打开自定义日期选择器（唯一入口）
+    // 点击"其他日期"，打开自定义日期选择器
     openCustomDatePicker();
-    return;
-  }
-  if (tabKey === 'placeholder') {
-    // 点击"XX日期"占位符，不做任何操作（只是占位，不可交互）
     return;
   }
   // 其他情况（today, tomorrow, custom, preset）直接切换Tab
