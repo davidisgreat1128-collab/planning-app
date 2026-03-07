@@ -7,7 +7,12 @@
 
     <!-- ① 顶部日期 Tab -->
     <view class="date-tabs">
-      <DateTabBar :activeTab="activeDateTab" @tab-change="handleDateTabChange" />
+      <DateTabBar
+        :activeTab="activeDateTab"
+        :customDate="customDate"
+        :presetDate="presetDate"
+        @tab-change="handleDateTabChange"
+      />
     </view>
 
     <!-- ② 任务标题输入行 -->
