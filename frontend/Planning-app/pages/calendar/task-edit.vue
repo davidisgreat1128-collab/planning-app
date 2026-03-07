@@ -18,38 +18,7 @@
 
     <!-- ② 日期 Tab 栏 -->
     <view class="tep-date-tabs">
-      <view
-        class="tep-date-tab"
-        :class="{ 'tep-date-tab-active': activeDateTab === 'today' }"
-        @tap="onDateTab('today')"
-      >
-        <text class="tep-date-tab-text">今天</text>
-        <view v-if="activeDateTab === 'today'" class="tep-date-tab-line"></view>
-      </view>
-      <view
-        class="tep-date-tab"
-        :class="{ 'tep-date-tab-active': activeDateTab === 'tomorrow' }"
-        @tap="onDateTab('tomorrow')"
-      >
-        <text class="tep-date-tab-text">明天</text>
-        <view v-if="activeDateTab === 'tomorrow'" class="tep-date-tab-line"></view>
-      </view>
-      <view
-        class="tep-date-tab"
-        :class="{ 'tep-date-tab-active': activeDateTab === 'other' }"
-        @tap="onDateTab('other')"
-      >
-        <text class="tep-date-tab-text">其他日期</text>
-        <view v-if="activeDateTab === 'other'" class="tep-date-tab-line"></view>
-      </view>
-      <view
-        class="tep-date-tab"
-        :class="{ 'tep-date-tab-active': activeDateTab === 'inbox' }"
-        @tap="onDateTab('inbox')"
-      >
-        <text class="tep-date-tab-text">收集箱</text>
-        <view v-if="activeDateTab === 'inbox'" class="tep-date-tab-line"></view>
-      </view>
+      <DateTabBar :activeTab="activeDateTab" @tab-change="onDateTab" />
     </view>
 
     <scroll-view class="tep-scroll" scroll-y>
@@ -76,48 +45,14 @@
           />
         </view>
 
-        <!-- 子计划区域（左竖线 + 列表） -->
-        <view class="tep-subtask-wrap">
-          <view class="tep-subtask-line"></view>
-          <view class="tep-subtask-body">
-            <!-- "继续添加下一条子计划" 输入行 -->
-            <view class="tep-subtask-add-row">
-              <input
-                ref="subtaskInputRef"
-                class="tep-subtask-add-input"
-                :placeholder="subtasks.length > 0 ? '继续添加下一条子计划' : '添加子计划'"
-                placeholder-class="tep-subtask-placeholder"
-                :value="newSubtaskText"
-                @input="newSubtaskText = $event.detail.value"
-                @confirm="addSubtask"
-              />
-              <view class="tep-subtask-add-btn" @tap="addSubtask">
-                <text class="tep-subtask-add-icon">+</text>
-              </view>
-            </view>
-            <!-- 已有子计划列表 -->
-            <view
-              v-for="(sub, idx) in subtasks"
-              :key="idx"
-              class="tep-subtask-row"
-            >
-              <view
-                class="tep-subtask-check"
-                :class="{ 'tep-subtask-check-done': sub.done }"
-                @tap="sub.done = !sub.done"
-              >
-                <text v-if="sub.done" class="tep-check-mark">✓</text>
-              </view>
-              <text
-                class="tep-subtask-text"
-                :class="{ 'tep-subtask-text-done': sub.done }"
-              >{{ sub.title }}</text>
-              <view class="tep-subtask-del" @tap="removeSubtask(idx)">
-                <text class="tep-subtask-del-icon">⊖</text>
-              </view>
-            </view>
-          </view>
-        </view>
+        <!-- 子计划区域 -->
+        <SubtaskList
+          :subtasks="subtasks"
+          :showLine="true"
+          @add="handleAddSubtask"
+          @remove="handleRemoveSubtask"
+          @toggle-done="handleToggleSubtaskDone"
+        />
       </view>
 
       <!-- ④ 描述文本框 -->
@@ -731,6 +666,8 @@ import { ref, computed, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
 import { usePlanStore } from '@/store/plan.js';
 import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
+import DateTabBar from '@/components/task/DateTabBar.vue';
+import SubtaskList from '@/components/task/SubtaskList.vue';
 
 // ============================================================
 // Store
@@ -757,9 +694,6 @@ const activeDateTab = ref('today');
 
 /** 子计划列表 */
 const subtasks = ref([]);
-
-/** 新增子计划输入框内容 */
-const newSubtaskText = ref('');
 
 /** 弹窗：四象限选择器 */
 const showQuadrantPicker = ref(false);
@@ -857,17 +791,28 @@ function onDateTab(tab) {
   }
 }
 
-/** 添加子计划（回车确认） */
-function addSubtask() {
-  const text = newSubtaskText.value.trim();
-  if (!text) return;
-  subtasks.value.unshift({ title: text, done: false });
-  newSubtaskText.value = '';
+/**
+ * 处理添加子计划事件（从 SubtaskList 组件触发）
+ * @param {string} title - 子计划标题
+ */
+function handleAddSubtask(title) {
+  subtasks.value.unshift({ title, done: false });
 }
 
-/** 删除子计划 */
-function removeSubtask(idx) {
-  subtasks.value.splice(idx, 1);
+/**
+ * 处理删除子计划事件（从 SubtaskList 组件触发）
+ * @param {number} index - 子计划索引
+ */
+function handleRemoveSubtask(index) {
+  subtasks.value.splice(index, 1);
+}
+
+/**
+ * 处理切换子计划完成状态事件（从 SubtaskList 组件触发）
+ * @param {number} index - 子计划索引
+ */
+function handleToggleSubtaskDone(index) {
+  subtasks.value[index].done = !subtasks.value[index].done;
 }
 
 /** 聚焦子任务输入框 */
@@ -2531,34 +2476,7 @@ onMounted(() => {
   top: 148rpx;
   left: 0;
   right: 0;
-  display: flex;
-  flex-direction: row;
-  background-color: #FFFFFF;
-  border-bottom: 1rpx solid #F0F0F0;
   z-index: 99;
-}
-.tep-date-tab {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 20rpx 0 0;
-  position: relative;
-}
-.tep-date-tab-text {
-  font-size: 26rpx;
-  color: #999;
-  padding-bottom: 16rpx;
-}
-.tep-date-tab-active .tep-date-tab-text { color: #1A1A2E; font-weight: bold; }
-.tep-date-tab-line {
-  position: absolute;
-  bottom: 0;
-  left: 20%;
-  width: 60%;
-  height: 4rpx;
-  background-color: #1A1A2E;
-  border-radius: 4rpx;
 }
 
 /* 滚动区 */
@@ -2619,80 +2537,7 @@ onMounted(() => {
 .tep-title-done { text-decoration: line-through; color: #BBBBBB; }
 .tep-title-placeholder { color: #CCCCCC; font-weight: normal; }
 
-/* 子计划区域 */
-.tep-subtask-wrap {
-  display: flex;
-  flex-direction: row;
-  padding-left: 60rpx;
-}
-.tep-subtask-line {
-  width: 4rpx;
-  background-color: #E8E8E8;
-  border-radius: 4rpx;
-  flex-shrink: 0;
-  margin-right: 20rpx;
-  min-height: 40rpx;
-}
-.tep-subtask-body { flex: 1; display: flex; flex-direction: column; }
-.tep-subtask-add-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 8rpx 0 12rpx;
-}
-.tep-subtask-add-input {
-  font-size: 26rpx;
-  color: #333;
-  flex: 1;
-}
-.tep-subtask-placeholder { color: #CCCCCC; font-size: 26rpx; }
-.tep-subtask-add-btn {
-  width: 48rpx;
-  height: 48rpx;
-  border-radius: 50%;
-  border: 2rpx solid #DDDDDD;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-left: 12rpx;
-}
-.tep-subtask-add-icon {
-  font-size: 32rpx;
-  color: #999999;
-  font-weight: bold;
-}
-.tep-subtask-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 12rpx 0;
-  border-top: 1rpx solid #F5F5F5;
-}
-.tep-subtask-check {
-  width: 36rpx;
-  height: 36rpx;
-  border-radius: 50%;
-  border: 3rpx solid #CCCCCC;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  margin-right: 16rpx;
-  box-sizing: border-box;
-}
-.tep-subtask-check-done { background-color: #CCCCCC; border-color: #CCCCCC; }
-.tep-subtask-text { flex: 1; font-size: 28rpx; font-weight: bold; color: #222; }
-.tep-subtask-text-done { text-decoration: line-through; color: #BBBBBB; font-weight: normal; }
-.tep-subtask-del {
-  width: 44rpx;
-  height: 44rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-.tep-subtask-del-icon { font-size: 32rpx; color: #CCCCCC; }
+/* 子计划区域样式已移至 SubtaskList.vue 组件 */
 
 /* ④ 描述文本框 */
 .tep-desc-card {

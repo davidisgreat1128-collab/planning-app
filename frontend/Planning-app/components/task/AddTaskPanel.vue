@@ -7,16 +7,7 @@
 
     <!-- ① 顶部日期 Tab -->
     <view class="date-tabs">
-      <view
-        v-for="tab in dateTabs"
-        :key="tab.key"
-        class="date-tab"
-        :class="{ active: activeDateTab === tab.key }"
-        @tap="selectDateTab(tab)"
-      >
-        <text class="date-tab-text">{{ tab.label }}</text>
-        <view v-if="activeDateTab === tab.key" class="date-tab-line"></view>
-      </view>
+      <DateTabBar :activeTab="activeDateTab" @tab-change="handleDateTabChange" />
     </view>
 
     <!-- ② 任务标题输入行 -->
@@ -46,35 +37,15 @@
 
     <!-- ③ 子计划区域（展开时显示） -->
     <view v-if="showSubtasks" class="subtask-area">
-      <!-- 已添加的子计划列表 -->
-      <view
-        v-for="(item, index) in subtasks"
-        :key="index"
-        class="subtask-item"
-      >
-        <text class="subtask-dot">·</text>
-        <text class="subtask-text">{{ item }}</text>
-        <view class="subtask-remove" @tap="removeSubtask(index)">
-          <text class="subtask-remove-icon">—</text>
-        </view>
-      </view>
-      <!-- 子计划输入行 -->
-      <view v-if="subtasks.length < 100" class="subtask-input-row">
-        <view class="subtask-icon-placeholder"></view>
-        <input
-          class="subtask-input"
-          placeholder="添加子计划"
-          placeholder-class="subtask-placeholder"
-          :value="subtaskDraft"
-          @input="subtaskDraft = $event.detail.value"
-          confirm-type="done"
-          @confirm="addSubtask"
-        />
-        <view class="subtask-add-btn" @tap="addSubtask">
-          <text class="subtask-add-icon">+</text>
-        </view>
-      </view>
-      <view v-else class="subtask-limit-tip">
+      <SubtaskList
+        :subtasks="subtasksForDisplay"
+        :showLine="false"
+        placeholder="添加子计划"
+        @add="handleAddSubtask"
+        @remove="handleRemoveSubtask"
+        @toggle-done="handleToggleSubtaskDone"
+      />
+      <view v-if="subtasks.length >= 100" class="subtask-limit-tip">
         <text class="subtask-limit-text">已达上限（100条）</text>
       </view>
     </view>
@@ -560,6 +531,8 @@ import { useTaskStore } from '@/store/task.js';
 import RepeatPanel from './RepeatPanel.vue';
 import ReminderPanel from './ReminderPanel.vue';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
+import DateTabBar from './DateTabBar.vue';
+import SubtaskList from './SubtaskList.vue';
 
 // ============================================================
 // Props & Emits
@@ -598,11 +571,16 @@ const form = ref({
   isImportant: false
 });
 
-/** 子计划草稿（输入中） */
+/** 子计划草稿（输入中） - 不再使用，保留用于向后兼容 */
 const subtaskDraft = ref('');
 
-/** 子计划列表（最多100条） */
+/** 子计划列表（字符串数组，最多100条） */
 const subtasks = ref([]);
+
+/** 子计划列表（转换为 SubtaskList 组件所需的对象数组格式） */
+const subtasksForDisplay = computed(() => {
+  return subtasks.value.map(title => ({ title, done: false }));
+});
 
 /** 子计划区域是否展开 */
 const showSubtasks = ref(false);
@@ -792,6 +770,24 @@ const dateTabs = computed(() => {
 });
 
 /** 选择日期 Tab */
+/**
+ * 处理 DateTabBar 组件的 tab-change 事件
+ * @param {'today' | 'tomorrow' | 'other' | 'inbox'} tabKey - DateTabBar 组件传递的 tab 键值
+ */
+function handleDateTabChange(tabKey) {
+  if (tabKey === 'other') {
+    // 打开自定义日期选择器
+    openCustomDatePicker();
+    return;
+  }
+  if (tabKey === 'inbox') {
+    // AddTaskPanel 不支持收集箱，忽略此选项
+    return;
+  }
+  activeDateTab.value = tabKey;
+}
+
+/** @deprecated 旧版选择 DateTab 函数，已由 handleDateTabChange 替代 */
 function selectDateTab(tab) {
   if (tab.key === 'other') {
     // 打开自定义日期选择器
@@ -1007,21 +1003,47 @@ function toggleSubtasks() {
 }
 
 /** 添加子计划 */
-function addSubtask() {
-  const text = subtaskDraft.value.trim();
-  if (!text) return;
+/**
+ * 处理添加子计划事件（从 SubtaskList 组件触发）
+ * @param {string} title - 子计划标题
+ */
+function handleAddSubtask(title) {
   if (subtasks.value.length >= 100) {
     uni.showToast({ title: '子计划最多100条', icon: 'none' });
     return;
   }
-  subtasks.value.push(text);
-  subtaskDraft.value = '';
+  subtasks.value.push(title);
   showSubtasks.value = true;
 }
 
-/** 删除子计划 */
-function removeSubtask(index) {
+/**
+ * 处理删除子计划事件（从 SubtaskList 组件触发）
+ * @param {number} index - 子计划索引
+ */
+function handleRemoveSubtask(index) {
   subtasks.value.splice(index, 1);
+}
+
+/**
+ * 处理切换子计划完成状态事件（从 SubtaskList 组件触发）
+ * 注意：AddTaskPanel 不支持子计划完成状态，此函数为空实现
+ * @param {number} index - 子计划索引
+ */
+function handleToggleSubtaskDone(index) {
+  // AddTaskPanel 的子计划不支持完成状态，不做处理
+}
+
+/** @deprecated 旧版添加子计划函数，已由 handleAddSubtask 替代 */
+function addSubtask() {
+  const text = subtaskDraft.value.trim();
+  if (!text) return;
+  handleAddSubtask(text);
+  subtaskDraft.value = '';
+}
+
+/** @deprecated 旧版删除子计划函数，已由 handleRemoveSubtask 替代 */
+function removeSubtask(index) {
+  handleRemoveSubtask(index);
 }
 
 // ============================================================
@@ -1749,37 +1771,10 @@ function loadSelectedContainer() {
 /* ============================================================
    ① 日期 Tab 栏
    ============================================================ */
+/* DateTab 样式已移至 DateTabBar.vue 组件 */
 .date-tabs {
-  display: flex;
-  flex-direction: row;
   padding: 32rpx 40rpx 0;
   border-bottom: 1rpx solid #F0F0F0;
-}
-
-.date-tab {
-  position: relative;
-  margin-right: 48rpx;
-  padding-bottom: 20rpx;
-}
-
-.date-tab-text {
-  font-size: 30rpx;
-  color: #999;
-}
-
-.date-tab.active .date-tab-text {
-  color: #333;
-  font-weight: bold;
-}
-
-.date-tab-line {
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 4rpx;
-  background-color: #333;
-  border-radius: 2rpx;
 }
 
 /* ============================================================
@@ -1862,89 +1857,15 @@ function loadSelectedContainer() {
 /* ============================================================
    ③ 子计划区域
    ============================================================ */
+/* Subtask 样式已移至 SubtaskList.vue 组件 */
 .subtask-area {
   padding: 0 32rpx 16rpx;
   border-bottom: 1rpx solid #F5F5F5;
 }
 
-.subtask-item {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 14rpx 0;
-  margin-left: 8rpx;
-}
-
-.subtask-dot {
-  font-size: 32rpx;
-  color: #999;
-  width: 28rpx;
-  flex-shrink: 0;
-}
-
-.subtask-text {
-  flex: 1;
-  font-size: 28rpx;
-  color: #555;
-  margin-left: 8rpx;
-}
-
-.subtask-remove {
-  width: 48rpx;
-  height: 48rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.subtask-remove-icon {
-  font-size: 28rpx;
-  color: #BDBDBD;
-}
-
-.subtask-input-row {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 14rpx 0;
-}
-
-.subtask-icon-placeholder {
-  width: 36rpx;
-  flex-shrink: 0;
-}
-
-.subtask-input {
-  flex: 1;
-  font-size: 28rpx;
-  color: #333;
-  margin-left: 8rpx;
-}
-
-.subtask-placeholder {
-  color: #BDBDBD;
-}
-
-.subtask-add-btn {
-  width: 56rpx;
-  height: 56rpx;
-  border-radius: 50%;
-  border: 2rpx solid #E0E0E0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.subtask-add-icon {
-  font-size: 36rpx;
-  color: #BDBDBD;
-  line-height: 1;
-}
-
 .subtask-limit-tip {
   padding: 12rpx 0;
+  text-align: center;
 }
 
 .subtask-limit-text {

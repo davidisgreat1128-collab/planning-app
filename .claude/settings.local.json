@@ -14,7 +14,8 @@
       "Bash(npx eslint:*)",
       "Bash(test:*)",
       "Bash(npx eslint@8:*)",
-      "Read(//d/MyProject/Planning设计/**)"
+      "Read(//d/MyProject/Planning设计/**)",
+      "Bash(rm:*)"
     ],
     "deny": [],
     "ask": []

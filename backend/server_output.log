@@ -1,0 +1,23 @@
+
+> planning-app-backend@0.1.0 dev
+> cross-env NODE_ENV=development nodemon server.js
+
+[33m[nodemon] 3.1.11[39m
+[33m[nodemon] to restart at any time, enter `rs`[39m
+[33m[nodemon] watching path(s): *.*[39m
+[33m[nodemon] watching extensions: js,mjs,cjs,json[39m
+[32m[nodemon] starting `node server.js`[39m
+✅ 数据库连接成功: planning_app_dev
+[2026-03-07 07:13:03] [[31MERROR[39M] 未捕获的异常（uncaughtException），即将关闭 {"error":"listen EADDRINUSE: address already in use 0.0.0.0:3000","stack":"Error: listen EADDRINUSE: address already in use 0.0.0.0:3000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at node:net:2206:7\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)"}
+[2026-03-07 07:13:03] [[33MWARN[39M] 收到 uncaughtException 信号，正在优雅关机...
+[2026-03-07 07:13:03] [[32MINFO[39M] 数据库连接池已关闭
+[2026-03-07 07:13:03] [[32MINFO[39M] 服务器已安全关闭
+[32m[nodemon] clean exit - waiting for changes before restart[39m
+[32m[nodemon] restarting due to changes...[39m
+[32m[nodemon] starting `node server.js`[39m
+✅ 数据库连接成功: planning_app_dev
+[2026-03-07 16:07:32] [[31MERROR[39M] 未捕获的异常（uncaughtException），即将关闭 {"error":"listen EADDRINUSE: address already in use 0.0.0.0:3000","stack":"Error: listen EADDRINUSE: address already in use 0.0.0.0:3000\n    at Server.setupListenHandle [as _listen2] (node:net:1940:16)\n    at listenInCluster (node:net:1997:12)\n    at node:net:2206:7\n    at process.processTicksAndRejections (node:internal/process/task_queues:90:21)"}
+[2026-03-07 16:07:32] [[33MWARN[39M] 收到 uncaughtException 信号，正在优雅关机...
+[2026-03-07 16:07:32] [[32MINFO[39M] 数据库连接池已关闭
+[2026-03-07 16:07:32] [[32MINFO[39M] 服务器已安全关闭
+[32m[nodemon] clean exit - waiting for changes before restart[39m

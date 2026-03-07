@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-06（第20次会话，日历点击日期报错修复 ✅ + H5拖拽功能修复 ✅ + 拖拽蒙层组件拆分 ✅ + Bug修复 ✅）
+> **最后更新**: 2026-03-07（第21次会话，集成AddTaskPanel到日历页面 ✅）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 61354d2（fix(calendar): 移除index.vue中未定义的删除对话框变量引用）
+> **最新commit**: 631bb4a（feat(calendar): 集成AddTaskPanel组件到日历页面）
 > **Git状态**: ✅ 工作区干净，所有修改已提交
 
 ---
@@ -652,6 +652,35 @@ const planningStore = usePlanningStore();      // ✅ 保留供未来使用
 - ✅ 总计: 1131行（拆分后合计，符合CLAUDE.md管理规范）
 
 - ⏸️ **等待用户测试验证修复结果**（H5浏览器长按拖拽 + 删除区域 + 对话框）
+
+### Phase 3s - AddTaskPanel集成到日历页面（第21次会话，2026-03-07）✅
+
+**背景**：用户反馈点击FAB菜单的"任务"按钮后跳转到task-edit页面，希望改为弹出AddTaskPanel底部弹窗
+
+**完成工作**（commit: 631bb4a）：
+- ✅ 在 index.vue 导入 AddTaskPanel 组件
+- ✅ 添加状态管理：showAddTaskPanel（控制弹窗显示）
+- ✅ 修改 addTask() 函数：打开弹窗（替代页面跳转）
+- ✅ 新增 handleTaskSubmitted() 函数：处理提交成功事件
+- ✅ 在模板中添加 AddTaskPanel 组件（传递 visible 和 preset-date）
+
+**修改统计**：
+- index.vue: 763行 → 782行（+19行，仍<800行阈值 ✅）
+
+**功能验证**：
+1. 点击 FAB 按钮（+）→ 弹出"任务/日志"菜单
+2. 点击"任务" → AddTaskPanel 底部弹窗滑出
+3. 输入标题、选择日期、设置象限 → 点击提交
+4. 弹窗关闭 + Toast提示 + 任务列表刷新
+
+**技术债务标识**：
+- ⚠️ AddTaskPanel.vue 有 2847 行（超标 256%，优先级P1）
+- ⚠️ task-edit.vue 有 3340 行（超标 318%，优先级P0）
+- ⚠️ 两个页面功能重复，需统一为一个组件
+
+---
+
+## 🔄 待完成（下一步）
 
 ### P0 - 下一个Claude应该做的（优先级顺序）
 
