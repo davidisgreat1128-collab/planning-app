@@ -749,13 +749,12 @@ const customDateSelected = ref(null);
  */
 function handleDateTabChange(tabKey) {
   if (tabKey === 'other') {
-    // 点击"其他日期"，打开自定义日期选择器
+    // 点击"其他日期"，打开自定义日期选择器（唯一入口）
     openCustomDatePicker();
     return;
   }
   if (tabKey === 'placeholder') {
-    // 点击"XX日期"占位符，也打开自定义日期选择器
-    openCustomDatePicker();
+    // 点击"XX日期"占位符，不做任何操作（只是占位，不可交互）
     return;
   }
   // 其他情况（today, tomorrow, custom, preset）直接切换Tab

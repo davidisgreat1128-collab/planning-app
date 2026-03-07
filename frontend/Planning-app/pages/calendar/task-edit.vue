@@ -823,10 +823,10 @@ function onDateTab(tab) {
     // 点击已选择的自定义日期，不做任何操作（已经是选中状态）
     return;
   } else if (tab === 'placeholder') {
-    // 点击"XX日期"占位符，打开自定义日期选择器
-    openCustomDatePicker();
+    // 点击"XX日期"占位符，不做任何操作（只是占位，不可交互）
+    return;
   } else if (tab === 'other') {
-    // 点击"其他日期"，打开自定义日期选择器
+    // 点击"其他日期"，打开自定义日期选择器（唯一入口）
     openCustomDatePicker();
   }
 }
