@@ -186,6 +186,14 @@
       @confirm-change-quadrant="confirmChangeQuadrant"
       @confirm-delete="handleDeleteTaskConfirm"
     />
+
+    <!-- 新建任务底部弹窗 -->
+    <AddTaskPanel
+      :visible="showAddTaskPanel"
+      :preset-date="calendarComposable.selectedDate.value"
+      @close="showAddTaskPanel = false"
+      @submitted="handleTaskSubmitted"
+    />
   </view>
 </template>
 
@@ -202,6 +210,7 @@ import TaskQuadrantView from '@/components/calendar/TaskQuadrantView.vue';
 import TimelineView from '@/components/calendar/TimelineView.vue';
 import TaskCard from '@/components/calendar/TaskCard.vue';
 import DragOverlay from '@/components/calendar/DragOverlay.vue';
+import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 
 // Store
 const taskStore = useTaskStore();
@@ -220,6 +229,7 @@ const fabExpanded = ref(false);
 const scrollTop = ref(0);
 const showSubtaskPopup = ref(false);
 const currentSubtaskParent = ref(null);
+const showAddTaskPanel = ref(false);
 
 // DragOverlay组件ref
 const dragOverlayRef = ref(null);
@@ -314,9 +324,8 @@ function toggleFab() {
 }
 
 function addTask() {
-  uni.navigateTo({
-    url: '/pages/calendar/task-edit?date=' + calendarComposable.selectedDate.value
-  });
+  // 打开 AddTaskPanel 底部弹窗
+  showAddTaskPanel.value = true;
   fabExpanded.value = false;
 }
 
@@ -451,6 +460,16 @@ function goToPlanningCategory() {
     title: '规划分类功能开发中',
     icon: 'none'
   });
+}
+
+/**
+ * 处理任务提交成功事件（来自 AddTaskPanel）
+ */
+async function handleTaskSubmitted() {
+  // 关闭弹窗
+  showAddTaskPanel.value = false;
+  // 刷新当前日期的任务列表
+  await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
 }
 
 function getTaskQuadrantColor(task) {
