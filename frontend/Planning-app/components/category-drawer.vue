@@ -184,6 +184,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
+import { useCategoryStore } from '@/store/category.js';
 import { usePlanStore } from '@/store/plan.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
@@ -199,9 +200,11 @@ const props = defineProps({
 const emit = defineEmits(['update:visible', 'create-goal', 'container-changed']);
 
 // ============================================================
-// Store
+// Store（三层架构：Component → Store → Repository）
 // ============================================================
 const userStore = useUserStore();
+const categoryStore = useCategoryStore();
+const planStore = usePlanStore();
 
 // ============================================================
 // 状态变量
@@ -213,7 +216,11 @@ const isEditMode = ref(false); // 是否为编辑模式
 const editingCategory = ref(null); // 正在编辑的分类
 const showDeleteDialog = ref(false); // 删除分类确认弹窗
 const deletingCategory = ref(null); // 正在删除的分类
-const userCategories = ref([]); // 用户创建的分类列表
+
+// ⚠️ 改为从 Store 获取（符合三层架构）
+// 旧代码：const userCategories = ref([])  // ❌ 直接在组件维护状态
+// 新代码：从 categoryStore 获取 ✅
+const userCategories = computed(() => categoryStore.categories);
 
 // 左滑相关状态（分类）
 const swipeOpenId = ref(null); // 当前左滑打开的分类 ID
@@ -314,9 +321,12 @@ function getPlanProgressDays(plan) {
 // ============================================================
 // 监听弹窗显示状态
 // ============================================================
-watch(() => props.visible, (newVal) => {
+watch(() => props.visible, async (newVal) => {
   if (newVal) {
-    loadCategories(); // 加载分类（包含规划）
+    // ✅ 三层架构：Component → Store → Repository → localStorage/API
+    // 旧代码：loadCategories() 直接读 uni.getStorageSync() ❌
+    // 新代码：调用 Store.hydrate() ✅
+    await categoryStore.hydrate();
 
     // 加载选中状态
     loadContainerSelection();
@@ -342,8 +352,11 @@ function loadContainerSelection() {
 // ============================================================
 // 组件挂载时加载数据
 // ============================================================
-onMounted(() => {
-  loadCategories(); // 加载分类（包含规划）
+onMounted(async () => {
+  // ✅ 三层架构：Component → Store → Repository
+  // 旧代码：loadCategories() 直接读 localStorage ❌
+  // 新代码：调用 Store.hydrate() ✅
+  await categoryStore.hydrate();
 });
 
 // ============================================================
@@ -455,69 +468,67 @@ function handleOverlayClick() {
 }
 
 /**
- * 加载分类列表
+ * ❌ 已删除 loadCategories() 和 saveCategories() 函数
+ *
+ * 原因：违反三层架构规范（Component 不应直接操作 localStorage）
+ *
+ * 旧实现（违反架构）：
+ * - Component 直接调用 uni.getStorageSync/setStorageSync
+ * - 绕过了 Store 和 Repository 层
+ *
+ * 新实现（符合三层架构）：
+ * - 读取：userCategories = computed(() => categoryStore.categories)
+ * - 创建：await categoryStore.createCategory(data)
+ * - 更新：await categoryStore.updateCategory(id, data)
+ * - 删除：await categoryStore.deleteCategory(id)
+ * - 同步：await categoryStore.hydrate()
+ *
+ * 数据流向：Component → Store → Repository → localStorage/API
  */
-function loadCategories() {
-  const savedCategories = uni.getStorageSync('user_categories');
-  if (savedCategories) {
-    try {
-      userCategories.value = JSON.parse(savedCategories);
-    } catch (e) {
-      console.error('加载分类失败:', e);
-      userCategories.value = [];
-    }
-  }
-}
-
-/**
- * 保存分类到本地
- */
-function saveCategories() {
-  uni.setStorageSync('user_categories', JSON.stringify(userCategories.value));
-}
 
 /**
  * 保存新建/编辑分类
+ * ✅ 三层架构：Component → Store → Repository
  */
-function onSaveCategory(data) {
-  if (isEditMode.value && editingCategory.value) {
-    // 编辑模式：更新现有分类
-    const index = userCategories.value.findIndex(c => c.id === editingCategory.value.id);
-    if (index !== -1) {
-      userCategories.value[index] = {
-        ...userCategories.value[index],
+async function onSaveCategory(data) {
+  try {
+    if (isEditMode.value && editingCategory.value) {
+      // 编辑模式：调用 Store.updateCategory()
+      // 旧代码：直接修改 userCategories.value[index] ❌
+      // 新代码：调用 Store 方法 ✅
+      await categoryStore.updateCategory(editingCategory.value.id, {
         name: data.name,
-        icon: data.icon,
-        iconEmoji: data.iconEmoji,
-        updateTime: new Date().toISOString()
-      };
-
-      saveCategories();
+        color: data.color,
+        iconEmoji: data.iconEmoji
+      });
 
       uni.showToast({
         title: '分类更新成功',
         icon: 'success'
       });
+
+      isEditMode.value = false;
+      editingCategory.value = null;
+    } else {
+      // 新建模式：调用 Store.createCategory()
+      // 旧代码：直接 push 到 userCategories.value ❌
+      // 新代码：调用 Store 方法 ✅
+      await categoryStore.createCategory({
+        name: data.name,
+        color: data.color,
+        iconEmoji: data.iconEmoji
+      });
+
+      uni.showToast({
+        title: '分类创建成功',
+        icon: 'success'
+      });
     }
-
-    isEditMode.value = false;
-    editingCategory.value = null;
-  } else {
-    // 新建模式：创建新分类
-    const newCategory = {
-      id: Date.now().toString(),
-      name: data.name,
-      icon: data.icon,
-      iconEmoji: data.iconEmoji,
-      createTime: new Date().toISOString()
-    };
-
-    userCategories.value.push(newCategory);
-    saveCategories();
-
+  } catch (error) {
+    console.error('[category-drawer] 保存分类失败:', error);
     uni.showToast({
-      title: '分类创建成功',
-      icon: 'success'
+      title: '保存失败',
+      icon: 'none'
     });
   }
 }
@@ -547,8 +558,9 @@ function deleteCategory(category) {
 
 /**
  * 确认删除分类
+ * ✅ 三层架构：Component → Store → Repository
  */
-function onDeleteConfirm(deleteMode) {
+async function onDeleteConfirm(deleteMode) {
   if (!deletingCategory.value) return;
 
   const categoryId = deletingCategory.value.id;
@@ -556,27 +568,33 @@ function onDeleteConfirm(deleteMode) {
   // 检查是否删除的是当前选中的分类
   const isDeletingSelected = selectedCategory.value === categoryId;
 
-  // 从列表中删除分类
-  const index = userCategories.value.findIndex(c => c.id === categoryId);
-  if (index !== -1) {
-    userCategories.value.splice(index, 1);
-    saveCategories();
+  try {
+    // ✅ 调用 Store.deleteCategory()（软删除）
+    // 旧代码：userCategories.value.splice(index, 1) ❌
+    // 新代码：调用 Store 方法 ✅
+    await categoryStore.deleteCategory(categoryId);
+
+    // 如果删除的是当前选中的分类，自动切换到"全部"
+    if (isDeletingSelected) {
+      console.log('[category-drawer] 删除了当前选中的分类，自动切换到"全部"');
+      selectCategory('all');
+    }
+
+    // TODO: 根据 deleteMode 处理关联任务
+    // 'category_only' - 仅删除分类，任务归为"无分类"
+    // 'with_tasks' - 同时删除分类和相关任务
+
+    uni.showToast({
+      title: deleteMode === 'with_tasks' ? '分类和任务已删除' : '分类已删除',
+      icon: 'success'
+    });
+  } catch (error) {
+    console.error('[category-drawer] 删除分类失败:', error);
+    uni.showToast({
+      title: '删除失败',
+      icon: 'none'
+    });
   }
-
-  // 如果删除的是当前选中的分类，自动切换到"全部"
-  if (isDeletingSelected) {
-    console.log('[CategoryDrawer] 删除了当前选中的分类，自动切换到"全部"');
-    selectCategory('all');
-  }
-
-  // TODO: 根据 deleteMode 处理关联任务
-  // 'category_only' - 仅删除分类，任务归为"无分类"
-  // 'with_tasks' - 同时删除分类和相关任务
-
-  uni.showToast({
-    title: deleteMode === 'with_tasks' ? '分类和任务已删除' : '分类已删除',
-    icon: 'success'
-  });
 
   deletingCategory.value = null;
 }
