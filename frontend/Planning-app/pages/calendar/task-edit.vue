@@ -679,10 +679,25 @@ import SubtaskList from '@/components/task/SubtaskList.vue';
 import CustomDatePicker from '@/components/task/CustomDatePicker.vue';
 
 // ============================================================
+// 新增：引入 useTaskForm 业务逻辑层
+// ============================================================
+import { useTaskForm } from '@/composables/useTaskForm.js';
+
+// ============================================================
 // Store
 // ============================================================
 const taskStore = useTaskStore();
 const planStore = usePlanStore();
+
+// ============================================================
+// 初始化 useTaskForm（阶段1：基础功能）
+// ============================================================
+// 注意：这里先初始化，后续步骤会逐步使用 taskFormApi 提供的状态和方法
+const taskFormApi = useTaskForm({
+  mode: 'edit',
+  taskId: null,
+  presetDate: ''
+});
 
 /** 任务ID（编辑模式时有值） */
 const taskId = ref(null);
@@ -698,14 +713,10 @@ const presetDate = ref('');
 /** 当前任务是否已完成（页面内直接切换） */
 const taskDone = ref(false);
 
-/** 日期 Tab：today / tomorrow / custom / preset / other */
-const activeDateTab = ref('today');
-
-/** 用户自定义选择的日期（用于动态Tab显示，YYYY-MM-DD格式） */
-const customDate = ref('');
-
-/** 子计划列表 */
-const subtasks = ref([]);
+// 阶段1注释：以下3个变量已从 useTaskForm 解构，原定义已删除
+// const activeDateTab = ref('today');  ❌ 已删除
+// const customDate = ref('');          ❌ 已删除
+// const subtasks = ref([]);            ❌ 已删除
 
 /** 弹窗：四象限选择器 */
 const showQuadrantPicker = ref(false);
@@ -781,37 +792,35 @@ const repeatModeLabel = computed(() => {
 // 新增方法
 // ============================================================
 
+// ============================================================
+// 阶段1：日期Tab管理函数（部分调用 taskFormApi）
+// ============================================================
+
 /**
  * 点击日期 Tab，更新 taskDate
  * @param {'today' | 'tomorrow' | 'custom' | 'preset' | 'other'} tab - Tab标识
  */
 function onDateTab(tab) {
-  const today = formatDate(new Date());
-  const tomorrow = formatDate(new Date(Date.now() + 86400000));
-
-  if (tab === 'today') {
-    form.value.taskDate = today;
-    activeDateTab.value = 'today';
-    customDate.value = '';  // 清空自定义日期，恢复为3个Tab
-  } else if (tab === 'tomorrow') {
-    form.value.taskDate = tomorrow;
-    activeDateTab.value = 'tomorrow';
-    customDate.value = '';  // 清空自定义日期，恢复为3个Tab
-  } else if (tab === 'custom' || tab === 'preset') {
-    // 点击已选择的自定义日期，不做任何操作（已经是选中状态）
-    return;
-  } else if (tab === 'other') {
-    // 点击"其他日期"，打开自定义日期选择器
+  // 'other' tab 的处理（打开选择器）属于组件层职责，保留在这里
+  if (tab === 'other') {
     openCustomDatePicker();
+    return;
   }
+
+  // 其他 tab 的处理（'today'、'tomorrow'、'custom'、'preset'）交给 taskFormApi
+  taskFormApi.onDateTab(tab);
 }
+
+// ============================================================
+// 阶段1：子任务管理函数（直接调用 taskFormApi 方法）
+// ============================================================
 
 /**
  * 处理添加子计划事件（从 SubtaskList 组件触发）
  * @param {string} title - 子计划标题
  */
 function handleAddSubtask(title) {
-  subtasks.value.unshift({ title, done: false });
+  taskFormApi.addSubtask(title);
 }
 
 /**
@@ -819,7 +828,7 @@ function handleAddSubtask(title) {
  * @param {number} index - 子计划索引
  */
 function handleRemoveSubtask(index) {
-  subtasks.value.splice(index, 1);
+  taskFormApi.removeSubtask(index);
 }
 
 /**
@@ -827,7 +836,7 @@ function handleRemoveSubtask(index) {
  * @param {number} index - 子计划索引
  */
 function handleToggleSubtaskDone(index) {
-  subtasks.value[index].done = !subtasks.value[index].done;
+  taskFormApi.toggleSubtaskDone(index);
 }
 
 /** 聚焦子任务输入框 */
@@ -872,30 +881,22 @@ function goFocus() {
 const isEdit = computed(() => !!taskId.value);
 
 // ============================================================
-// 表单数据（字段名与后端对齐）
+// 阶段1：从 useTaskForm 解构表单数据和工具函数（替换原本的 ref 定义）
 // ============================================================
-const form = ref({
-  title: '',
-  description: '',
-  isUrgent: false,
-  isImportant: false,
-  isAllDay: true,        // 全天任务
-  hasTimeRange: false,   // 是否设置时间段（开关）
-  taskDate: '',          // 开始日期 YYYY-MM-DD
-  endDate: '',           // 结束日期 YYYY-MM-DD（hasTimeRange=false 多天范围时用）
-  startTime: '',         // 开始时间 HH:mm（hasTimeRange=true 时使用）
-  endTime: '',           // 结束时间 HH:mm（hasTimeRange=true 时使用）
-  rrule: '',             // 重复规则 RRULE 字符串
-  planId: null,
-  reminderEnabled: false,    // 是否开启提醒
-  reminderOffset: null,      // 提醒偏移分钟数（负=提前，0=当天当时）
-  reminderAdvanceMode: 'day', // 'day' | 'week'
-  reminderAdvanceDays: 0,    // 按天提前：0=当天, 1=提前1天...
-  reminderHour: 0,           // 提醒小时
-  reminderMin: 0,            // 提醒分钟
-  strongReminder: false,     // 强力提醒（持续提醒开关）
-  wechatReminder: false      // 微信辅助提醒
-});
+// 原代码已删除：const form = ref({...})
+// 现在从 taskFormApi 中解构获取
+const {
+  form,
+  subtasks,
+  activeDateTab,
+  customDate,
+  // 阶段1：解构工具函数
+  formatDate,
+  getWeekdayName,
+  calcDays,
+  timeDiffMinutes,
+  formatDuration
+} = taskFormApi;
 
 // ============================================================
 // 计算属性：显示逻辑
@@ -1899,49 +1900,16 @@ function parseRruleToUI(rrule) {
   }
 }
 
-/** 格式化日期为 YYYY-MM-DD */
-function formatDate(date) {
-  const d = new Date(date);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+// ============================================================
+// 阶段1：工具函数（已从 taskFormApi 解构，删除重复定义）
+// ============================================================
+// ❌ 已删除：formatDate、getWeekdayName、calcDays、timeDiffMinutes、formatDuration
+// ✅ 现在从 taskFormApi 解构使用（见第888-899行）
 
-/** 格式化为"M月D日，周X" */
+/** 格式化为"M月D日，周X"（组件特有的辅助函数，保留） */
 function formatDateDisplay(date) {
   const d = new Date(date);
   return `${d.getMonth() + 1}月${d.getDate()}日，${getWeekdayName(d)}`;
-}
-
-/** 获取星期名 */
-function getWeekdayName(date) {
-  const names = ['周日', '周一', '周二', '周三', '周四', '周五', '周六'];
-  return names[new Date(date).getDay()];
-}
-
-/** 计算两日期相差天数（含首尾） */
-function calcDays(start, end) {
-  if (!start || !end) return 1;
-  const s = new Date(start);
-  const e = new Date(end);
-  const diff = Math.round((e - s) / 86400000);
-  return Math.max(1, diff + 1);
-}
-
-/** 计算两个 HH:mm 之间的分钟差 */
-function timeDiffMinutes(start, end) {
-  const [sh, sm] = start.split(':').map(Number);
-  const [eh, em] = end.split(':').map(Number);
-  return (eh * 60 + em) - (sh * 60 + sm);
-}
-
-/** 格式化持续时间 */
-function formatDuration(mins) {
-  if (mins < 60) return `${mins}分钟`;
-  const h = Math.floor(mins / 60);
-  const m = mins % 60;
-  return m > 0 ? `${h}小时${m}分钟` : `${h}小时`;
 }
 
 /** 简单农历（仅显示农历日期名，无需精确，后续可接入 lunar-javascript 库） */
