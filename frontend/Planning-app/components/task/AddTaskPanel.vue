@@ -183,57 +183,16 @@
       @cancel="showQuadrantPicker = false"
     />
 
-    <!-- ⑤.5 分类/规划选择器浮层 -->
-    <view v-if="showCategoryPicker" class="category-picker-mask" @tap="closeCategoryPicker">
-      <view class="category-picker" @tap.stop>
-        <!-- 顶部操作按钮 -->
-        <view class="cp-header">
-          <view class="cp-create-action" @tap="createNewCategory">
-            <text class="cp-create-plus">+</text>
-            <text class="cp-create-label">新建分类</text>
-          </view>
-          <view class="cp-create-action" @tap="createNewPlan">
-            <text class="cp-create-plus">+</text>
-            <text class="cp-create-label">新建目标</text>
-          </view>
-        </view>
-
-        <!-- 统一列表：无分类 + 分类（包含规划） -->
-        <scroll-view class="cp-scroll" scroll-y>
-          <!-- 无分类选项 -->
-          <view
-            class="cp-item"
-            :class="{ 'cp-item-selected': selectedCategoryId === null }"
-            @tap="selectCategory(null)"
-          >
-            <view class="cp-icon-wrapper">
-              <text class="cp-icon">无</text>
-            </view>
-            <text class="cp-item-name">无分类</text>
-            <text v-if="selectedCategoryId === null" class="cp-check">✓</text>
-          </view>
-
-          <!-- 分类列表（包含普通分类和规划） -->
-          <view
-            v-for="category in userCategories"
-            :key="category.id"
-            class="cp-item"
-            :class="{ 'cp-item-selected': selectedCategoryId === category.id }"
-            @tap="selectCategory(category.id)"
-          >
-            <view class="cp-icon-wrapper">
-              <text class="cp-icon">{{ category.iconEmoji || category.name.charAt(0) }}</text>
-            </view>
-            <view v-if="category.type === 'plan'" class="cp-item-content">
-              <text class="cp-item-name">{{ category.name }}</text>
-              <text class="cp-item-tag">规划</text>
-            </view>
-            <text v-else class="cp-item-name">{{ category.name }}</text>
-            <text v-if="selectedCategoryId === category.id" class="cp-check">✓</text>
-          </view>
-        </scroll-view>
-      </view>
-    </view>
+    <!-- ⑤.5 分类/规划选择器 -->
+    <CategoryPicker
+      :visible="showCategoryPicker"
+      :categories="userCategories"
+      :selectedId="selectedCategoryId"
+      @select="onCategorySelect"
+      @create-category="createNewCategory"
+      @create-plan="createNewPlan"
+      @cancel="closeCategoryPicker"
+    />
 
     <!-- ⑤.6 新建分类弹窗（使用teleport传送到body层级，确保全屏居中） -->
     <teleport to="body">
@@ -498,6 +457,7 @@ import DateTabBar from './DateTabBar.vue';
 import SubtaskList from './SubtaskList.vue';
 import CustomDatePicker from './CustomDatePicker.vue';
 import QuadrantPicker from './QuadrantPicker.vue';
+import CategoryPicker from './CategoryPicker.vue';
 
 // ============================================================
 // Props & Emits
@@ -595,9 +555,9 @@ function closeCategoryPicker() {
   showCategoryPicker.value = false;
 }
 
-/** 选择分类 */
-function selectCategory(categoryId) {
-  selectedCategoryId.value = categoryId;
+/** 处理 CategoryPicker 组件的 select 事件 */
+function onCategorySelect(payload) {
+  selectedCategoryId.value = payload.categoryId;
   showCategoryPicker.value = false;
 }
 
@@ -1944,152 +1904,6 @@ function loadSelectedContainer() {
 /* ============================================================
    ⑤.5 分类/规划选择器浮层
    ============================================================ */
-.category-picker-mask {
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  z-index: 1000;
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-}
-
-.category-picker {
-  width: 100%;
-  max-height: 85vh;
-  background-color: #FFFFFF;
-  border-radius: 24rpx 24rpx 0 0;
-  display: flex;
-  flex-direction: column;
-  animation: slideUp 0.3s ease-out;
-  overflow: hidden;
-}
-
-@keyframes slideUp {
-  from {
-    transform: translateY(100%);
-  }
-  to {
-    transform: translateY(0);
-  }
-}
-
-/* 顶部操作按钮区域（54.jpg风格） */
-.cp-header {
-  display: flex;
-  padding: 30rpx 40rpx 20rpx;
-  gap: 20rpx;
-  border-bottom: 1rpx solid #F0F0F0;
-  flex-shrink: 0;
-}
-
-.cp-create-action {
-  display: flex;
-  align-items: center;
-  gap: 8rpx;
-  cursor: pointer;
-  transition: opacity 0.2s;
-}
-
-.cp-create-action:active {
-  opacity: 0.6;
-}
-
-.cp-create-plus {
-  font-size: 32rpx;
-  color: #5B8CFF;
-  font-weight: 300;
-  line-height: 1;
-}
-
-.cp-create-label {
-  font-size: 28rpx;
-  color: #5B8CFF;
-  font-weight: 500;
-}
-
-/* 滚动区域 */
-.cp-scroll {
-  flex: 1;
-  padding: 10rpx 0;
-  overflow-y: auto;
-  min-height: 200rpx;
-  max-height: calc(85vh - 120rpx);
-}
-
-/* 列表项（54.jpg风格：更大间距） */
-.cp-item {
-  display: flex;
-  align-items: center;
-  padding: 24rpx 40rpx;
-  transition: background-color 0.2s;
-  cursor: pointer;
-}
-
-.cp-item:active {
-  background-color: #F8F8F8;
-}
-
-.cp-item-selected {
-  background-color: transparent;
-}
-
-/* 图标容器（54.jpg风格：更大圆圈） */
-.cp-icon-wrapper {
-  width: 68rpx;
-  height: 68rpx;
-  border-radius: 50%;
-  background-color: #F5F5F5;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  margin-right: 24rpx;
-  flex-shrink: 0;
-}
-
-.cp-icon {
-  font-size: 32rpx;
-  color: #333;
-  line-height: 1;
-}
-
-/* 列表项内容区域 */
-.cp-item-content {
-  flex: 1;
-  display: flex;
-  align-items: center;
-  gap: 12rpx;
-}
-
-.cp-item-name {
-  font-size: 30rpx;
-  color: #333;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-/* 目标标签（54.jpg风格） */
-.cp-item-tag {
-  font-size: 24rpx;
-  color: #999;
-  background-color: #F5F5F5;
-  padding: 4rpx 12rpx;
-  border-radius: 8rpx;
-  flex-shrink: 0;
-}
-
-/* 勾选标记 */
-.cp-check {
-  font-size: 36rpx;
-  color: #5B8CFF;
-  flex-shrink: 0;
-  margin-left: 10rpx;
-  font-weight: 600;
-}
 
 /* ============================================================
    ⑦ 通用弹窗遮罩 + 弹窗卡片
