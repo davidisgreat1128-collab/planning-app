@@ -1932,18 +1932,40 @@ async function save() {
   try {
     uni.showLoading({ title: '保存中...' });
 
-    // 检查是否是 localStorage 任务（ID 以 task_ 开头）
-    const isLocalStorageTask = isEdit.value && taskId.value && String(taskId.value).startsWith('task_');
+    // 尝试从 localStorage 查找任务（无论ID前缀是什么）
+    let isLocalStorageTask = false;
+    if (isEdit.value && taskId.value) {
+      try {
+        const savedTasks = uni.getStorageSync('tasks');
+        if (savedTasks) {
+          const tasks = JSON.parse(savedTasks);
+          // 对于重复任务，使用原始ID；否则使用实例ID
+          const idToFind = originalTaskId.value || taskId.value;
+          const taskIndex = tasks.findIndex(t => String(t.id) === String(idToFind));
+
+          if (taskIndex !== -1) {
+            // 确认任务在 localStorage 中，标记为 localStorage 任务
+            isLocalStorageTask = true;
+            console.log('[TaskEdit] 检测到 localStorage 任务，ID:', idToFind);
+          }
+        }
+      } catch (e) {
+        console.error('[TaskEdit] 检查 localStorage 任务失败:', e);
+      }
+    }
 
     if (isLocalStorageTask) {
       // localStorage 任务：直接更新 localStorage，不调用后端 API
+      console.log('[TaskEdit] 使用 localStorage 保存模式');
 
       try {
         const savedTasks = uni.getStorageSync('tasks');
         let tasks = savedTasks ? JSON.parse(savedTasks) : [];
 
-        // 查找并更新任务
-        const taskIndex = tasks.findIndex(t => String(t.id) === String(taskId.value));
+        // 对于重复任务，使用原始ID；否则使用实例ID
+        const idToFind = originalTaskId.value || taskId.value;
+        const taskIndex = tasks.findIndex(t => String(t.id) === String(idToFind));
+
         if (taskIndex !== -1) {
           // 准备子任务数据
           const subtasksData = subtasks.value.length > 0
@@ -1968,11 +1990,13 @@ async function save() {
 
           // 保存回 localStorage
           uni.setStorageSync('tasks', JSON.stringify(tasks));
+          console.log('[TaskEdit] localStorage 保存成功');
 
           // 同时更新 taskStore 中的任务（如果存在）
-          const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === String(taskId.value));
+          const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === String(idToFind));
           if (storeTaskIndex !== -1) {
             taskStore.tasks[storeTaskIndex] = tasks[taskIndex];
+            console.log('[TaskEdit] 同步更新 taskStore 成功');
           }
 
           uni.hideLoading();
@@ -1980,6 +2004,7 @@ async function save() {
           setTimeout(() => { uni.navigateBack(); }, 800);
           return;
         } else {
+          // 理论上不应该到这里，因为前面已经检查过了
           throw new Error('任务不存在');
         }
       } catch (e) {
