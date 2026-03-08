@@ -27,16 +27,27 @@
  */
 
 import { defineStore } from 'pinia'
-import { computed } from 'vue'
+import { ref } from 'vue'
 import CategoryRepository from '@/repositories/CategoryRepository'
 
 export const useCategoryStore = defineStore('category', () => {
   // ========== 状态（State）==========
 
   /**
-   * 所有分类（计算属性，自动从 Repository 获取）
+   * 所有分类（响应式数组）
+   *
+   * ⚠️ 重要：必须用 ref 维护响应式副本
+   *
+   * 原因：CategoryRepository.memoryCache 是普通 Map（非响应式）
+   * - Repository.create/delete 修改 memoryCache 时，Vue 不知道数据变化
+   * - 如果用 computed(() => Repository.getAll())，UI 不会自动更新
+   *
+   * 解决方案：
+   * - Store 维护 ref([]) 响应式副本
+   * - hydrate/create/update/delete 后手动调用 _syncFromRepository()
+   * - Component 订阅 ref，自动响应式更新
    */
-  const categories = computed(() => CategoryRepository.getAll())
+  const categories = ref([])
 
   // ========== 计算属性（Getters）==========
 
@@ -68,6 +79,18 @@ export const useCategoryStore = defineStore('category', () => {
     return categories.value.filter(cat => cat.color === color)
   }
 
+  // ========== 内部方法 ==========
+
+  /**
+   * 从 Repository 同步数据到 Store（响应式更新）
+   *
+   * @private
+   */
+  function _syncFromRepository() {
+    categories.value = CategoryRepository.getAll()
+    console.log('[CategoryStore] 同步数据完成，分类数量:', categories.value.length)
+  }
+
   // ========== 操作（Actions）==========
 
   /**
@@ -90,6 +113,7 @@ export const useCategoryStore = defineStore('category', () => {
    */
   async function hydrate() {
     await CategoryRepository.hydrate()
+    _syncFromRepository()  // ✅ 同步到响应式副本
   }
 
   /**
@@ -105,7 +129,9 @@ export const useCategoryStore = defineStore('category', () => {
    * })
    */
   async function createCategory(data) {
-    return await CategoryRepository.create(data)
+    const newCategory = await CategoryRepository.create(data)
+    _syncFromRepository()  // ✅ 同步到响应式副本，触发UI更新
+    return newCategory
   }
 
   /**
@@ -119,7 +145,9 @@ export const useCategoryStore = defineStore('category', () => {
    * await categoryStore.updateCategory('cat_123', { name: '生活' })
    */
   async function updateCategory(id, data) {
-    return await CategoryRepository.update(id, data)
+    const updated = await CategoryRepository.update(id, data)
+    _syncFromRepository()  // ✅ 同步到响应式副本，触发UI更新
+    return updated
   }
 
   /**
@@ -133,6 +161,7 @@ export const useCategoryStore = defineStore('category', () => {
    */
   async function deleteCategory(id) {
     await CategoryRepository.delete(id)
+    _syncFromRepository()  // ✅ 同步到响应式副本，触发UI更新
   }
 
   /**
@@ -155,6 +184,7 @@ export const useCategoryStore = defineStore('category', () => {
     for (const item of newOrder) {
       await CategoryRepository.update(item.id, { sortOrder: item.sortOrder })
     }
+    _syncFromRepository()  // ✅ 批量更新后同步
   }
 
   /**
@@ -180,6 +210,7 @@ export const useCategoryStore = defineStore('category', () => {
    */
   async function sync() {
     await CategoryRepository.sync()
+    _syncFromRepository()  // ✅ 同步后刷新Store
   }
 
   /**
@@ -192,6 +223,7 @@ export const useCategoryStore = defineStore('category', () => {
     for (const cat of allCategories) {
       await CategoryRepository.delete(cat.id)
     }
+    _syncFromRepository()  // ✅ 清除后同步
   }
 
   // ========== 导出 ==========
