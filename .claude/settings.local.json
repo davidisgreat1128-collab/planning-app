@@ -16,7 +16,8 @@
       "Bash(npx eslint@8:*)",
       "Read(//d/MyProject/Planning设计/**)",
       "Bash(rm:*)",
-      "Bash(git fetch:*)"
+      "Bash(git fetch:*)",
+      "Read(//d//**)"
     ],
     "deny": [],
     "ask": []
