@@ -27,7 +27,7 @@
  */
 
 import { defineStore } from 'pinia'
-import { ref } from 'vue'
+import { ref, computed } from 'vue'
 import CategoryRepository from '@/repositories/CategoryRepository'
 
 export const useCategoryStore = defineStore('category', () => {
