@@ -202,14 +202,27 @@
       </view>
     </view>
 
-    <!-- 优先级（四象限）选择器弹窗 -->
-    <QuadrantPicker
-      :visible="showQuadrantPicker"
-      :isUrgent="form.isUrgent"
-      :isImportant="form.isImportant"
-      @select="onQuadrantSelect"
-      @cancel="showQuadrantPicker = false"
-    />
+    <!-- ======================================================
+         优先级（四象限）选择器弹窗
+         ====================================================== -->
+    <view v-if="showQuadrantPicker" class="tep-modal-mask" @tap.self="showQuadrantPicker = false">
+      <view class="tep-quadrant-sheet">
+        <text class="tep-sheet-title">选择优先级</text>
+        <view class="tep-quadrant-grid">
+          <view
+            v-for="q in quadrants"
+            :key="q.key"
+            class="tep-quad-option"
+            :class="['tep-quad-' + q.key, { 'tep-quad-selected': currentQuadrant === q.key }]"
+            @tap="selectQuadrant(q); showQuadrantPicker = false"
+          >
+            <text class="tep-quad-badge-icon">{{ q.badgeIcon }}</text>
+            <text class="tep-quad-name">{{ q.name }}</text>
+            <text class="tep-quad-desc">{{ q.desc }}</text>
+          </view>
+        </view>
+      </view>
+    </view>
 
     <!-- ======================================================
          重复规则底部弹窗（新UI设计）
@@ -664,7 +677,6 @@ import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 import DateTabBar from '@/components/task/DateTabBar.vue';
 import SubtaskList from '@/components/task/SubtaskList.vue';
 import CustomDatePicker from '@/components/task/CustomDatePicker.vue';
-import QuadrantPicker from '@/components/task/QuadrantPicker.vue';
 
 // ============================================================
 // Store
@@ -1820,13 +1832,9 @@ function onTimeRangeToggle(e) {
 // 工具函数
 // ============================================================
 
-/**
- * 处理 QuadrantPicker 组件的 select 事件
- */
-function onQuadrantSelect(payload) {
-  form.value.isUrgent = payload.isUrgent;
-  form.value.isImportant = payload.isImportant;
-  showQuadrantPicker.value = false;
+function selectQuadrant(q) {
+  form.value.isUrgent    = q.isUrgent;
+  form.value.isImportant = q.isImportant;
 }
 
 function pickPlan() {
@@ -2769,6 +2777,29 @@ onMounted(() => {
 .tep-modal-confirm { font-size: 30rpx; color: #5B8CFF; font-weight: bold; padding: 8rpx 32rpx; }
 
 /* 四象限弹窗 */
+.tep-quadrant-sheet {
+  width: 100%;
+  background-color: #FFFFFF;
+  border-radius: 28rpx 28rpx 0 0;
+  padding: 32rpx 24rpx 48rpx;
+}
+.tep-quadrant-grid { display: flex; flex-direction: row; flex-wrap: wrap; gap: 20rpx; }
+.tep-quad-option {
+  flex: 0 0 calc(50% - 10rpx);
+  border-radius: 16rpx;
+  padding: 24rpx 20rpx;
+  border: 3rpx solid transparent;
+  display: flex;
+  flex-direction: column;
+}
+.tep-quad-q1 { background-color: #FFF0F0; }
+.tep-quad-q2 { background-color: #F0F4FF; }
+.tep-quad-q3 { background-color: #FFFBF0; }
+.tep-quad-q4 { background-color: #F0FFF4; }
+.tep-quad-selected { border-color: #333; }
+.tep-quad-badge-icon { font-size: 28rpx; font-weight: bold; color: #555; margin-bottom: 8rpx; }
+.tep-quad-name { font-size: 26rpx; font-weight: bold; color: #222; margin-bottom: 4rpx; }
+.tep-quad-desc { font-size: 22rpx; color: #999; }
 
 /* 重复规则弹窗 */
 .tep-repeat-sheet {

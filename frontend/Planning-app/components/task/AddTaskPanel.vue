@@ -174,14 +174,24 @@
       </view>
     </view>
 
-    <!-- ⑤ 四象限选择器 -->
-    <QuadrantPicker
-      :visible="showQuadrantPicker"
-      :isUrgent="form.isUrgent"
-      :isImportant="form.isImportant"
-      @select="onQuadrantSelect"
-      @cancel="showQuadrantPicker = false"
-    />
+    <!-- ⑤ 四象限浮层 -->
+    <view v-if="showQuadrantPicker" class="quadrant-picker">
+      <view class="quadrant-picker-inner">
+        <!-- 坐标轴 -->
+        <view class="axis-h"></view>
+        <view class="axis-v"></view>
+        <!-- 四个象限 -->
+        <view
+          v-for="q in quadrants"
+          :key="q.key"
+          class="qp-cell"
+          :class="[q.posClass, { 'qp-selected': isQuadrantSelected(q) }]"
+          @tap="selectQuadrant(q)"
+        >
+          <text class="qp-label">{{ q.name }}</text>
+        </view>
+      </view>
+    </view>
 
     <!-- ⑤.5 分类/规划选择器浮层 -->
     <view v-if="showCategoryPicker" class="category-picker-mask" @tap="closeCategoryPicker">
@@ -497,7 +507,6 @@ import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DateTabBar from './DateTabBar.vue';
 import SubtaskList from './SubtaskList.vue';
 import CustomDatePicker from './CustomDatePicker.vue';
-import QuadrantPicker from './QuadrantPicker.vue';
 
 // ============================================================
 // Props & Emits
@@ -776,12 +785,12 @@ function onCustomDateConfirm(payload) {
 // 四象限
 // ============================================================
 
-/** 四象限配置（用于计算颜色） */
+/** 四象限配置 */
 const quadrants = [
-  { key: 'q1', isUrgent: true,  isImportant: true,  color: '#FF4444' },
-  { key: 'q2', isUrgent: false, isImportant: true,  color: '#5B8CFF' },
-  { key: 'q3', isUrgent: true,  isImportant: false, color: '#FFB300' },
-  { key: 'q4', isUrgent: false, isImportant: false, color: '#4CAF50' }
+  { key: 'q3', name: '紧急不重要', posClass: 'qp-top-left',    isUrgent: true,  isImportant: false, color: '#FFB300' },
+  { key: 'q1', name: '重要且紧急', posClass: 'qp-top-right',   isUrgent: true,  isImportant: true,  color: '#FF4444' },
+  { key: 'q4', name: '不重要不紧急', posClass: 'qp-bot-left',  isUrgent: false, isImportant: false, color: '#4CAF50' },
+  { key: 'q2', name: '重要不紧急', posClass: 'qp-bot-right',   isUrgent: false, isImportant: true,  color: '#5B8CFF' }
 ];
 
 /** 当前选中的四象限颜色（圆圈颜色） */
@@ -797,15 +806,20 @@ const currentQuadrantIconColor = computed(() => {
   return currentQuadrantColor.value;
 });
 
+/** 是否选中指定象限 */
+function isQuadrantSelected(q) {
+  return q.isUrgent === form.value.isUrgent && q.isImportant === form.value.isImportant;
+}
+
 /** 展开/折叠四象限选择器 */
 function toggleQuadrantPicker() {
   showQuadrantPicker.value = !showQuadrantPicker.value;
 }
 
-/** 处理 QuadrantPicker 组件的 select 事件 */
-function onQuadrantSelect(payload) {
-  form.value.isUrgent = payload.isUrgent;
-  form.value.isImportant = payload.isImportant;
+/** 选择象限 */
+function selectQuadrant(q) {
+  form.value.isUrgent = q.isUrgent;
+  form.value.isImportant = q.isImportant;
   showQuadrantPicker.value = false;
 }
 
@@ -1940,6 +1954,73 @@ function loadSelectedContainer() {
   margin-left: 4rpx;
 }
 
+/* ============================================================
+   ⑥ 四象限浮层
+   ============================================================ */
+.quadrant-picker {
+  position: absolute;
+  left: 24rpx;
+  bottom: 160rpx;
+  z-index: 10;
+}
+
+.quadrant-picker-inner {
+  position: relative;
+  width: 380rpx;
+  height: 220rpx;
+  background-color: #FFFFFF;
+  border-radius: 20rpx;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.16);
+  overflow: hidden;
+}
+
+.axis-h {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 50%;
+  height: 2rpx;
+  background-color: #E0E0E0;
+}
+
+.axis-v {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 2rpx;
+  background-color: #E0E0E0;
+}
+
+.qp-cell {
+  position: absolute;
+  width: 50%;
+  height: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.qp-top-left  { top: 0;    left: 0; }
+.qp-top-right { top: 0;    right: 0; }
+.qp-bot-left  { bottom: 0; left: 0; }
+.qp-bot-right { bottom: 0; right: 0; }
+
+.qp-label {
+  font-size: 24rpx;
+  color: #555;
+  text-align: center;
+}
+
+.qp-top-left.qp-selected  { background-color: rgba(255, 179, 0,  0.12); }
+.qp-top-right.qp-selected { background-color: rgba(255, 68,  68, 0.12); }
+.qp-bot-left.qp-selected  { background-color: rgba(76,  175, 80, 0.12); }
+.qp-bot-right.qp-selected { background-color: rgba(91,  140, 255, 0.12); }
+
+.qp-top-left.qp-selected  .qp-label { color: #FFB300; font-weight: bold; }
+.qp-top-right.qp-selected .qp-label { color: #FF4444; font-weight: bold; }
+.qp-bot-left.qp-selected  .qp-label { color: #4CAF50; font-weight: bold; }
+.qp-bot-right.qp-selected .qp-label { color: #5B8CFF; font-weight: bold; }
 
 /* ============================================================
    ⑤.5 分类/规划选择器浮层
