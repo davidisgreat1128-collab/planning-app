@@ -194,6 +194,11 @@
       @close="showAddTaskPanel = false"
       @submitted="handleTaskSubmitted"
     />
+
+    <!-- 规划和分类侧边抽屉 -->
+    <CategoryDrawer
+      v-model:visible="showCategoryDrawer"
+    />
   </view>
 </template>
 
@@ -211,6 +216,7 @@ import TimelineView from '@/components/calendar/TimelineView.vue';
 import TaskCard from '@/components/calendar/TaskCard.vue';
 import DragOverlay from '@/components/calendar/DragOverlay.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
+import CategoryDrawer from '@/components/category-drawer.vue';
 
 // Store
 const taskStore = useTaskStore();
@@ -230,6 +236,7 @@ const scrollTop = ref(0);
 const showSubtaskPopup = ref(false);
 const currentSubtaskParent = ref(null);
 const showAddTaskPanel = ref(false);
+const showCategoryDrawer = ref(false);
 
 // DragOverlay组件ref
 const dragOverlayRef = ref(null);
@@ -455,11 +462,11 @@ async function handleDeleteTaskConfirm(option) {
   }
 }
 
+/**
+ * 打开规划和分类侧边抽屉
+ */
 function goToPlanningCategory() {
-  uni.showToast({
-    title: '规划分类功能开发中',
-    icon: 'none'
-  });
+  showCategoryDrawer.value = true;
 }
 
 /**

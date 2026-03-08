@@ -3,7 +3,7 @@
     <!-- 顶部工具栏 -->
     <view class="top-toolbar">
       <view class="toolbar-left" @tap="handleGoalsClick">
-        <text class="toolbar-text">目标和分类</text>
+        <text class="toolbar-text">规划和分类</text>
         <text class="toolbar-icon">≡</text>
       </view>
       <view class="toolbar-right">
