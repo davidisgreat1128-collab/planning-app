@@ -1922,6 +1922,13 @@ function getLunarSimple(_date) {
 // 保存 / 删除
 // ============================================================
 async function save() {
+  console.log('[TaskEdit] ========== 开始保存 ==========');
+  console.log('[TaskEdit] isEdit:', isEdit.value);
+  console.log('[TaskEdit] taskId:', taskId.value);
+  console.log('[TaskEdit] originalTaskId:', originalTaskId.value);
+  console.log('[TaskEdit] form.title:', form.value.title);
+  console.log('[TaskEdit] subtasks:', JSON.stringify(subtasks.value));
+
   if (!form.value.title.trim()) {
     uni.showToast({ title: '请填写任务标题', icon: 'none' });
     return;
@@ -1934,6 +1941,7 @@ async function save() {
 
     // 尝试从 localStorage 查找任务（无论ID前缀是什么）
     let isLocalStorageTask = false;
+    console.log('[TaskEdit] 检查是否为 localStorage 任务...');
     if (isEdit.value && taskId.value) {
       try {
         const savedTasks = uni.getStorageSync('tasks');
@@ -1946,12 +1954,18 @@ async function save() {
           if (taskIndex !== -1) {
             // 确认任务在 localStorage 中，标记为 localStorage 任务
             isLocalStorageTask = true;
-            console.log('[TaskEdit] 检测到 localStorage 任务，ID:', idToFind);
+            console.log('[TaskEdit] ✅ 检测到 localStorage 任务，ID:', idToFind, ', 索引:', taskIndex);
+          } else {
+            console.log('[TaskEdit] ❌ localStorage 中未找到任务，ID:', idToFind);
           }
+        } else {
+          console.log('[TaskEdit] localStorage 中没有任务数据');
         }
       } catch (e) {
         console.error('[TaskEdit] 检查 localStorage 任务失败:', e);
       }
+    } else {
+      console.log('[TaskEdit] 不是编辑模式或 taskId 为空，跳过 localStorage 检查');
     }
 
     if (isLocalStorageTask) {
@@ -2080,30 +2094,47 @@ async function save() {
       };
     }
 
+    console.log('[TaskEdit] 准备调用后端API保存任务');
+    console.log('[TaskEdit] payload:', JSON.stringify(payload, null, 2));
+
     if (isEdit.value) {
       // 使用原始任务ID（对于重复任务，这是正确的ID）
       const idToUpdate = originalTaskId.value || taskId.value;
+      console.log('[TaskEdit] 编辑模式，更新任务 ID:', idToUpdate);
+      console.log('[TaskEdit] 调用 taskStore.updateTask...');
 
-      await taskStore.editTask(idToUpdate, payload);
+      await taskStore.updateTask(idToUpdate, payload);
+      console.log('[TaskEdit] ✅ taskStore.updateTask 调用成功');
 
       // 强制重新加载任务数据
+      console.log('[TaskEdit] 重新加载任务数据...');
       await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
 
       uni.showToast({ title: '修改成功', icon: 'success' });
     } else {
+      console.log('[TaskEdit] 创建模式，新建任务');
+      console.log('[TaskEdit] 调用 taskStore.addTask...');
+
       await taskStore.addTask(payload);
+      console.log('[TaskEdit] ✅ taskStore.addTask 调用成功');
 
       // 强制重新加载任务数据
+      console.log('[TaskEdit] 重新加载任务数据...');
       await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
 
       uni.showToast({ title: '创建成功', icon: 'success' });
     }
 
+    console.log('[TaskEdit] ========== 保存成功，准备返回 ==========');
     setTimeout(() => { uni.navigateBack(); }, 800);
   } catch (err) {
-    console.error('[TaskEdit] 保存失败:', err);
+    console.error('[TaskEdit] ========== 保存失败 ==========');
+    console.error('[TaskEdit] 错误类型:', err.constructor.name);
+    console.error('[TaskEdit] 错误信息:', err.message);
+    console.error('[TaskEdit] 错误堆栈:', err.stack);
     uni.showToast({ title: err.message || '保存失败', icon: 'none' });
   } finally {
+    console.log('[TaskEdit] 清理：隐藏加载提示');
     uni.hideLoading();
   }
 }
