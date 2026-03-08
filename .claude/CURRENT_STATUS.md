@@ -1,10 +1,11 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-07（第21次会话，集成AddTaskPanel到日历页面 ✅）
+> **最后更新**: 2026-03-08（第23次会话，useTaskForm业务逻辑层提取完成 ✅）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 631bb4a（feat(calendar): 集成AddTaskPanel组件到日历页面）
-> **Git状态**: ✅ 工作区干净，所有修改已提交
+> **最新commit**: d769371（feat(composables): 创建 useTaskForm 业务逻辑复用层）
+> **稳定版本标签**: v0.2.0-alpha ⭐
+> **Git状态**: ⚠️ 有文档变更未提交（CURRENT_STATUS.md + 迁移计划）
 
 ---
 
@@ -677,6 +678,45 @@ const planningStore = usePlanningStore();      // ✅ 保留供未来使用
 - ⚠️ AddTaskPanel.vue 有 2847 行（超标 256%，优先级P1）
 - ⚠️ task-edit.vue 有 3340 行（超标 318%，优先级P0）
 - ⚠️ 两个页面功能重复，需统一为一个组件
+
+### Phase 3t - useTaskForm业务逻辑层提取（第23次会话，2026-03-08）✅
+
+**背景**：执行架构评估报告中的阶段2 - 提取业务逻辑层（useTaskForm）
+
+**完成工作**（commit: d769371）：
+- ✅ **创建 useTaskForm.js**（850行）：
+  - 表单状态管理（form、subtasks、重复规则等）
+  - 表单验证逻辑（validateForm）
+  - CRUD操作（submit、update、deleteTask）
+  - 子计划管理（addSubtask、removeSubtask、toggleSubtaskDone）
+  - 日期管理（onDateTab、setCustomDate）
+  - 四象限管理（selectQuadrant）
+  - 重复规则管理（toggleWeekDay、toggleMonthlyDay、syncRrule）
+  - 工具函数（formatDate、calcDays、timeDiffMinutes等）
+  - 表单初始化和重置（loadFromTask、resetForm）
+
+- ✅ **创建分阶段迁移计划文档**（约1200行）：
+  - `docs/02-技术设计/useTaskForm迁移计划-分阶段可交接方案.md`
+  - 包含3个独立阶段的详细迁移步骤
+  - 每个阶段独立测试验收、Git提交、支持Claude切换
+  - 包含测试清单、回滚方案、风险控制
+
+**架构优势**：
+- ✅ 遵循三层架构：Component → Composable(useTaskForm) → Store → Repository
+- ✅ 消除 task-edit.vue 和 AddTaskPanel.vue 的85%代码重复
+- ✅ 提升可测试性（可单独测试业务逻辑）
+- ✅ 提升可维护性（修改一处生效全局）
+
+**预期收益**（迁移完成后）：
+- task-edit.vue: 3241行 → ~1200行（-63%）
+- AddTaskPanel.vue: 2598行 → ~1000行（-62%）
+- 代码重复率: 85% → <5%（-94%）
+- 健康评分: 30/100 → 75/100（+150%）
+
+**下一步计划**：
+- 分3个阶段逐步迁移 task-edit.vue 和 AddTaskPanel.vue
+- 每个阶段独立测试、提交、可切换Claude
+- 预计总耗时 6-9 小时
 
 ---
 
