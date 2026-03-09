@@ -895,7 +895,25 @@ const {
   getWeekdayName,
   calcDays,
   timeDiffMinutes,
-  formatDuration
+  formatDuration,
+  // 阶段2：解构高级功能
+  selectQuadrant,
+  currentQuadrant,
+  // 重复规则相关状态
+  repeatMode,
+  repeatInterval,
+  repeatWeekDays,
+  repeatEndDate,
+  monthlySubMode,
+  monthlyDays,
+  monthlyWeekNum,
+  monthlyWeekday,
+  yearlyMonth,
+  yearlyDay,
+  // 重复规则相关方法
+  toggleWeekDay,
+  toggleMonthlyDay,
+  syncRrule
 } = taskFormApi;
 
 // ============================================================
@@ -905,13 +923,7 @@ const {
 // minDate 保留供后续 picker 扩展使用（当前日历弹窗通过 isPast 逻辑控制）
 // const minDate = computed(() => formatDate(new Date()));
 
-/** 当前四象限 key */
-const currentQuadrant = computed(() => {
-  if (form.value.isUrgent && form.value.isImportant) return 'q1';
-  if (!form.value.isUrgent && form.value.isImportant) return 'q2';
-  if (form.value.isUrgent && !form.value.isImportant) return 'q3';
-  return 'q4';
-});
+// ✅ 阶段2：currentQuadrant 已从 useTaskForm 中解构，删除重复定义
 
 /** 选中的规划名称（显示用） */
 const selectedPlanName = ref('');
@@ -1034,17 +1046,8 @@ const repeatOptions = [
   { label: '每年',   value: 'yearly'  }
 ];
 
-/** 当前选中的重复模式 */
-const repeatMode = ref('none');
-
-/** 重复间隔（每N天/每N周） */
-const repeatInterval = ref(1);
-
-/** 每周重复：选中的周几（1=周一 … 7=周日） */
-const repeatWeekDays = ref([]);
-
-/** 结束重复日期（YYYY-MM-DD，为空表示未设置） */
-const repeatEndDate = ref('');
+// ✅ 阶段2：重复规则状态已从 useTaskForm 中解构，删除重复定义
+// repeatMode, repeatInterval, repeatWeekDays, repeatEndDate
 
 /** 周几标签（一~日） */
 const weekDayLabels = ['一', '二', '三', '四', '五', '六', '日'];
@@ -1055,17 +1058,8 @@ const weekLabels = ['一', '二', '三', '四', '五', '六', '日'];
 // 每月模式：子模式 + 日期多选 + 星期位置
 // ============================================================
 
-/** 每月子模式：'day'=按日期  'weekday'=按星期 */
-const monthlySubMode = ref('day');
-
-/** 每月-日期模式：选中的日期数组（1~31，可多选） */
-const monthlyDays = ref([]);
-
-/** 每月-星期模式：第N个（1=第一个…5=最后一个） */
-const monthlyWeekNum = ref(1);
-
-/** 每月-星期模式：星期几（1=周一…7=周日） */
-const monthlyWeekday = ref(1);
+// ✅ 阶段2：每月模式状态已从 useTaskForm 中解构，删除重复定义
+// monthlySubMode, monthlyDays, monthlyWeekNum, monthlyWeekday
 
 /** 第N个 标签 */
 const weekNumLabels = ['第一个', '第二个', '第三个', '第四个', '最后一个'];
@@ -1077,11 +1071,8 @@ const weekdayFullLabels = ['星期一', '星期二', '星期三', '星期四', '
 // 每年模式：月和日
 // ============================================================
 
-/** 每年重复的月份（1~12） */
-const yearlyMonth = ref(1);
-
-/** 每年重复的日期（1~31） */
-const yearlyDay = ref(1);
+// ✅ 阶段2：每年模式状态已从 useTaskForm 中解构，删除重复定义
+// yearlyMonth, yearlyDay
 
 // ============================================================
 // 通用滚轮选择器弹窗
@@ -1197,17 +1188,7 @@ function onSelectMonthlySubMode(mode) {
   syncRrule();
 }
 
-/** 切换每月日期（多选） */
-function toggleMonthlyDay(d) {
-  const idx = monthlyDays.value.indexOf(d);
-  if (idx >= 0) {
-    if (monthlyDays.value.length > 1) monthlyDays.value.splice(idx, 1);
-  } else {
-    monthlyDays.value.push(d);
-    monthlyDays.value.sort((a, b) => a - b);
-  }
-  syncRrule();
-}
+// ✅ 阶段2：toggleMonthlyDay 已从 useTaskForm 中解构，删除重复定义
 
 // ============================================================
 // 重复模式：设置结束重复日历弹窗
@@ -1352,52 +1333,9 @@ function onSelectRepeatMode(mode) {
   syncRrule();
 }
 
-/** 切换周几选择 */
-function toggleWeekDay(dayNum) {
-  const idx = repeatWeekDays.value.indexOf(dayNum);
-  if (idx >= 0) {
-    if (repeatWeekDays.value.length > 1) repeatWeekDays.value.splice(idx, 1);
-  } else {
-    repeatWeekDays.value.push(dayNum);
-    repeatWeekDays.value.sort((a, b) => a - b);
-  }
-  syncRrule();
-}
+// ✅ 阶段2：toggleWeekDay 已从 useTaskForm 中解构，删除重复定义
 
-/** 将 UI 状态同步为 RRULE 字符串存入 form.rrule */
-function syncRrule() {
-  if (repeatMode.value === 'none') { form.value.rrule = ''; return; }
-
-  const freqMap = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY', yearly: 'YEARLY' };
-  const freq = freqMap[repeatMode.value];
-  let parts = [`FREQ=${freq}`];
-
-  if (repeatInterval.value > 1) parts.push(`INTERVAL=${repeatInterval.value}`);
-
-  if (repeatMode.value === 'weekly' && repeatWeekDays.value.length > 0) {
-    const dayMap = { 1: 'MO', 2: 'TU', 3: 'WE', 4: 'TH', 5: 'FR', 6: 'SA', 7: 'SU' };
-    parts.push(`BYDAY=${repeatWeekDays.value.map(d => dayMap[d]).join(',')}`);
-  }
-
-  if (repeatMode.value === 'monthly') {
-    if (monthlySubMode.value === 'day' && monthlyDays.value.length > 0) {
-      parts.push(`BYMONTHDAY=${monthlyDays.value.join(',')}`);
-    } else if (monthlySubMode.value === 'weekday') {
-      const dayMap = { 1: 'MO', 2: 'TU', 3: 'WE', 4: 'TH', 5: 'FR', 6: 'SA', 7: 'SU' };
-      const pos = monthlyWeekNum.value === 5 ? -1 : monthlyWeekNum.value;
-      parts.push(`BYDAY=${pos}${dayMap[monthlyWeekday.value]}`);
-    }
-  }
-
-  if (repeatMode.value === 'yearly') {
-    parts.push(`BYMONTH=${yearlyMonth.value}`);
-    parts.push(`BYMONTHDAY=${yearlyDay.value}`);
-  }
-
-  if (repeatEndDate.value) parts.push(`UNTIL=${repeatEndDate.value.replace(/-/g, '')}T235959Z`);
-
-  form.value.rrule = parts.join(';');
-}
+// ✅ 阶段2：syncRrule 已从 useTaskForm 中解构，删除重复定义
 
 /** 处理重复间隔选择器变化 */
 function onIntervalChange(e) {
@@ -1833,10 +1771,7 @@ function onTimeRangeToggle(e) {
 // 工具函数
 // ============================================================
 
-function selectQuadrant(q) {
-  form.value.isUrgent    = q.isUrgent;
-  form.value.isImportant = q.isImportant;
-}
+// ✅ 阶段2：selectQuadrant 已从 useTaskForm 中解构，删除重复定义
 
 function pickPlan() {
   uni.showToast({ title: '规划关联功能开发中', icon: 'none' });
