@@ -175,23 +175,13 @@
     </view>
 
     <!-- ⑤ 四象限浮层 -->
-    <view v-if="showQuadrantPicker" class="quadrant-picker">
-      <view class="quadrant-picker-inner">
-        <!-- 坐标轴 -->
-        <view class="axis-h"></view>
-        <view class="axis-v"></view>
-        <!-- 四个象限 -->
-        <view
-          v-for="q in quadrants"
-          :key="q.key"
-          class="qp-cell"
-          :class="[q.posClass, { 'qp-selected': isQuadrantSelected(q) }]"
-          @tap="handleSelectQuadrant(q)"
-        >
-          <text class="qp-label">{{ q.name }}</text>
-        </view>
-      </view>
-    </view>
+    <!-- 四象限选择器 - 使用 QuadrantPicker 组件 -->
+    <QuadrantPicker
+      v-model:visible="showQuadrantPicker"
+      :modelValue="currentQuadrant"
+      variant="grid"
+      @select="handleSelectQuadrant"
+    />
 
     <!-- ⑤.5 分类/规划选择器浮层 -->
     <view v-if="showCategoryPicker" class="category-picker-mask" @tap="closeCategoryPicker">
@@ -507,6 +497,7 @@ import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DateTabBar from './DateTabBar.vue';
 import SubtaskList from './SubtaskList.vue';
 import CustomDatePicker from './CustomDatePicker.vue';
+import QuadrantPicker from './QuadrantPicker.vue';
 // ✅ 阶段3：引入 useTaskForm 业务逻辑层
 import { useTaskForm } from '@/composables/useTaskForm.js';
 
@@ -819,31 +810,20 @@ function onCustomDateConfirm(payload) {
 // 四象限
 // ============================================================
 
-/** 四象限配置 */
-const quadrants = [
-  { key: 'q3', name: '紧急不重要', posClass: 'qp-top-left',    isUrgent: true,  isImportant: false, color: '#FFB300' },
-  { key: 'q1', name: '重要且紧急', posClass: 'qp-top-right',   isUrgent: true,  isImportant: true,  color: '#FF4444' },
-  { key: 'q4', name: '不重要不紧急', posClass: 'qp-bot-left',  isUrgent: false, isImportant: false, color: '#4CAF50' },
-  { key: 'q2', name: '重要不紧急', posClass: 'qp-bot-right',   isUrgent: false, isImportant: true,  color: '#5B8CFF' }
-];
+// ✅ UI组件提取：四象限选择器已移至 QuadrantPicker 组件
 
-/** 当前选中的四象限颜色（圆圈颜色） */
-const currentQuadrantColor = computed(() => {
-  if (!form.value.isUrgent && !form.value.isImportant) return '#E0E0E0';
-  const q = quadrants.find(q => q.isUrgent === form.value.isUrgent && q.isImportant === form.value.isImportant);
-  return q ? q.color : '#E0E0E0';
-});
+/** 四象限颜色映射（用于工具栏图标显示） */
+const quadrantColors = {
+  q1: '#FF4444',  // 重要且紧急 - 红色
+  q2: '#5B8CFF',  // 重要不紧急 - 蓝色
+  q3: '#FFA726',  // 紧急不重要 - 橙色
+  q4: '#4CAF50'   // 不急不重要 - 绿色
+};
 
 /** 当前四象限图标颜色（工具栏用） */
 const currentQuadrantIconColor = computed(() => {
-  if (!form.value.isUrgent && !form.value.isImportant) return '#FF4444';
-  return currentQuadrantColor.value;
+  return quadrantColors[currentQuadrant.value] || '#FF4444';
 });
-
-/** 是否选中指定象限 */
-function isQuadrantSelected(q) {
-  return q.isUrgent === form.value.isUrgent && q.isImportant === form.value.isImportant;
-}
 
 /** 展开/折叠四象限选择器 */
 function toggleQuadrantPicker() {

@@ -203,26 +203,14 @@
     </view>
 
     <!-- ======================================================
-         优先级（四象限）选择器弹窗
+         优先级（四象限）选择器弹窗 - 使用 QuadrantPicker 组件
          ====================================================== -->
-    <view v-if="showQuadrantPicker" class="tep-modal-mask" @tap.self="showQuadrantPicker = false">
-      <view class="tep-quadrant-sheet">
-        <text class="tep-sheet-title">选择优先级</text>
-        <view class="tep-quadrant-grid">
-          <view
-            v-for="q in quadrants"
-            :key="q.key"
-            class="tep-quad-option"
-            :class="['tep-quad-' + q.key, { 'tep-quad-selected': currentQuadrant === q.key }]"
-            @tap="selectQuadrant(q); showQuadrantPicker = false"
-          >
-            <text class="tep-quad-badge-icon">{{ q.badgeIcon }}</text>
-            <text class="tep-quad-name">{{ q.name }}</text>
-            <text class="tep-quad-desc">{{ q.desc }}</text>
-          </view>
-        </view>
-      </view>
-    </view>
+    <QuadrantPicker
+      v-model:visible="showQuadrantPicker"
+      :modelValue="currentQuadrant"
+      variant="sheet"
+      @select="selectQuadrant"
+    />
 
     <!-- ======================================================
          重复规则底部弹窗（新UI设计）
@@ -677,6 +665,7 @@ import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 import DateTabBar from '@/components/task/DateTabBar.vue';
 import SubtaskList from '@/components/task/SubtaskList.vue';
 import CustomDatePicker from '@/components/task/CustomDatePicker.vue';
+import QuadrantPicker from '@/components/task/QuadrantPicker.vue';
 
 // ============================================================
 // 新增：引入 useTaskForm 业务逻辑层
@@ -1017,15 +1006,17 @@ const startDateWeekday = computed(() => {
 // 常量
 // ============================================================
 
-/** 四象限选项 */
+// ✅ UI组件提取：quadrants 常量已移至 QuadrantPicker 组件内部
+
+/** 四象限选项（用于徽章显示） */
 const quadrants = [
-  { key: 'q1', name: '重要且紧急', desc: '危机处理',   icon: '🔴', badgeIcon: '!!!!', cls: 'opt-q1', isUrgent: true,  isImportant: true  },
-  { key: 'q2', name: '重要不紧急', desc: '规划成长',   icon: '🔵', badgeIcon: '!!',   cls: 'opt-q2', isUrgent: false, isImportant: true  },
-  { key: 'q3', name: '紧急不重要', desc: '可委托他人', icon: '🟡', badgeIcon: '!',    cls: 'opt-q3', isUrgent: true,  isImportant: false },
-  { key: 'q4', name: '不急不重要', desc: '减少或消除', icon: '🟢', badgeIcon: '○',    cls: 'opt-q4', isUrgent: false, isImportant: false }
+  { key: 'q1', name: '重要且紧急', badgeIcon: '!!!!' },
+  { key: 'q2', name: '重要不紧急', badgeIcon: '!!' },
+  { key: 'q3', name: '紧急不重要', badgeIcon: '!' },
+  { key: 'q4', name: '不急不重要', badgeIcon: '○' }
 ];
 
-/** 优先级徽章：icon 文字（需在 quadrants 定义后） */
+/** 优先级徽章：icon 文字 */
 const quadrantBadgeIcon = computed(() => {
   const q = quadrants.find(item => item.key === currentQuadrant.value);
   return q ? q.badgeIcon : '';
