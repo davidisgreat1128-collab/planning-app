@@ -378,8 +378,24 @@ frontend/Planning-app/
 │   ├── common/            通用组件
 │   ├── planning/          规划组件
 │   └── iching/            易经组件
-├── composables/           ⭐ Vue 3 Composition API 可复用逻辑
-│   └── useAuthGuard.js    访客模式权限守卫
+├── composables/           ⭐ Vue 3 Composition API - 业务流程层
+│   ├── useAuthGuard.js    访客模式权限守卫
+│   ├── useTaskForm.js     任务表单逻辑（复杂表单场景）
+│   ├── useCalendar.js     日历业务逻辑（页面业务流程）
+│   ├── useDragDrop.js     拖拽状态机（复杂交互）
+│   ├── useTaskQuadrant.js 象限管理逻辑（可复用业务逻辑）
+│   └── useTaskFormUtils.js 任务表单工具函数（业务工具）
+│
+│   职责：
+│   ✅ 复杂表单逻辑封装（如useTaskForm管理表单状态、验证、提交）
+│   ✅ 多Store协调编排（如同时操作taskStore + categoryStore + planStore）
+│   ✅ 页面级业务流程（如useDragDrop拖拽状态机）
+│   ✅ 可复用业务逻辑（如useTaskQuadrant象限管理，多个页面共享）
+│   ❌ 禁止全局状态管理（应放Store）
+│   ❌ 禁止数据持久化操作（应放Repository）
+│   ❌ 禁止纯工具函数（应放utils/）
+│   规模限制：<600行/文件
+│
 ├── utils/                 工具函数
 │   ├── request.js         网络请求封装 (axios)
 │   ├── storage.js         本地存储封装
@@ -405,6 +421,104 @@ frontend/Planning-app/
 ├── manifest.json          应用配置
 ├── pages.json             路由配置 ⭐
 └── uni.scss               全局样式
+```
+
+### 4.4.1 Composable层使用场景判断 ⭐ 重要
+
+**何时使用Composable层？**
+
+| 场景 | 示例 | 复杂度 | 是否使用Composable |
+|------|------|--------|------------------|
+| 复杂表单逻辑 | useTaskForm（表单状态、验证、提交）| >100行 | ✅ 使用 |
+| 多Store协调 | 同时操作taskStore + categoryStore + planStore | 调用2个以上Store | ✅ 使用 |
+| 页面业务流程 | useDragDrop（拖拽状态机）| 复杂状态机 | ✅ 使用 |
+| 可复用业务逻辑 | useTaskQuadrant（多个页面共享）| 被2个以上页面使用 | ✅ 使用 |
+| 简单列表展示 | 直接调用taskStore.tasks | <50行 | ❌ 直接用Store |
+| 简单CRUD | taskStore.addTask(data) | 单个Store方法 | ❌ 直接用Store |
+| 纯工具函数 | formatDate()、calcDays() | 无状态、无副作用 | ❌ 放utils/ |
+
+**代码示例**：
+
+```javascript
+// ✅ 场景1：复杂表单逻辑 - 使用Composable
+// composables/useTaskForm.js
+export function useTaskForm(taskId) {
+  const taskStore = useTaskStore()
+  const form = ref({ title: '', date: '', quadrant: 'q4' })
+
+  function validateForm() { /* 验证逻辑 */ }
+  async function submit() {
+    if (!validateForm()) return
+    await taskStore.updateTask(taskId, form.value)
+  }
+
+  return { form, validateForm, submit }
+}
+
+// ✅ 场景2：多Store协调 - 使用Composable
+// composables/useTaskEditor.js
+export function useTaskEditor(taskId) {
+  const taskStore = useTaskStore()
+  const categoryStore = useCategoryStore()
+  const planStore = usePlanStore()
+
+  async function saveTask(data) {
+    // 同时操作多个Store
+    await taskStore.updateTask(taskId, data)
+    await categoryStore.updateCategoryCount(data.categoryId)
+    await planStore.updatePlanProgress(data.planId)
+  }
+
+  return { saveTask }
+}
+
+// ✅ 场景3：简单场景 - 直接用Store
+// Component中
+const taskStore = useTaskStore()
+const tasks = taskStore.tasks  // 直接获取数据
+
+async function deleteTask(id) {
+  await taskStore.deleteTask(id)  // 直接调用Store方法
+}
+
+// ❌ 错误示例：纯工具函数不应放Composable
+// composables/useUtils.js（错误！）
+export function useUtils() {
+  function formatDate(date) { return date.toISOString() }
+  return { formatDate }
+}
+
+// ✅ 正确示例：纯工具函数应放utils/
+// utils/date.js
+export function formatDate(date) {
+  return date.toISOString()
+}
+```
+
+**判断流程图**：
+
+```
+开始修改代码
+    ↓
+问题1：这是纯工具函数吗？
+    ├─ 是 → 放 utils/
+    └─ 否 → 问题2
+    ↓
+问题2：这是全局状态管理吗？
+    ├─ 是 → 放 Store
+    └─ 否 → 问题3
+    ↓
+问题3：这是数据CRUD/缓存/同步吗？
+    ├─ 是 → 放 Repository
+    └─ 否 → 问题4
+    ↓
+问题4：逻辑复杂度>100行 或 调用2个以上Store？
+    ├─ 是 → 放 Composable
+    └─ 否 → 问题5
+    ↓
+问题5：会被2个以上页面使用吗？
+    ├─ 是 → 放 Composable
+    └─ 否 → 保留在 Component
 ```
 
 ---
@@ -734,9 +848,28 @@ plus.device.getInfo(...)
 ### 7.8 文件大小管理规范 ⭐ (重要，2026-03-03新增)
 
 #### 核心原则
-- **阈值**：单文件 > 800行触发拆分提醒
 - **决策权**：所有拆分必须经用户明确批准，Claude 不得自作主张
 - **追踪机制**：所有超标文件必须登记到 `docs/02-技术设计/超标文件追踪清单.md`
+
+#### 文件规模阈值（分层级管理）⭐ 2026-03-09更新
+
+不同架构层级有不同的文件规模阈值，以保持代码可读性和可维护性：
+
+| 层级 | 阈值 | 理由 | 检查命令 |
+|------|------|------|---------|
+| **Component 层** | <800行 | UI层应保持轻量，超过800行说明职责过重 | `wc -l pages/**/*.vue` |
+| **Composable 层** ⭐ | <600行 | 业务流程层应职责单一，超过600行建议拆分 | `wc -l composables/*.js` |
+| **Store 层** | <400行 | 状态管理应简洁，超过400行说明职责过重 | `wc -l store/*.js` |
+| **Repository 层** | <500行 | 数据访问层相对固定，超过500行建议拆分 | `wc -l repositories/*.js` |
+| **Utils 工具函数** | <300行 | 纯工具函数应短小精悍 | `wc -l utils/*.js` |
+
+**为什么Composable层阈值是600行？**
+- Composable层负责业务流程编排，比Component简单但比Store复杂
+- 600行是一个合理的中间值，既能容纳复杂业务逻辑，又不至于过于臃肿
+- 如果Composable超过600行，通常说明：
+  1. 包含了纯工具函数（应提取到utils/）
+  2. 包含了多个不相关的业务逻辑（应拆分为多个Composable）
+  3. 包含了全局状态管理（应移到Store）
 
 #### Claude 工作流程（强制遵守）
 
@@ -833,6 +966,37 @@ plus.device.getInfo(...)
   """
 ```
 
+**场景4：创建新Composable时**（标准化流程）⭐ 新增
+```
+步骤1：明确职责边界
+  问自己：这个Composable属于以下哪类？
+  - 复杂表单逻辑？（如useTaskForm）
+  - 多Store协调？（如useTaskEditor）
+  - 页面业务流程？（如useDragDrop）
+  - 可复用逻辑？（如useTaskQuadrant）
+
+步骤2：检查是否应该放Composable
+  ✅ 如果是纯工具函数 → 应放utils/，不要放Composable
+  ✅ 如果是全局状态 → 应放Store，不要放Composable
+  ✅ 如果是数据持久化 → 应放Repository，不要放Composable
+
+步骤3：控制文件大小
+  - 目标：<600行
+  - 如超过600行，考虑拆分：
+    - 提取纯工具函数到utils/
+    - 提取可复用逻辑到新Composable
+    - 提取状态管理到Store
+
+步骤4：编写代码时检查
+  - 每完成100行代码，检查是否有工具函数可提取
+  - 每完成功能后，运行：wc -l composables/<文件名>
+  - 如接近600行（>540行，90%阈值），立即登记到超标文件追踪清单
+
+步骤5：命名规范
+  ✅ 正确命名：useTaskForm、useTaskEditor、useTaskFormUtils
+  ❌ 错误命名：taskHelpers（应放utils/）、getTask（应是Store方法）
+```
+
 **场景5：用户批准拆分后**
 ```
 步骤1：更新追踪清单状态为"✅ 方案已批准"
@@ -861,43 +1025,134 @@ plus.device.getInfo(...)
 
 ---
 
-### 7.9 三层架构规范 ⭐ (重要，2026-03-04新增)
+### 7.9 四层架构规范 ⭐ (重要，2026-03-04新增，2026-03-09升级为四层)
 
-#### 架构层次划分
+#### 架构演进说明（三层 → 四层）
+
+**为什么从三层升级到四层？**
+
+在项目发展过程中，我们发现三层架构（Component → Store → Repository）在以下场景中遇到了问题：
+
+1. **问题1：复杂表单逻辑无处安放**
+   - Component 层：放Component太重（useTaskForm有821行业务逻辑）
+   - Store 层：不适合放Store（不是全局状态，是单个页面的临时状态）
+   - Repository 层：更不适合（Repository只负责数据访问）
+
+2. **问题2：多Store协调逻辑分散**
+   - 任务编辑需要同时操作 taskStore + categoryStore + planStore
+   - 这种协调逻辑放Component里会导致Component过重
+   - 放Store里也不合适（跨Store调用破坏单一职责）
+
+3. **问题3：可复用业务逻辑散落**
+   - 象限管理逻辑在 task-edit.vue 和 AddTaskPanel.vue 中重复
+   - 拖拽逻辑散落在多个组件中
+   - 这些逻辑提取到Composable后，消除了70%代码重复
+
+**解决方案：在Component和Store之间增加Composable层**
+
+**关键决策：Composable层是可选的，不是强制的** ⭐
+
+```
+简单场景（保留三层架构）：
+Component → Store → Repository → API
+  ↑
+  └─ 用于简单列表展示、简单CRUD等场景
+
+复杂场景（使用四层架构）：
+Component → Composable → Store → Repository → API
+  ↑
+  └─ 用于复杂表单、多Store协调、页面业务流程等场景
+```
+
+**升级策略：平滑升级，向后兼容**
+- ✅ 简单场景继续使用三层架构（Component → Store → Repository）
+- ✅ 复杂场景使用四层架构（Component → Composable → Store → Repository）
+- ✅ 现有代码无需修改，新代码遵循四层规范
+- ✅ Composable层是业务需要时才使用，不是所有场景都强制使用
+
+**成功案例**：
+
+**案例1：useTaskForm**
+- 问题：task-edit.vue（3265行）和AddTaskPanel.vue（2598行）功能重复85%
+- 解决：提取useTaskForm.js（821行），消除70%代码重复
+- 成果：架构健康度从30/100提升至75/100
+
+**案例2：useDragDrop**
+- 问题：拖拽逻辑散落在index.vue的多个函数中（200+行）
+- 解决：提取useDragDrop.js（433行），独立的状态机
+- 成果：index.vue从3802行降至789行（-80%）
+
+**案例3：useCalendar**
+- 问题：日历计算逻辑混在index.vue中（300+行）
+- 解决：提取useCalendar.js（558行）+ utils/date.js（416行纯函数）
+- 成果：逻辑清晰，可测试性大幅提升
+
+---
+
+#### 四层架构层次划分
 
 **Component 层（UI 层）**
-- 职责：用户交互、数据展示
-- 只能调用 Store，禁止直接调用 Repository 或 API
+- 职责：用户交互、数据展示、UI渲染
+- 调用规则：
+  - ✅ 简单场景：直接调用 Store
+  - ✅ 复杂场景：调用 Composable
+  - ❌ 禁止直接调用 Repository 或 API
+- 文件规模：<800行/文件
 - 示例：category-drawer.vue、task-edit.vue、index.vue
+
+**Composable 层（业务流程层）** ⭐ 新增
+
+- 职责：
+  - ✅ **复杂表单逻辑封装**（如 useTaskForm 管理表单状态、验证、提交）
+  - ✅ **多Store协调编排**（如同时操作 taskStore + categoryStore + planStore）
+  - ✅ **页面级业务流程**（如 useDragDrop 拖拽状态机、useCalendar 日历计算）
+  - ✅ **可复用业务逻辑**（如 useTaskQuadrant 象限管理，多个页面共享）
+- 禁止职责：
+  - ❌ 全局状态管理（应放 Store）
+  - ❌ 数据持久化操作（应放 Repository）
+  - ❌ 纯工具函数（应放 utils/）
+  - ❌ 访问 DOM 或浏览器 API（应放 Component）
+- 调用规则：
+  - ✅ 可以调用 Store（编排多个Store）
+  - ✅ 可以调用其他 Composable（组合使用）
+  - ✅ 可以调用 utils/（纯函数工具）
+  - ❌ 禁止直接调用 Repository 或 API
+- 文件规模：<600行/文件
+- 命名规范：useXxx.js（如 useTaskForm.js、useCalendar.js）
+- 示例：
+  - `composables/useTaskForm.js` - 任务表单逻辑（821行，管理表单状态+验证+提交）
+  - `composables/useCalendar.js` - 日历业务逻辑（558行，日期计算+节假日+事件管理）
+  - `composables/useDragDrop.js` - 拖拽状态机（433行，拖拽状态+手势识别）
+  - `composables/useTaskQuadrant.js` - 象限管理逻辑（可复用于多个页面）
 
 **Store 层（状态管理层）**
 - 职责：全局状态管理、调用 Repository
 - 使用 Pinia defineStore
 - 提供计算属性（computed）和 actions
+- 文件规模：<400行/文件
 - 示例：store/category.js、store/task.js
 
 **Repository 层（数据访问层）**
 - 职责：数据 CRUD、缓存、离线队列、同步
 - 管理 memoryCache（Map结构）、localStorage、operationQueue
 - 处理版本冲突（乐观锁，version 字段）
+- 文件规模：<500行/文件
 - 示例：repositories/CategoryRepository.js、repositories/TaskRepository.js
 
 #### 数据流向
 
-**读取流程**：
+**三层架构数据流（简单场景）**：
+
 ```
-用户打开页面 → Component 调用 Store.hydrate()
+读取：用户打开页面 → Component 调用 Store.hydrate()
   → Store 调用 Repository.hydrate()
   → Repository 从 localStorage 加载缓存
   → Repository 从服务器同步最新数据
   → Repository 更新 memoryCache
   → Store 通过 computed 自动更新
   → Component 自动重新渲染
-```
 
-**写入流程**：
-```
-用户点击"保存" → Component 调用 Store.createCategory(data)
+写入：用户点击"保存" → Component 调用 Store.createCategory(data)
   → Store 调用 Repository.create(data)
   → Repository 更新 memoryCache
   → Repository 写入 localStorage（debounce 500ms）
@@ -909,21 +1164,246 @@ plus.device.getInfo(...)
   → Component 自动重新渲染
 ```
 
+**四层架构数据流（复杂场景）** ⭐ 新增：
+
+```
+场景1：复杂表单提交（如任务编辑）
+用户填写表单 → Component 调用 Composable.submitTask()
+  → Composable 验证表单数据
+  → Composable 调用 taskStore.updateTask(data)
+  → Composable 调用 categoryStore.updateCategory(data)  // 多Store协调
+  → Composable 调用 planStore.linkTaskToPlan(data)
+  → 各 Store 分别调用对应的 Repository
+  → Repository 更新缓存、写入localStorage、同步服务器
+  → Composable 处理成功/失败逻辑
+  → Component 显示结果（成功提示/错误信息）
+
+场景2：页面业务流程（如日历拖拽）
+用户拖拽任务 → Component 调用 Composable.handleDragStart()
+  → Composable 初始化拖拽状态机（状态：idle → dragging）
+  → 用户移动 → Component 调用 Composable.handleDragMove()
+  → Composable 更新拖拽坐标、计算目标日期
+  → 用户放下 → Component 调用 Composable.handleDragEnd()
+  → Composable 调用 taskStore.moveTask(taskId, newDate)
+  → Store 调用 Repository.update()
+  → Repository 同步到服务器
+  → 拖拽状态机转换：dragging → idle
+  → Component 自动重新渲染
+
+场景3：可复用业务逻辑（如象限管理）
+页面A和页面B都需要象限管理 → 两个Component分别调用 useTaskQuadrant()
+  → Composable 提供统一的象限切换、颜色获取、优先级计算逻辑
+  → 避免在两个Component中重复编写相同业务逻辑
+  → 保持业务逻辑的一致性和可维护性
+```
+
 #### 强制规范
 
 **禁止行为 ❌**
-- ❌ Component 直接调用 API（绕过 Store）
+- ❌ Component 直接调用 API（绕过 Store/Composable）
 - ❌ Component 直接访问 Repository（破坏分层）
+- ❌ Composable 直接调用 API 或 Repository（必须通过 Store）⭐ 新增
+- ❌ Composable 中写全局状态管理逻辑（应放 Store）⭐ 新增
+- ❌ Composable 中写数据持久化逻辑（应放 Repository）⭐ 新增
+- ❌ Composable 中访问 DOM 或浏览器 API（应放 Component）⭐ 新增
+- ❌ 把纯工具函数放 Composable（应放 utils/）⭐ 新增
 - ❌ Store 直接操作 localStorage（应由 Repository 管理）
 - ❌ Repository 访问 Vue 实例或 DOM（应保持纯逻辑）
 - ❌ 在路由文件（routes/）内写内联业务逻辑
 
 **必须执行 ✅**
-- ✅ Component 只调用 Store 的 actions
+- ✅ **简单场景**：Component 直接调用 Store 的 actions（三层架构）
+- ✅ **复杂场景**：Component 调用 Composable → Composable 调用 Store（四层架构）⭐ 新增
+- ✅ Composable 只能调用 Store、其他 Composable、utils/（不能跨层调用）⭐ 新增
 - ✅ Store 调用 Repository 的方法
 - ✅ Repository 管理所有数据持久化逻辑
 - ✅ 所有异步操作返回 Promise
 - ✅ App 启动时调用 Store.hydrate()
+- ✅ Composable 文件命名遵循 useXxx.js 规范 ⭐ 新增
+
+#### Composable层使用指南 ⭐ 新增
+
+**何时创建 Composable？**
+
+参考决策树（第7.8节"场景4"）：
+
+| 场景 | 是否创建 Composable | 理由 |
+|------|-------------------|------|
+| 简单列表展示（如分类列表） | ❌ 不需要 | Component 直接调用 Store 即可（三层架构） |
+| 简单 CRUD（增删改查） | ❌ 不需要 | Component 直接调用 Store 即可（三层架构） |
+| 复杂表单（>15个字段，多个验证规则） | ✅ 需要 | 提取 useXxxForm.js 管理表单状态 |
+| 需要同时操作 3+ 个 Store | ✅ 需要 | 提取 Composable 协调 Store |
+| 多个页面重复相同业务逻辑 | ✅ 需要 | 提取可复用 Composable |
+| 页面级复杂交互（拖拽、手势） | ✅ 需要 | 提取状态机 Composable |
+
+**Composable 标准结构**：
+
+```javascript
+// composables/useTaskForm.js（标准模板）
+
+import { ref, computed } from 'vue'
+import { useTaskStore } from '@/store/task'
+import { useCategoryStore } from '@/store/category'
+import { usePlanStore } from '@/store/plan'
+
+/**
+ * 任务表单业务逻辑
+ * @param {object} options - 配置选项
+ * @param {string} options.mode - 'create' | 'edit'
+ * @param {string} options.taskId - 任务ID（编辑模式需要）
+ * @returns {object} 表单状态和方法
+ */
+export function useTaskForm(options = {}) {
+  // ============================================================
+  // 1. 引入 Store（可以引入多个）
+  // ============================================================
+  const taskStore = useTaskStore()
+  const categoryStore = useCategoryStore()
+  const planStore = usePlanStore()
+
+  // ============================================================
+  // 2. 响应式状态（局部状态，不放 Store）
+  // ============================================================
+  const form = ref({
+    title: '',
+    description: '',
+    categoryId: null,
+    planId: null,
+    quadrant: 'q4',
+    startDate: null,
+    endDate: null
+  })
+  const errors = ref({})
+  const isSubmitting = ref(false)
+
+  // ============================================================
+  // 3. 计算属性（基于 Store 数据）
+  // ============================================================
+  const isFormValid = computed(() => {
+    return form.value.title.length > 0 && Object.keys(errors.value).length === 0
+  })
+
+  // ============================================================
+  // 4. 业务方法（协调多个 Store）
+  // ============================================================
+
+  /**
+   * 验证表单
+   * @returns {boolean} 是否通过验证
+   */
+  function validateForm() {
+    errors.value = {}
+    if (!form.value.title) {
+      errors.value.title = '标题不能为空'
+    }
+    if (form.value.title.length > 100) {
+      errors.value.title = '标题不能超过100个字符'
+    }
+    return Object.keys(errors.value).length === 0
+  }
+
+  /**
+   * 提交表单（协调多个 Store）
+   * @returns {Promise<object>} 创建/更新后的任务对象
+   */
+  async function submitForm() {
+    if (!validateForm()) {
+      throw new Error('表单验证失败')
+    }
+
+    isSubmitting.value = true
+    try {
+      // 协调多个 Store
+      const task = await taskStore.createTask(form.value)
+      if (form.value.categoryId) {
+        await categoryStore.linkTaskToCategory(task.id, form.value.categoryId)
+      }
+      if (form.value.planId) {
+        await planStore.linkTaskToPlan(task.id, form.value.planId)
+      }
+      return task
+    } finally {
+      isSubmitting.value = false
+    }
+  }
+
+  /**
+   * 重置表单
+   */
+  function resetForm() {
+    form.value = {
+      title: '',
+      description: '',
+      categoryId: null,
+      planId: null,
+      quadrant: 'q4',
+      startDate: null,
+      endDate: null
+    }
+    errors.value = {}
+  }
+
+  // ============================================================
+  // 5. 返回公开接口
+  // ============================================================
+  return {
+    // 状态
+    form,
+    errors,
+    isSubmitting,
+    // 计算属性
+    isFormValid,
+    // 方法
+    validateForm,
+    submitForm,
+    resetForm
+  }
+}
+```
+
+**在 Component 中使用 Composable**：
+
+```vue
+<!-- task-edit.vue -->
+<script setup>
+import { useTaskForm } from '@/composables/useTaskForm'
+
+// 调用 Composable
+const { form, errors, isFormValid, submitForm, resetForm } = useTaskForm({
+  mode: 'create'
+})
+
+// Component 只处理 UI 逻辑
+async function handleSubmit() {
+  try {
+    await submitForm()
+    uni.showToast({ title: '保存成功', icon: 'success' })
+    uni.navigateBack()
+  } catch (error) {
+    uni.showToast({ title: error.message, icon: 'none' })
+  }
+}
+</script>
+
+<template>
+  <view class="form">
+    <input v-model="form.title" placeholder="任务标题" />
+    <text v-if="errors.title" class="error">{{ errors.title }}</text>
+    <button :disabled="!isFormValid" @tap="handleSubmit">保存</button>
+  </view>
+</template>
+```
+
+**常见陷阱 ⚠️**：
+
+| 陷阱 | 现象 | 解决方案 |
+|------|------|---------|
+| 在 Composable 中写全局状态 | 多个页面状态互相干扰 | 全局状态必须放 Store |
+| 在 Composable 中直接调用 API | 数据不同步、无缓存、无离线支持 | 必须通过 Store 调用 |
+| 把纯工具函数放 Composable | Composable 过重、难以复用 | 纯函数应放 utils/ |
+| Composable 超过 600 行 | 职责过重、难以维护 | 拆分为多个 Composable 或提取 utils/ |
+
+---
 
 #### Repository 标准接口
 
@@ -963,7 +1443,7 @@ class CategoryRepository {
 }
 ```
 
-详细设计见：`docs/02-技术设计/三层架构设计.md`
+详细设计见：`docs/02-技术设计/四层架构设计（渐进式升级）.md`
 
 #### 离线操作队列规范
 
@@ -1027,7 +1507,7 @@ if (serverCategory.version > localCategory.version) {
 
 #### 使用示例
 
-**Component 层（旧写法 vs 新写法）**：
+**示例1：简单场景（三层架构）**：
 
 ```javascript
 // ❌ 旧写法（直接调用 API）
@@ -1040,7 +1520,7 @@ async function saveCategory() {
   categories.value.push(res.data)  // 手动更新数组
 }
 
-// ✅ 新写法（调用 Store）
+// ✅ 三层架构写法（Component → Store → Repository）
 import { useCategoryStore } from '@/store/category'
 
 const categoryStore = useCategoryStore()
@@ -1050,6 +1530,48 @@ async function saveCategory() {
   await categoryStore.createCategory({ name: form.value.name })
   // 无需手动更新，categories 自动同步
 }
+```
+
+**示例2：复杂场景（四层架构）** ⭐ 新增：
+
+```vue
+<!-- task-edit.vue（复杂表单场景） -->
+<script setup>
+// ❌ 旧写法（Component 过重，700+行业务逻辑）
+import { ref } from 'vue'
+import { useTaskStore } from '@/store/task'
+import { useCategoryStore } from '@/store/category'
+import { usePlanStore } from '@/store/plan'
+
+const taskStore = useTaskStore()
+const categoryStore = useCategoryStore()
+const planStore = usePlanStore()
+
+const form = ref({ /* 30+ 个字段 */ })
+const errors = ref({})
+
+function validateForm() { /* 100+ 行验证逻辑 */ }
+function formatDate() { /* 50+ 行格式化逻辑 */ }
+async function submitForm() {
+  // 协调 3 个 Store，150+ 行代码
+  // 这些业务逻辑混在 Component 中，导致 Component 过重
+}
+
+// ✅ 四层架构写法（Component → Composable → Store → Repository）
+import { useTaskForm } from '@/composables/useTaskForm'
+
+// Component 只需 30 行代码，业务逻辑全部在 Composable
+const { form, errors, isFormValid, submitForm } = useTaskForm({ mode: 'create' })
+
+async function handleSubmit() {
+  try {
+    await submitForm()  // Composable 处理所有业务逻辑
+    uni.showToast({ title: '保存成功', icon: 'success' })
+  } catch (error) {
+    uni.showToast({ title: error.message, icon: 'none' })
+  }
+}
+</script>
 ```
 
 **App 启动时（必须调用 hydrate）**：
@@ -1085,7 +1607,7 @@ export default {
 
 #### 迁移检查清单
 
-**迁移现有代码时，必须完成以下步骤**：
+**三层架构迁移（简单场景）**：
 
 - [ ] 创建 Repository 类（实现标准接口）
 - [ ] 创建 Store（调用 Repository）
@@ -1097,7 +1619,24 @@ export default {
 - [ ] 测试离线模式（关闭服务器，操作后重新上线）
 - [ ] 测试缓存恢复（刷新页面，数据仍在）
 
+**四层架构迁移（复杂场景）** ⭐ 新增：
+
+- [ ] 判断是否需要 Composable（参考第7.8节"场景4"决策树）
+- [ ] 创建 Composable 文件（命名：useXxx.js）
+- [ ] 从 Component 中提取业务逻辑到 Composable：
+  - [ ] 表单状态管理（form、errors、isSubmitting）
+  - [ ] 验证逻辑（validateForm）
+  - [ ] 多 Store 协调逻辑（同时操作多个 Store）
+  - [ ] 格式化/转换逻辑（formatDate、transformData）
+- [ ] 在 Composable 中调用 Store（不直接调用 API/Repository）
+- [ ] Component 只保留 UI 逻辑（事件处理、Toast 提示、路由跳转）
+- [ ] 确保 Composable 文件 <600 行（超过则拆分）
+- [ ] 测试业务逻辑（表单验证、多 Store 协调）
+- [ ] 测试 UI 交互（成功提示、错误提示）
+
 #### 常见陷阱
+
+**三层架构常见陷阱**：
 
 **陷阱1：忘记调用 hydrate()**
 - 现象：页面空白，数据为空
@@ -1110,6 +1649,28 @@ export default {
 **陷阱3：直接调用 API**
 - 现象：数据不同步、无离线支持、无缓存
 - 解决：移除 API 引用，改为调用 Store
+
+**四层架构常见陷阱** ⭐ 新增：
+
+**陷阱4：在 Composable 中写全局状态**
+- 现象：多个页面打开时，状态互相干扰（如页面A的表单影响页面B）
+- 原因：Composable 中的 ref() 是局部状态，但业务逻辑误以为是全局的
+- 解决：全局状态必须放 Store（如 Pinia store），Composable 只管理局部状态
+
+**陷阱5：Composable 直接调用 Repository**
+- 现象：数据不同步、缓存失效、离线队列失效
+- 原因：跨层调用破坏了架构分层（Composable 应该调用 Store，不能跳过 Store）
+- 解决：Composable 只能调用 Store，由 Store 调用 Repository
+
+**陷阱6：把纯工具函数放 Composable**
+- 现象：Composable 文件过大（>600行）、难以复用
+- 原因：误把不依赖 Vue 响应式的纯函数放 Composable
+- 解决：纯工具函数（如日期格式化、字符串处理）应放 `utils/`
+
+**陷阱7：过度使用 Composable**
+- 现象：简单的 CRUD 也创建 Composable，导致目录结构复杂
+- 原因：误以为所有场景都需要 Composable
+- 解决：简单场景直接用三层架构（Component → Store → Repository），只有复杂场景才用四层
 
 ### 7.9 字段管理规范 ⭐ (新增，2026-03-05)
 
@@ -1175,7 +1736,361 @@ cat docs/02-技术设计/详细字段映射表.md
 
 ---
 
-## 8. 🚨 关键注意事项
+## 8. 🤖 AI工程治理核心清单
+
+> **目的**: 确保 Claude 修改代码前进行系统性检查，防止架构退化、代码腐化
+> **强制等级**: ⭐⭐⭐⭐⭐ 最高优先级
+> **更新时间**: 2026-03-09
+> **适用范围**: 所有代码修改、新增、重构场景
+
+---
+
+### 8.1 修改代码前的5个必查项 ⭐ 强制执行
+
+**在开始编写任何代码之前，必须完成以下5项检查。违反任一项将导致架构退化。**
+
+#### 必查项1：架构分层检查
+
+**检查问题**：我要修改/新增的代码应该放在哪一层？
+
+**决策树**：
+
+```
+步骤1：识别代码性质
+  → 纯工具函数（不依赖Vue响应式）？ → 放 utils/
+  → 数据CRUD、缓存、同步？ → 放 Repository
+  → 全局状态管理？ → 放 Store
+  → 复杂业务流程（表单逻辑、多Store协调）？ → 放 Composable
+  → UI渲染、用户交互？ → 放 Component
+
+步骤2：检查调用关系
+  ✅ 允许的调用链：
+    Component → Composable → Store → Repository → API
+    Component → Store → Repository → API（简单场景）
+    utils/ ← 所有层都可以调用
+
+  ❌ 禁止的调用链：
+    Component → Repository（跨层调用）
+    Component → API（跨层调用）
+    Composable → Repository（跨层调用）
+    Composable → API（跨层调用）
+    Store → API（绕过Repository）
+```
+
+**检查清单**：
+
+- [ ] 我明确知道这段代码属于哪一层（Component/Composable/Store/Repository/Utils）
+- [ ] 我确认这一层的职责边界（参考第7.9节"四层架构层次划分"）
+- [ ] 我确认调用链符合架构规范（不跨层调用）
+- [ ] 如果是新建 Composable，我已确认符合创建条件（参考第7.8节"场景4"决策树）
+
+---
+
+#### 必查项2：文件大小检查
+
+**检查问题**：修改后文件是否会超过阈值？
+
+**阈值表**（第7.8节）：
+
+| 层级 | 阈值 | 检查命令 |
+|------|------|---------|
+| Component | <800行 | `wc -l <文件路径>` |
+| Composable | <600行 | `wc -l <文件路径>` |
+| Store | <400行 | `wc -l <文件路径>` |
+| Repository | <500行 | `wc -l <文件路径>` |
+| Utils | <300行 | `wc -l <文件路径>` |
+
+**检查流程**：
+
+```bash
+# 步骤1：检查当前文件行数
+wc -l <目标文件>
+
+# 步骤2：评估本次修改行数
+# - 简单功能：~50-100行
+# - 中等功能：~100-300行
+# - 复杂功能：~300-500行
+
+# 步骤3：判断
+如果 当前行数 + 预计新增 > 阈值：
+  → 先完成当前功能（不打断工作流）
+  → 功能完成后，立即执行"超标文件登记流程"（第7.8节"场景3"）
+否则：
+  → 正常编写代码
+```
+
+**检查清单**：
+
+- [ ] 我已运行 `wc -l` 检查目标文件当前行数
+- [ ] 我已评估本次修改的代码量
+- [ ] 如果会超标，我已确认是否需要先拆分再修改
+- [ ] 如果功能完成后超标，我将立即登记到《超标文件追踪清单.md》
+
+---
+
+#### 必查项3：字段命名检查
+
+**检查问题**：我要创建的字段是否已存在？命名是否符合规范？
+
+**强制规范**（第7.10节）：
+
+1. **创建新字段前必须先查阅**：`docs/02-技术设计/详细字段映射表.md`
+2. **命名规范**：
+   - 数据库字段：snake_case（如 user_id、created_at）
+   - 后端代码字段：camelCase（如 userId、createdAt）
+   - 前端代码字段：camelCase（如 userId、createdAt）
+3. **Sequelize 自动映射**：underscored: true（数据库 ↔ 代码自动转换）
+
+**检查流程**：
+
+```bash
+# 步骤1：搜索《详细字段映射表》
+cat docs/02-技术设计/详细字段映射表.md | grep -i "<关键词>"
+
+# 步骤2：确认字段不存在后
+# - 数据库：创建 migration 文件，字段用 snake_case
+# - 后端Model：在 Sequelize Model 中定义，字段用 camelCase
+# - 前端：在 Repository/Store 中使用，字段用 camelCase
+
+# 步骤3：更新文档
+# 在《详细字段映射表.md》对应表格中新增一行
+```
+
+**检查清单**：
+
+- [ ] 我已查阅《详细字段映射表.md》确认字段不存在
+- [ ] 数据库字段命名使用 snake_case
+- [ ] 代码字段命名使用 camelCase
+- [ ] 我已更新《详细字段映射表.md》添加新字段记录
+
+---
+
+#### 必查项4：三端兼容检查（UniApp专用）
+
+**检查问题**：我的代码是否兼容 Android / iOS / H5 三端？
+
+**强制规范**（第7.7节）：
+
+| 场景 | 禁止写法 | 正确写法 |
+|------|---------|---------|
+| 输入框双向绑定 | `v-model` | `:value` + `@input` |
+| 本地存储 | `localStorage.setItem()` | `uni.setStorageSync()` |
+| 网络请求 | `axios.get()` | `uni.request()` 或封装的 `utils/request.js` |
+| 路由跳转 | `router.push()` | `uni.navigateTo()` / `uni.reLaunch()` |
+| 样式单位 | `px` | `rpx`（自动适配不同屏幕） |
+
+**条件编译写法**：
+
+```vue
+<!-- 模板中 -->
+<!-- #ifdef H5 -->
+<view>仅H5显示</view>
+<!-- #endif -->
+
+<!-- #ifdef APP-PLUS -->
+<view>仅App显示</view>
+<!-- #endif -->
+
+<!-- JS中 -->
+// #ifdef H5
+console.log('H5环境')
+// #endif
+
+// #ifdef APP-PLUS
+plus.device.getInfo(...)
+// #endif
+```
+
+**检查清单**：
+
+- [ ] 我没有使用仅 `v-model`（已改用 `:value` + `@input`）
+- [ ] 我没有直接使用 `localStorage`（已改用 `uni.setStorageSync`）
+- [ ] 我没有直接使用 `axios`（已使用项目封装的 `utils/request.js`）
+- [ ] 我没有使用 `router.push`（已改用 `uni.navigateTo` 等 uni API）
+- [ ] 样式单位使用 `rpx`，避免直接写 `px`
+
+---
+
+#### 必查项5：文档同步检查
+
+**检查问题**：我的修改是否需要同步更新文档？
+
+**需要更新文档的场景**：
+
+| 修改类型 | 需要更新的文档 |
+|---------|--------------|
+| 新增 API 接口 | `docs/03-API文档/<模块名>接口.md` |
+| 新增数据库表/字段 | `docs/02-技术设计/详细字段映射表.md` + `database/schema/<表名>.sql` |
+| 重大架构决策 | `docs/06-AI协作日志/02-架构决策记录(ADR)/ADR-NNN-主题.md` |
+| 新增配置项 | `docs/02-技术设计/配置管理.md` |
+| 新增 Composable | `.claude/CLAUDE.md` 第4.4节 + 第7.9节 |
+| 创建任何 .md 文件 | `.claude/文档导航.md`（强制登记） |
+| 文件超过800行 | `docs/02-技术设计/超标文件追踪清单.md` |
+
+**检查清单**：
+
+- [ ] 我已确认是否需要更新文档
+- [ ] 如果创建了 .md 文件，我已在 `.claude/文档导航.md` 中登记
+- [ ] 如果新增了字段，我已更新《详细字段映射表.md》
+- [ ] 如果文件超标，我已登记到《超标文件追踪清单.md》
+
+---
+
+### 8.2 AI修改代码的7步标准流程 ⭐ 强制执行
+
+**每次修改代码都必须按照此流程执行，禁止跳过任何步骤。**
+
+#### 步骤1：理解需求（5分钟）
+
+- [ ] 明确用户要求：具体要实现什么功能？
+- [ ] 识别修改范围：涉及哪些文件？哪些层级？
+- [ ] 评估复杂度：简单/中等/复杂？预计代码量？
+
+#### 步骤2：执行5个必查项（10分钟）
+
+- [ ] 必查项1：架构分层检查 ✅
+- [ ] 必查项2：文件大小检查 ✅
+- [ ] 必查项3：字段命名检查 ✅
+- [ ] 必查项4：三端兼容检查（UniApp） ✅
+- [ ] 必查项5：文档同步检查 ✅
+
+**如果任一必查项不通过，立即停止，向用户说明情况。**
+
+#### 步骤3：设计方案（15分钟）
+
+- [ ] 绘制调用链图：Component → Composable → Store → Repository → API
+- [ ] 确认文件结构：需要新建哪些文件？修改哪些文件？
+- [ ] 评估风险：是否会破坏现有功能？是否需要重构？
+
+#### 步骤4：编写代码（核心）
+
+- [ ] **按层级编写**：Repository → Store → Composable → Component（自底向上）
+- [ ] **每写一个函数添加JSDoc注释**（中文）
+- [ ] **每完成一层提交一次Git commit**（便于回滚）
+- [ ] **遵循命名规范**：数据库 snake_case，代码 camelCase
+
+#### 步骤5：自我审查（10分钟）
+
+- [ ] 运行 ESLint 检查：`npm run lint`
+- [ ] 检查是否有跨层调用（Component 直接调 Repository？）
+- [ ] 检查是否有硬编码（魔法数字、魔法字符串？）
+- [ ] 检查是否有TODO未处理
+
+#### 步骤6：测试（15分钟）
+
+- [ ] 编写单元测试（至少覆盖核心函数）
+- [ ] 手动测试三端（H5 + Android + iOS，至少测H5）
+- [ ] 测试离线模式（如果涉及数据操作）
+- [ ] 测试边界情况（空数据、超长输入、网络异常）
+
+#### 步骤7：更新文档和日志（10分钟）
+
+- [ ] 更新工作日志：记录今日完成的功能、决策、问题
+- [ ] 更新 CURRENT_STATUS.md：当前进度、下一步任务
+- [ ] 更新相关文档（API文档、字段映射表、超标清单等）
+- [ ] 提交最终Git commit + push
+
+---
+
+### 8.3 常见违规场景和纠正方法
+
+#### 违规场景1：直接修改代码，跳过5个必查项
+
+**现象**：
+- 用户说"帮我在任务表单加个优先级字段"
+- Claude 直接修改 Component 代码，没有检查架构分层
+- 结果：Composable 层已有优先级逻辑，导致重复代码
+
+**正确做法**：
+1. 执行必查项3（字段命名检查）→ 发现 `priority` 字段已存在
+2. 执行必查项1（架构分层检查）→ 发现应该复用 Composable 中的逻辑
+3. 修改方案：在 Component 中调用 Composable 的 `getPriorityLabel()` 方法
+
+---
+
+#### 违规场景2：Composable 直接调用 Repository
+
+**现象**：
+```javascript
+// ❌ 错误写法（Composable 直接调 Repository）
+import { taskRepository } from '@/repositories/taskRepository'
+
+export function useTaskForm() {
+  async function submitForm() {
+    await taskRepository.create(form.value)  // 跨层调用！
+  }
+}
+```
+
+**正确做法**：
+```javascript
+// ✅ 正确写法（Composable 调用 Store）
+import { useTaskStore } from '@/store/task'
+
+export function useTaskForm() {
+  const taskStore = useTaskStore()
+
+  async function submitForm() {
+    await taskStore.createTask(form.value)  // 通过Store调用
+  }
+}
+```
+
+---
+
+#### 违规场景3：文件超标后不登记
+
+**现象**：
+- 完成功能后，文件从 750行 → 920行（超过800行阈值）
+- Claude 没有登记到《超标文件追踪清单.md》
+- 用户无法追踪技术债务
+
+**正确做法**（第7.8节"场景3"）：
+1. 运行 `wc -l <文件路径>`
+2. 发现超标（920行 > 800行）
+3. 更新《超标文件追踪清单.md》，新增一行记录
+4. 向用户发出提醒："该文件已超标15%，是否需要生成拆分方案？"
+
+---
+
+### 8.4 AI自查清单（每次提交代码前）
+
+```
+□ 我已完成5个必查项（架构、文件大小、字段、三端兼容、文档）
+□ 我已按照7步流程执行（理解→检查→设计→编码→审查→测试→文档）
+□ 我没有跨层调用（Component 不直接调 Repository/API）
+□ 我没有创建重复字段（已查阅《详细字段映射表》）
+□ 我没有使用禁止的API（localStorage、v-model、axios、router.push）
+□ 我已添加JSDoc注释（中文）
+□ 我已编写单元测试（至少核心函数）
+□ 我已运行 ESLint（无错误）
+□ 我已更新工作日志和CURRENT_STATUS.md
+□ 我已更新相关文档（如果需要）
+```
+
+**如果以上任一项未完成，禁止提交代码。**
+
+---
+
+### 8.5 违规后果和纠正机制
+
+**轻微违规**（如忘记更新文档）：
+- Claude 在下次会话开始时补充更新文档
+- 在工作日志中记录违规和纠正过程
+
+**中度违规**（如跨层调用）：
+- 立即回滚代码（git reset）
+- 重新执行7步流程
+- 在工作日志中记录违规原因和改进措施
+
+**严重违规**（如破坏架构、泄露敏感信息）：
+- 立即停止所有操作
+- 向用户汇报违规情况
+- 等待用户指示后再继续
+
+---
+
+## 9. 🚨 关键注意事项
 
 ### 绝对禁止 ❌
 
@@ -1198,6 +2113,12 @@ cat docs/02-技术设计/详细字段映射表.md
 | 直接用 `localStorage` | App 端不支持，必须用 `uni.setStorageSync`（第7.7节） |
 | 直接用 `axios` 发请求 | App 端需特殊处理，必须用项目封装的 `utils/request.js`（第7.7节） |
 | 用 `router.push` 跳转 | 必须用 `uni.navigateTo` / `uni.reLaunch` 等 uni API（第7.7节） |
+| **Composable 直接调用 Repository** ⭐ | 破坏四层架构分层，必须通过 Store 调用（第7.9节） |
+| **Composable 直接调用 API** ⭐ | 破坏四层架构分层，必须通过 Store 调用（第7.9节） |
+| **在 Composable 中写全局状态** ⭐ | 全局状态必须放 Store，Composable 只管理局部状态（第7.9节） |
+| **在 Composable 中写数据持久化逻辑** ⭐ | 数据持久化必须放 Repository，Composable 只协调业务流程（第7.9节） |
+| **把纯工具函数放 Composable** ⭐ | 纯函数应放 utils/，Composable 是业务流程层（第7.9节） |
+| **修改代码前跳过第8节"5个必查项"** ⭐ | 导致架构退化、代码腐化、技术债务累积（第8节） |
 
 ### 必须执行 ✅
 
@@ -1208,6 +2129,10 @@ cat docs/02-技术设计/详细字段映射表.md
 | 更新CURRENT_STATUS.md | 每次会话结束前 |
 | 运行ESLint | 提交代码前 |
 | 使用JSDoc注释 | 编写每个函数时 |
+| **执行第8节"5个必查项"** ⭐ | **修改任何代码之前**（架构、文件大小、字段、三端兼容、文档） |
+| **创建 Composable 前判断必要性** ⭐ | 新建 Composable 前（参考第7.8节"场景4"决策树） |
+| **Composable 文件命名用 useXxx.js** ⭐ | 创建 Composable 时（如 useTaskForm.js、useCalendar.js） |
+| **检查文件大小是否超标** ⭐ | 功能完成后（参考第7.8节阈值表） |
 
 ### 特殊约定
 
