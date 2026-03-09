@@ -36,7 +36,7 @@
         :focus="visible"
         maxlength="100"
         confirm-type="done"
-        @confirm="submit"
+        @confirm="handlePanelSubmit"
       />
     </view>
 
@@ -169,7 +169,7 @@
       </view>
 
       <!-- 发送按钮 -->
-      <view class="send-btn" :class="{ 'send-btn-active': form.title.trim() }" @tap="submit">
+      <view class="send-btn" :class="{ 'send-btn-active': form.title.trim() }" @tap="handlePanelSubmit">
         <text class="send-icon">➤</text>
       </view>
     </view>
@@ -186,7 +186,7 @@
           :key="q.key"
           class="qp-cell"
           :class="[q.posClass, { 'qp-selected': isQuadrantSelected(q) }]"
-          @tap="selectQuadrant(q)"
+          @tap="handleSelectQuadrant(q)"
         >
           <text class="qp-label">{{ q.name }}</text>
         </view>
@@ -507,6 +507,8 @@ import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DateTabBar from './DateTabBar.vue';
 import SubtaskList from './SubtaskList.vue';
 import CustomDatePicker from './CustomDatePicker.vue';
+// ✅ 阶段3：引入 useTaskForm 业务逻辑层
+import { useTaskForm } from '@/composables/useTaskForm.js';
 
 // ============================================================
 // Props & Emits
@@ -537,19 +539,75 @@ const emit = defineEmits(['close', 'submitted']);
 const taskStore = useTaskStore();
 
 // ============================================================
-// 表单数据
+// 阶段3：初始化 useTaskForm（创建模式）
 // ============================================================
-const form = ref({
-  title: '',
-  isUrgent: false,
-  isImportant: false
+const taskFormApi = useTaskForm({
+  mode: 'create',  // AddTaskPanel 仅支持创建模式
+  taskId: null,
+  presetDate: props.presetDate || ''
 });
+
+// ============================================================
+// 阶段3：从 useTaskForm 解构所有业务逻辑
+// ============================================================
+const {
+  // 表单数据
+  form,
+  subtasks,
+  activeDateTab,
+  customDate,
+
+  // 重复规则状态
+  repeatMode,
+  repeatInterval,
+  repeatWeekDays,
+  repeatEndDate,
+  monthlySubMode,
+  monthlyDays,
+  monthlyWeekNum,
+  monthlyWeekday,
+  yearlyMonth,
+  yearlyDay,
+
+  // 计算属性
+  currentQuadrant,
+  hasFormChanged,
+
+  // 子计划方法
+  addSubtask,
+  removeSubtask,
+  toggleSubtaskDone,
+
+  // 日期Tab方法
+  onDateTab,
+
+  // 四象限方法
+  selectQuadrant,
+
+  // 重复规则方法
+  toggleWeekDay,
+  toggleMonthlyDay,
+  syncRrule,
+
+  // 表单提交方法
+  submit,
+  validateForm,
+  resetForm,
+
+  // 工具函数
+  formatDate,
+  getWeekdayName,
+  calcDays,
+  timeDiffMinutes,
+  formatDuration
+} = taskFormApi;
+
+// ============================================================
+// 面板特有数据（不从 useTaskForm 获取）
+// ============================================================
 
 /** 子计划草稿（输入中） - 不再使用，保留用于向后兼容 */
 const subtaskDraft = ref('');
-
-/** 子计划列表（字符串数组，最多100条） */
-const subtasks = ref([]);
 
 /** 子计划列表（转换为 SubtaskList 组件所需的对象数组格式） */
 const subtasksForDisplay = computed(() => {
@@ -679,14 +737,7 @@ function loadUserCategories() {
 // 日期 Tab
 // ============================================================
 
-/** 获取 YYYY-MM-DD 格式日期 */
-function formatDate(date) {
-  const d = new Date(date);
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
+// ✅ 阶段3：formatDate 已从 useTaskForm 中解构，删除重复定义
 
 /** 获取今天、明天的日期字符串 */
 function getTodayStr() {
@@ -698,11 +749,7 @@ function getTomorrowStr() {
   return formatDate(d);
 }
 
-/** 当前选中的日期 Tab */
-const activeDateTab = ref('today');
-
-/** 自定义选择的日期（用户点击"其他日期"后选择的日期） */
-const customDate = ref('');
+// ✅ 阶段3：activeDateTab 和 customDate 已从 useTaskForm 中解构，删除重复定义
 
 /** 显示自定义日期选择器 */
 const showCustomDatePicker = ref(false);
@@ -716,29 +763,16 @@ const showCustomDatePicker = ref(false);
  */
 function handleDateTabChange(tabKey) {
   if (tabKey === 'other') {
-    // 点击"其他日期"，打开自定义日期选择器
+    // 点击"其他日期"，打开自定义日期选择器（面板特有逻辑）
     openCustomDatePicker();
     return;
   }
 
-  // 切换到"今天"或"明天"时，清空自定义日期，恢复为3个Tab显示
-  if (tabKey === 'today' || tabKey === 'tomorrow') {
-    customDate.value = '';
-  }
-
-  // 其他情况（today, tomorrow, custom, preset）直接切换Tab
-  activeDateTab.value = tabKey;
+  // 调用 useTaskForm 提供的 onDateTab 方法处理日期Tab切换
+  onDateTab(tabKey);
 }
 
-/** @deprecated 旧版选择 DateTab 函数，已由 handleDateTabChange 替代 */
-function selectDateTab(tab) {
-  if (tab.key === 'other') {
-    // 打开自定义日期选择器
-    openCustomDatePicker();
-    return;
-  }
-  activeDateTab.value = tab.key;
-}
+// ✅ 阶段3：旧版 selectDateTab 函数已删除，使用 handleDateTabChange
 
 /** 监听 presetDate 变化，自动切换到对应的 tab */
 watch(() => props.presetDate, (newDate) => {
@@ -817,9 +851,9 @@ function toggleQuadrantPicker() {
 }
 
 /** 选择象限 */
-function selectQuadrant(q) {
-  form.value.isUrgent = q.isUrgent;
-  form.value.isImportant = q.isImportant;
+function handleSelectQuadrant(q) {
+  // 调用 useTaskForm 提供的 selectQuadrant 方法
+  selectQuadrant(q);
   showQuadrantPicker.value = false;
 }
 
@@ -832,7 +866,8 @@ function toggleSubtasks() {
   showSubtasks.value = !showSubtasks.value;
 }
 
-/** 添加子计划 */
+// ✅ 阶段3：子计划管理方法已从 useTaskForm 中解构
+
 /**
  * 处理添加子计划事件（从 SubtaskList 组件触发）
  * @param {string} title - 子计划标题
@@ -842,7 +877,7 @@ function handleAddSubtask(title) {
     uni.showToast({ title: '子计划最多100条', icon: 'none' });
     return;
   }
-  subtasks.value.push(title);
+  addSubtask(title);  // 使用 useTaskForm 提供的方法
   showSubtasks.value = true;
 }
 
@@ -851,30 +886,19 @@ function handleAddSubtask(title) {
  * @param {number} index - 子计划索引
  */
 function handleRemoveSubtask(index) {
-  subtasks.value.splice(index, 1);
+  removeSubtask(index);  // 使用 useTaskForm 提供的方法
 }
 
 /**
  * 处理切换子计划完成状态事件（从 SubtaskList 组件触发）
- * 注意：AddTaskPanel 不支持子计划完成状态，此函数为空实现
  * @param {number} index - 子计划索引
  */
 function handleToggleSubtaskDone(index) {
-  // AddTaskPanel 的子计划不支持完成状态，不做处理
+  toggleSubtaskDone(index);  // 使用 useTaskForm 提供的方法
 }
 
-/** @deprecated 旧版添加子计划函数，已由 handleAddSubtask 替代 */
-function addSubtask() {
-  const text = subtaskDraft.value.trim();
-  if (!text) return;
-  handleAddSubtask(text);
-  subtaskDraft.value = '';
-}
-
-/** @deprecated 旧版删除子计划函数，已由 handleRemoveSubtask 替代 */
-function removeSubtask(index) {
-  handleRemoveSubtask(index);
-}
+// ✅ 阶段3：旧版 addSubtask 和 removeSubtask 函数已删除
+// 现在直接使用 useTaskForm 提供的 addSubtask 和 removeSubtask
 
 // ============================================================
 // 时间段功能
@@ -1411,7 +1435,9 @@ function buildRrule(rd) {
 // 防重复提交标志
 let _submitting = false;
 
-async function submit() {
+// ✅ 阶段3：保留面板特有的提交逻辑（包含时间段、天数范围、重复数据、提醒等面板特有功能）
+// 重命名为 handlePanelSubmit 以避免与 useTaskForm.submit 冲突
+async function handlePanelSubmit() {
   if (!form.value.title.trim()) {
     uni.showToast({ title: '请填写任务内容', icon: 'none' });
     return;
@@ -1491,16 +1517,16 @@ async function submit() {
 
 /** 重置所有状态 */
 function resetPanel() {
-  form.value = { title: '', isUrgent: false, isImportant: false };
-  subtasks.value = [];
+  // ✅ 阶段3：使用 useTaskForm 提供的 resetForm 方法重置表单数据
+  resetForm();
+
+  // 重置面板特有状态
   subtaskDraft.value = '';
   showSubtasks.value = false;
   showQuadrantPicker.value = false;
   showCategoryPicker.value = false; // 重置分类选择器
   showCategoryDialog.value = false; // 重置分类弹窗
   selectedCategoryId.value = null; // 重置选中的分类（包含规划）
-  activeDateTab.value = 'today';
-  customDate.value = ''; // 重置自定义日期
   // 重置时间段
   showTimePanel.value = false;
   timeToggle.value = false;
