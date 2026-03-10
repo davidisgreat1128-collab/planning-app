@@ -13,6 +13,9 @@
 import { ref, computed } from 'vue'
 import { useTaskStore } from '@/store/task.js'
 import { usePlanStore } from '@/store/plan.js'
+import { useRepeatRuleManager } from './useRepeatRuleManager.js'
+import { formatDate, getWeekdayName, calcDays, timeDiffMinutes, formatDuration } from '@/utils/date.js'
+import { validateTaskForm } from '@/utils/taskFormValidator.js'
 
 /**
  * 任务表单业务逻辑 Composable
@@ -30,6 +33,11 @@ export function useTaskForm(options = {}) {
   // ============================================================
   const taskStore = useTaskStore()
   const planStore = usePlanStore()
+
+  // ============================================================
+  // 重复规则管理器
+  // ============================================================
+  const repeatRuleManager = useRepeatRuleManager()
 
   // ============================================================
   // 核心状态
@@ -99,40 +107,6 @@ export function useTaskForm(options = {}) {
   const completedAt = ref('')
 
   // ============================================================
-  // 重复规则状态
-  // ============================================================
-
-  /** 当前选中的重复模式 */
-  const repeatMode = ref('none')
-
-  /** 重复间隔（每N天/每N周） */
-  const repeatInterval = ref(1)
-
-  /** 每周重复：选中的周几（1=周一 … 7=周日） */
-  const repeatWeekDays = ref([])
-
-  /** 结束重复日期（YYYY-MM-DD，为空表示未设置） */
-  const repeatEndDate = ref('')
-
-  /** 每月子模式：'day'=按日期  'weekday'=按星期 */
-  const monthlySubMode = ref('day')
-
-  /** 每月-日期模式：选中的日期数组（1~31，可多选） */
-  const monthlyDays = ref([])
-
-  /** 每月-星期模式：第N个（1=第一个…5=最后一个） */
-  const monthlyWeekNum = ref(1)
-
-  /** 每月-星期模式：星期几（1=周一…7=周日） */
-  const monthlyWeekday = ref(1)
-
-  /** 每年重复的月份（1~12） */
-  const yearlyMonth = ref(1)
-
-  /** 每年重复的日期（1~31） */
-  const yearlyDay = ref(1)
-
-  // ============================================================
   // 计算属性
   // ============================================================
 
@@ -198,76 +172,6 @@ export function useTaskForm(options = {}) {
     if ((form.value.taskDate || today) === today) return '当天'
     return `${d.getMonth() + 1}月${d.getDate()}日`
   })
-
-  /** 重复模式显示文本 */
-  const repeatModeLabel = computed(() => {
-    const map = { none: '未开启', daily: '每日', weekly: '每周', monthly: '每月', yearly: '每年' }
-    return map[repeatMode.value] || '未开启'
-  })
-
-  // ============================================================
-  // 工具函数
-  // ============================================================
-
-  /**
-   * 格式化日期为 YYYY-MM-DD
-   * @param {Date} date - 日期对象
-   * @returns {string} YYYY-MM-DD格式字符串
-   */
-  function formatDate(date) {
-    const Y = date.getFullYear()
-    const M = String(date.getMonth() + 1).padStart(2, '0')
-    const D = String(date.getDate()).padStart(2, '0')
-    return `${Y}-${M}-${D}`
-  }
-
-  /**
-   * 获取星期名称
-   * @param {Date} date - 日期对象
-   * @returns {string} 星期名称
-   */
-  function getWeekdayName(date) {
-    const weekdays = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
-    return weekdays[date.getDay()]
-  }
-
-  /**
-   * 计算两个日期之间的天数
-   * @param {string} start - 开始日期 YYYY-MM-DD
-   * @param {string} end - 结束日期 YYYY-MM-DD
-   * @returns {number} 天数
-   */
-  function calcDays(start, end) {
-    if (!start || !end) return 0
-    const s = new Date(start).getTime()
-    const e = new Date(end).getTime()
-    return Math.ceil((e - s) / 86400000) + 1
-  }
-
-  /**
-   * 计算两个时间的分钟差
-   * @param {string} start - 开始时间 HH:mm
-   * @param {string} end - 结束时间 HH:mm
-   * @returns {number} 分钟差
-   */
-  function timeDiffMinutes(start, end) {
-    if (!start || !end) return 0
-    const [sh, sm] = start.split(':').map(Number)
-    const [eh, em] = end.split(':').map(Number)
-    return (eh * 60 + em) - (sh * 60 + sm)
-  }
-
-  /**
-   * 格式化持续时间
-   * @param {number} minutes - 分钟数
-   * @returns {string} 格式化字符串
-   */
-  function formatDuration(minutes) {
-    if (minutes < 60) return `${minutes}分钟`
-    const h = Math.floor(minutes / 60)
-    const m = minutes % 60
-    return m > 0 ? `${h}小时${m}分钟` : `${h}小时`
-  }
 
   // ============================================================
   // 子计划管理
@@ -349,135 +253,6 @@ export function useTaskForm(options = {}) {
   }
 
   // ============================================================
-  // 重复规则管理
-  // ============================================================
-
-  /**
-   * 切换每周的某一天
-   * @param {number} dayNum - 周几（1=周一...7=周日）
-   */
-  function toggleWeekDay(dayNum) {
-    const idx = repeatWeekDays.value.indexOf(dayNum)
-    if (idx >= 0) {
-      if (repeatWeekDays.value.length > 1) {
-        repeatWeekDays.value.splice(idx, 1)
-      }
-    } else {
-      repeatWeekDays.value.push(dayNum)
-      repeatWeekDays.value.sort((a, b) => a - b)
-    }
-  }
-
-  /**
-   * 切换每月日期（多选）
-   * @param {number} day - 日期（1~31）
-   */
-  function toggleMonthlyDay(day) {
-    const idx = monthlyDays.value.indexOf(day)
-    if (idx >= 0) {
-      if (monthlyDays.value.length > 1) {
-        monthlyDays.value.splice(idx, 1)
-      }
-    } else {
-      monthlyDays.value.push(day)
-      monthlyDays.value.sort((a, b) => a - b)
-    }
-  }
-
-  /**
-   * 同步重复规则到 RRULE 字符串
-   */
-  function syncRrule() {
-    if (repeatMode.value === 'none') {
-      form.value.rrule = ''
-      return
-    }
-
-    // TODO: 实现完整的 RRULE 生成逻辑
-    // 这里简化处理，实际需要根据 repeatMode、repeatInterval、repeatWeekDays 等参数生成标准 RRULE 字符串
-    let rrule = `FREQ=${repeatMode.value.toUpperCase()};INTERVAL=${repeatInterval.value}`
-
-    if (repeatMode.value === 'weekly' && repeatWeekDays.value.length > 0) {
-      const byDay = repeatWeekDays.value.map(d => {
-        const days = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
-        return days[d - 1]
-      }).join(',')
-      rrule += `;BYDAY=${byDay}`
-    }
-
-    if (repeatMode.value === 'monthly') {
-      if (monthlySubMode.value === 'day' && monthlyDays.value.length > 0) {
-        rrule += `;BYMONTHDAY=${monthlyDays.value.join(',')}`
-      } else if (monthlySubMode.value === 'weekday') {
-        const days = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU']
-        rrule += `;BYDAY=${monthlyWeekNum.value}${days[monthlyWeekday.value - 1]}`
-      }
-    }
-
-    if (repeatMode.value === 'yearly') {
-      rrule += `;BYMONTH=${yearlyMonth.value};BYMONTHDAY=${yearlyDay.value}`
-    }
-
-    if (repeatEndDate.value) {
-      const endDateFormatted = repeatEndDate.value.replace(/-/g, '')
-      rrule += `;UNTIL=${endDateFormatted}`
-    }
-
-    form.value.rrule = rrule
-    console.log('[useTaskForm] RRULE 已更新:', rrule)
-  }
-
-  // ============================================================
-  // 表单验证
-  // ============================================================
-
-  /**
-   * 验证表单
-   * @returns {Object} { valid: boolean, errors: string[] }
-   */
-  function validateForm() {
-    const errors = []
-
-    // 标题必填
-    if (!form.value.title || !form.value.title.trim()) {
-      errors.push('任务标题不能为空')
-    }
-
-    // 标题长度限制
-    if (form.value.title && form.value.title.length > 100) {
-      errors.push('任务标题不能超过100个字符')
-    }
-
-    // 描述长度限制
-    if (form.value.description && form.value.description.length > 500) {
-      errors.push('任务描述不能超过500个字符')
-    }
-
-    // 日期必填
-    if (!form.value.taskDate) {
-      errors.push('任务日期不能为空')
-    }
-
-    // 如果开启了时间段，需要验证时间
-    if (form.value.hasTimeRange) {
-      if (!form.value.startTime || !form.value.endTime) {
-        errors.push('开启时间段后，开始时间和结束时间都必须填写')
-      }
-      if (form.value.startTime && form.value.endTime) {
-        const diff = timeDiffMinutes(form.value.startTime, form.value.endTime)
-        if (diff <= 0) {
-          errors.push('结束时间必须晚于开始时间')
-        }
-      }
-    }
-
-    return {
-      valid: errors.length === 0,
-      errors
-    }
-  }
-
-  // ============================================================
   // 提交/保存逻辑
   // ============================================================
 
@@ -487,7 +262,7 @@ export function useTaskForm(options = {}) {
    */
   async function submit() {
     // 验证表单
-    const { valid, errors } = validateForm()
+    const { valid, errors } = validateTaskForm(form.value, subtasks.value)
     if (!valid) {
       uni.showToast({
         title: errors[0] || '表单验证失败',
@@ -509,7 +284,7 @@ export function useTaskForm(options = {}) {
       endDate: form.value.endDate || null,
       startTime: form.value.startTime || null,
       endTime: form.value.endTime || null,
-      rrule: form.value.rrule || null,
+      rrule: repeatRuleManager.generateRrule() || null,
       planId: form.value.planId || null,
       reminderEnabled: form.value.reminderEnabled,
       reminderOffset: form.value.reminderOffset,
@@ -545,7 +320,7 @@ export function useTaskForm(options = {}) {
     }
 
     // 验证表单
-    const { valid, errors } = validateForm()
+    const { valid, errors } = validateTaskForm(form.value, subtasks.value)
     if (!valid) {
       uni.showToast({
         title: errors[0] || '表单验证失败',
@@ -567,7 +342,7 @@ export function useTaskForm(options = {}) {
       endDate: form.value.endDate || null,
       startTime: form.value.startTime || null,
       endTime: form.value.endTime || null,
-      rrule: form.value.rrule || null,
+      rrule: repeatRuleManager.generateRrule() || null,
       planId: form.value.planId || null,
       reminderEnabled: form.value.reminderEnabled,
       reminderOffset: form.value.reminderOffset,
@@ -719,16 +494,7 @@ export function useTaskForm(options = {}) {
     originalSubtasks.value = null
 
     // 重置重复规则状态
-    repeatMode.value = 'none'
-    repeatInterval.value = 1
-    repeatWeekDays.value = []
-    repeatEndDate.value = ''
-    monthlySubMode.value = 'day'
-    monthlyDays.value = []
-    monthlyWeekNum.value = 1
-    monthlyWeekday.value = 1
-    yearlyMonth.value = 1
-    yearlyDay.value = 1
+    repeatRuleManager.resetRepeatRule()
 
     // 重置日期 Tab
     if (presetDate.value) {
@@ -762,17 +528,8 @@ export function useTaskForm(options = {}) {
     createdAt,
     completedAt,
 
-    // 重复规则状态
-    repeatMode,
-    repeatInterval,
-    repeatWeekDays,
-    repeatEndDate,
-    monthlySubMode,
-    monthlyDays,
-    monthlyWeekNum,
-    monthlyWeekday,
-    yearlyMonth,
-    yearlyDay,
+    // ✅ 重复规则管理器（新增）
+    repeatRuleManager,
 
     // 计算属性
     currentQuadrant,
@@ -780,14 +537,6 @@ export function useTaskForm(options = {}) {
     createdAtText,
     completedAtText,
     deadlineText,
-    repeatModeLabel,
-
-    // 工具函数
-    formatDate,
-    getWeekdayName,
-    calcDays,
-    timeDiffMinutes,
-    formatDuration,
 
     // 子计划管理
     addSubtask,
@@ -800,14 +549,6 @@ export function useTaskForm(options = {}) {
 
     // 四象限管理
     selectQuadrant,
-
-    // 重复规则管理
-    toggleWeekDay,
-    toggleMonthlyDay,
-    syncRrule,
-
-    // 表单验证
-    validateForm,
 
     // 提交/保存
     submit,
