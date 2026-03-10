@@ -445,40 +445,18 @@
     </view>
 
     <!-- 弹窗：选择完成期限（日历） -->
-    <view v-if="showDaysPicker" class="tep-modal-mask" @tap.self="closeDaysPicker">
-      <view class="tep-modal-sheet">
-        <view class="days-title-row">
-          <text class="days-title-text">设置期限：在</text>
-          <text class="days-count">{{ daysCount }}</text>
-          <text class="days-title-text">天内完成</text>
-        </view>
-        <view class="cal-header">
-          <text class="cal-nav" @tap="prevMonth">‹</text>
-          <text class="cal-month-title">{{ calYear }}年{{ calMonth + 1 }}月</text>
-          <text class="cal-nav" @tap="nextMonth">›</text>
-        </view>
-        <view class="cal-week-row">
-          <text v-for="d in weekLabels" :key="d" class="cal-week-cell">{{ d }}</text>
-        </view>
-        <view class="cal-body">
-          <view v-for="(week, wi) in calRows" :key="wi" class="cal-row">
-            <view
-              v-for="(cell, di) in week"
-              :key="di"
-              class="cal-cell"
-              :class="getCellClass(cell)"
-              @tap="onSelectEndDate(cell)"
-            >
-              <text class="cal-cell-num">{{ cell.day }}</text>
-            </view>
-          </view>
-        </view>
-        <view class="tep-modal-btns">
-          <text class="tep-modal-cancel" @tap="closeDaysPicker">取消</text>
-          <text class="tep-modal-confirm" @tap="confirmDays">确定</text>
-        </view>
-      </view>
-    </view>
+    <!-- ⑥ 日历选择器（选择结束日期） - 使用 DayPicker 组件 -->
+    <DayPicker
+      v-model:visible="showDaysPicker"
+      :startDate="form.taskDate"
+      :initialEndDate="tempEndDate"
+      title="设置期限：在"
+      :showDaysCount="true"
+      :showLunar="showLunar"
+      mode="range"
+      @confirm="onDayPickerConfirm"
+      @cancel="closeDaysPicker"
+    />
 
     <!-- 弹窗：自定义日期选择器（用于选择 taskDate） -->
     <CustomDatePicker
@@ -666,6 +644,7 @@ import DateTabBar from '@/components/task/DateTabBar.vue';
 import SubtaskList from '@/components/task/SubtaskList.vue';
 import CustomDatePicker from '@/components/task/CustomDatePicker.vue';
 import QuadrantPicker from '@/components/task/QuadrantPicker.vue';
+import DayPicker from '@/components/task/DayPicker.vue';
 
 // ============================================================
 // 新增：引入 useTaskForm 业务逻辑层
@@ -1022,8 +1001,6 @@ const repeatOptions = [
 
 /** 周几标签（一~日） */
 const weekDayLabels = ['一', '二', '三', '四', '五', '六', '日'];
-
-const weekLabels = ['一', '二', '三', '四', '五', '六', '日'];
 
 // ============================================================
 // 每月模式：子模式 + 日期多选 + 星期位置
@@ -1483,16 +1460,16 @@ function onTapWechatReminder() {
 // 弹窗1：日历选择结束日期（多天模式）
 // ============================================================
 
-const showDaysPicker = ref(false);
+// ============================================================
+// 日历选择器（DayPicker组件）
+// ============================================================
 
-/** 日历当前显示年月 */
-const calYear  = ref(new Date().getFullYear());
-const calMonth = ref(new Date().getMonth()); // 0-indexed
+const showDaysPicker = ref(false);
 
 /** 是否显示农历 */
 const showLunar = ref(true);
 
-/** 临时选中的结束日期（日历弹窗内） */
+/** 临时选中的结束日期（传递给DayPicker组件） */
 const tempEndDate = ref('');
 
 // ============================================================
@@ -1502,126 +1479,27 @@ const tempEndDate = ref('');
 /** 自定义日期选择器显示状态 */
 const showCustomDatePicker = ref(false);
 
-/** 计算天数（从开始日到结束日，含两端） */
-const daysCount = computed(() => {
-  const start = form.value.taskDate || formatDate(new Date());
-  const end = tempEndDate.value || start;
-  return calcDays(start, end);
-});
+// ============================================================
+// DayPicker 组件回调
+// ============================================================
 
-/** 日历格子数据（6×7） */
-const calRows = computed(() => {
-  const year = calYear.value;
-  const month = calMonth.value;
-  const firstDay = new Date(year, month, 1);
-  // 周一为第一列，getDay() 0=周日
-  const dow = firstDay.getDay();
-  const offset = dow === 0 ? 6 : dow - 1; // 周一=0, 周日=6
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-
-  const today = formatDate(new Date());
-  const startDate = form.value.taskDate || today;
-
-  const cells = [];
-  // 前补位（上月）
-  const prevMonthDays = new Date(year, month, 0).getDate();
-  for (let i = 0; i < offset; i++) {
-    const d = prevMonthDays - offset + 1 + i;
-    const prevYear = month === 0 ? year - 1 : year;
-    const prevMonth = month === 0 ? 11 : month - 1;
-    const dateStr = formatDate(new Date(prevYear, prevMonth, d));
-    cells.push({ day: d, dateStr, otherMonth: true, isPast: dateStr < today });
-  }
-  // 当月
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = formatDate(new Date(year, month, d));
-    cells.push({
-      day: d,
-      dateStr,
-      otherMonth: false,
-      isToday: dateStr === today,
-      isStart: dateStr === startDate,
-      isPast: dateStr < startDate,
-      lunar: showLunar.value ? getLunarSimple(new Date(year, month, d)) : ''
-    });
-  }
-  // 后补位
-  const remain = 42 - cells.length;
-  for (let d = 1; d <= remain; d++) {
-    const nextYear = month === 11 ? year + 1 : year;
-    const nextMonth = month === 11 ? 0 : month + 1;
-    const dateStr = formatDate(new Date(nextYear, nextMonth, d));
-    cells.push({ day: d, dateStr, otherMonth: true, isPast: dateStr < today });
-  }
-
-  // 分组为6行
-  const rows = [];
-  for (let i = 0; i < 6; i++) {
-    rows.push(cells.slice(i * 7, i * 7 + 7));
-  }
-  return rows;
-});
-
-
-/** 获取日历格子的CSS class */
-function getCellClass(cell) {
-  const start = form.value.taskDate || formatDate(new Date());
-  const end = tempEndDate.value;
-  const cls = [];
-
-  if (cell.otherMonth) cls.push('other-month');
-  if (cell.isPast)     cls.push('is-past');
-  if (cell.isToday)    cls.push('is-today');
-  if (cell.dateStr === start)         cls.push('is-start');
-  if (end && cell.dateStr === end)    cls.push('is-end');
-  if (end && cell.dateStr > start && cell.dateStr < end) cls.push('in-range');
-
-  return cls;
-}
-
-/** 点击日历格子 */
-function onSelectEndDate(cell) {
-  // 过去的日期不可选
-  if (cell.isPast || cell.otherMonth) return;
-  tempEndDate.value = cell.dateStr;
-  // 如果切换到其他月份的格子则不操作（otherMonth 已过滤）
-}
-
-/** 确定选择结束日期 */
-function confirmDays() {
-  if (tempEndDate.value) {
-    form.value.endDate = tempEndDate.value;
-    // 多天任务，isAllDay=true，dateType=range
-    form.value.isAllDay = true;
-    form.value.startTime = '';
-    form.value.endTime = '';
-  }
+/**
+/**
+ * DayPicker 组件确认回调
+ * @param {object} payload - { date: string, daysCount: number }
+ */
+function onDayPickerConfirm(payload) {
+  form.value.endDate = payload.date;
+  // 多天任务，isAllDay=true
+  form.value.isAllDay = true;
+  form.value.startTime = '';
+  form.value.endTime = '';
+  tempEndDate.value = payload.date;
   showDaysPicker.value = false;
 }
 
 function closeDaysPicker() {
   showDaysPicker.value = false;
-}
-
-function prevMonth() {
-  const today = new Date();
-  // 不能回退到当前月之前
-  if (calYear.value === today.getFullYear() && calMonth.value === today.getMonth()) return;
-  if (calMonth.value === 0) {
-    calYear.value--;
-    calMonth.value = 11;
-  } else {
-    calMonth.value--;
-  }
-}
-
-function nextMonth() {
-  if (calMonth.value === 11) {
-    calYear.value++;
-    calMonth.value = 0;
-  } else {
-    calMonth.value++;
-  }
 }
 
 // ============================================================

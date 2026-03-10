@@ -253,49 +253,19 @@
       @cancel="closeCustomDatePicker"
     />
 
-    <!-- ⑥ 天数日历弹窗（开关关闭时，选择结束天） -->
+    <!-- ⑥ 天数日历弹窗（开关关闭时，选择结束天） - 使用 DayPicker 组件 -->
     <teleport to="body">
-      <view v-if="showDayPicker" class="tp-mask" @tap.stop="closeDayPicker">
-        <view class="tp-sheet" @tap.stop>
-        <!-- 顶部标题 -->
-        <text class="dp-title">设置期限：在 <text class="dp-days">{{ endDayCount || 1 }}</text> 天内完成</text>
-        <!-- 月份导航 -->
-        <view class="dp-nav">
-          <view class="dp-nav-btn" @tap="prevMonth"><text class="dp-nav-icon">‹</text></view>
-          <text class="dp-nav-title">{{ dpYear }}年{{ dpMonth }}月</text>
-          <view class="dp-nav-btn" @tap="nextMonth"><text class="dp-nav-icon">›</text></view>
-          <text class="dp-lunar-toggle">隐藏农历</text>
-        </view>
-        <!-- 星期头 -->
-        <view class="dp-weekrow">
-          <text v-for="w in ['一','二','三','四','五','六','日']" :key="w" class="dp-weekcell">{{ w }}</text>
-        </view>
-        <!-- 日期格子 -->
-        <view class="dp-grid">
-          <view
-            v-for="(cell, idx) in dpCells"
-            :key="idx"
-            class="dp-cell"
-            :class="{
-              'dp-cell-other': cell.otherMonth,
-              'dp-cell-past': cell.isPast,
-              'dp-cell-today': cell.isToday,
-              'dp-cell-selected': cell.isSelected,
-              'dp-cell-in-range': cell.inRange
-            }"
-            @tap="onDpCellTap(cell)"
-          >
-            <text class="dp-cell-num">{{ cell.day }}</text>
-            <text v-if="cell.lunar" class="dp-cell-lunar">{{ cell.lunar }}</text>
-          </view>
-        </view>
-        <!-- 底部按钮 -->
-        <view class="tp-btns">
-          <view class="tp-btn tp-cancel" @tap="closeDayPicker"><text class="tp-btn-text">取消</text></view>
-          <view class="tp-btn tp-confirm" @tap="confirmDayPicker"><text class="tp-btn-text tp-confirm-text">确定</text></view>
-        </view>
-        </view>
-      </view>
+      <DayPicker
+        v-model:visible="showDayPicker"
+        :startDate="resolvedDate"
+        :initialEndDate="endDate ? formatDate(endDate) : ''"
+        title="设置期限：在"
+        :showDaysCount="true"
+        :showLunar="true"
+        mode="range"
+        @confirm="onDayPickerConfirm"
+        @cancel="closeDayPicker"
+      />
     </teleport>
 
     <!-- ⑦ 时间选择弹窗（开关开启时） -->
@@ -498,6 +468,7 @@ import DateTabBar from './DateTabBar.vue';
 import SubtaskList from './SubtaskList.vue';
 import CustomDatePicker from './CustomDatePicker.vue';
 import QuadrantPicker from './QuadrantPicker.vue';
+import DayPicker from './DayPicker.vue';
 // ✅ 阶段3：引入 useTaskForm 业务逻辑层
 import { useTaskForm } from '@/composables/useTaskForm.js';
 // ✅ 阶段4重构：导入工具函数（不再从useTaskForm解构）
@@ -992,23 +963,14 @@ function clearTimeRange() {
 // 天数日历弹窗（开关关）
 // ============================================================
 
+// ============================================================
+// 日历选择器（DayPicker组件）
+// ============================================================
+
 const showDayPicker = ref(false);
-
-/** 日历当前显示的年月 */
-const dpYear = ref(new Date().getFullYear());
-const dpMonth = ref(new Date().getMonth() + 1); // 1-12
-
-/** 临时选中的结束日期 */
-const dpSelectedDate = ref(null);
 
 /** 打开天数日历 */
 function openDayPicker() {
-  // 初始化到今天
-  const today = new Date();
-  dpYear.value = today.getFullYear();
-  dpMonth.value = today.getMonth() + 1;
-  // 恢复已选值
-  dpSelectedDate.value = endDate.value ? new Date(endDate.value) : new Date(today);
   showDayPicker.value = true;
 }
 
@@ -1016,144 +978,14 @@ function closeDayPicker() {
   showDayPicker.value = false;
 }
 
-function confirmDayPicker() {
-  if (dpSelectedDate.value) {
-    endDate.value = new Date(dpSelectedDate.value);
-    // 计算天数差（含首尾）
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-    const sel = new Date(dpSelectedDate.value);
-    sel.setHours(0, 0, 0, 0);
-    const diff = Math.round((sel - today) / (1000 * 60 * 60 * 24));
-    endDayCount.value = diff + 1; // 从今天算，今天=1天
-  }
+/**
+ * DayPicker 组件确认回调
+ * @param {object} payload - { date: string, daysCount: number }
+ */
+function onDayPickerConfirm(payload) {
+  endDate.value = new Date(payload.date);
+  endDayCount.value = payload.daysCount;
   showDayPicker.value = false;
-}
-
-/** 切换到上个月 */
-function prevMonth() {
-  if (dpMonth.value === 1) {
-    dpMonth.value = 12;
-    dpYear.value--;
-  } else {
-    dpMonth.value--;
-  }
-}
-
-/** 切换到下个月 */
-function nextMonth() {
-  if (dpMonth.value === 12) {
-    dpMonth.value = 1;
-    dpYear.value++;
-  } else {
-    dpMonth.value++;
-  }
-}
-
-/** 生成日历格子 */
-const dpCells = computed(() => {
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-
-  const year = dpYear.value;
-  const month = dpMonth.value; // 1-12
-
-  // 当月第一天是星期几（0=周日，1=周一...）
-  const firstDay = new Date(year, month - 1, 1);
-  // 转换成周一为起点（0=周一，6=周日）
-  let startDow = firstDay.getDay(); // 0=周日
-  startDow = startDow === 0 ? 6 : startDow - 1; // 0=周一
-
-  // 当月总天数
-  const daysInMonth = new Date(year, month, 0).getDate();
-
-  // 上个月补位天数
-  const prevMonthDays = new Date(year, month - 1, 0).getDate();
-
-  const cells = [];
-
-  // 上月补位
-  for (let i = startDow - 1; i >= 0; i--) {
-    const d = prevMonthDays - i;
-    const prevM = month === 1 ? 12 : month - 1;
-    const prevY = month === 1 ? year - 1 : year;
-    cells.push({
-      day: d,
-      date: new Date(prevY, prevM - 1, d),
-      otherMonth: true,
-      isPast: true,
-      isToday: false,
-      isSelected: false,
-      inRange: false,
-      lunar: ''
-    });
-  }
-
-  // 当月日期
-  for (let d = 1; d <= daysInMonth; d++) {
-    const cellDate = new Date(year, month - 1, d);
-    cellDate.setHours(0, 0, 0, 0);
-    const isPast = cellDate < today;
-    const isToday = cellDate.getTime() === today.getTime();
-
-    // 选中态
-    let isSelected = false;
-    if (dpSelectedDate.value) {
-      const sel = new Date(dpSelectedDate.value);
-      sel.setHours(0, 0, 0, 0);
-      isSelected = cellDate.getTime() === sel.getTime();
-    }
-
-    // 范围高亮（今天到选中日期之间）
-    let inRange = false;
-    if (dpSelectedDate.value && !isSelected && !isToday) {
-      const sel = new Date(dpSelectedDate.value);
-      sel.setHours(0, 0, 0, 0);
-      inRange = cellDate > today && cellDate < sel;
-    }
-
-    cells.push({
-      day: d,
-      date: cellDate,
-      otherMonth: false,
-      isPast: isPast && !isToday,
-      isToday,
-      isSelected,
-      inRange,
-      lunar: getLunarLabel(year, month, d)
-    });
-  }
-
-  // 下月补位（凑满42格）
-  const remaining = 42 - cells.length;
-  for (let d = 1; d <= remaining; d++) {
-    const nextM = month === 12 ? 1 : month + 1;
-    const nextY = month === 12 ? year + 1 : year;
-    cells.push({
-      day: d,
-      date: new Date(nextY, nextM - 1, d),
-      otherMonth: true,
-      isPast: false,
-      isToday: false,
-      isSelected: false,
-      inRange: false,
-      lunar: ''
-    });
-  }
-
-  return cells;
-});
-
-/** 简单农历标签（节气/节日等，暂用简易版） */
-function getLunarLabel(year, month, day) {
-  // 简易版：仅返回空，后续可接入 lunar-javascript
-  return '';
-}
-
-/** 点击日历格子 */
-function onDpCellTap(cell) {
-  if (cell.otherMonth || cell.isPast) return;
-  dpSelectedDate.value = new Date(cell.date);
 }
 
 // ============================================================
