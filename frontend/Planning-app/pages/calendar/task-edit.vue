@@ -682,10 +682,6 @@ const presetDate = ref('');
 /** 当前任务是否已完成（页面内直接切换） */
 const taskDone = ref(false);
 
-// 阶段1注释：以下3个变量已从 useTaskForm 解构，原定义已删除
-// const activeDateTab = ref('today');  ❌ 已删除
-// const customDate = ref('');          ❌ 已删除
-// const subtasks = ref([]);            ❌ 已删除
 
 /** 弹窗：四象限选择器 */
 const showQuadrantPicker = ref(false);
@@ -855,14 +851,10 @@ const {
   subtasks,
   activeDateTab,
   customDate,
-  // 阶段2：解构高级功能
   selectQuadrant,
   currentQuadrant,
-  // ✅ 重复规则管理器（阶段4重构）
   repeatRuleManager,
-  // ✅ 表单变化检测（包含重复规则变化检测）
   hasFormChanged,
-  // ✅ 阶段3.1：解构更新方法
   update
 } = taskFormApi;
 
@@ -890,16 +882,13 @@ const {
 // minDate 保留供后续 picker 扩展使用（当前日历弹窗通过 isPast 逻辑控制）
 // const minDate = computed(() => formatDate(new Date()));
 
-// ✅ 阶段2：currentQuadrant 已从 useTaskForm 中解构，删除重复定义
-
 /** 选中的规划名称（显示用） */
 const selectedPlanName = ref('');
 
 /** 左卡片：开始日期显示 */
 const startDateDisplay = computed(() => {
-  if (!form.value.taskDate) return formatDateDisplay(new Date());
-  const d = new Date(form.value.taskDate);
-  return `${d.getMonth() + 1}月${d.getDate()}日，${getWeekdayName(d)}`;
+  const dateStr = form.value.taskDate || formatDate(new Date());
+  return formatDateWithWeekday(dateStr);
 });
 
 /** 左卡片：副标题（今天/明天/后天） */
@@ -965,8 +954,6 @@ const startDateWeekday = computed(() => {
 // 常量
 // ============================================================
 
-// ✅ UI组件提取：quadrants 常量已移至 QuadrantPicker 组件内部
-
 /** 四象限选项（用于徽章显示） */
 const quadrants = [
   { key: 'q1', name: '重要且紧急', badgeIcon: '!!!!' },
@@ -996,18 +983,12 @@ const repeatOptions = [
   { label: '每年',   value: 'yearly'  }
 ];
 
-// ✅ 阶段2：重复规则状态已从 useTaskForm 中解构，删除重复定义
-// repeatMode, repeatInterval, repeatWeekDays, repeatEndDate
-
 /** 周几标签（一~日） */
 const weekDayLabels = ['一', '二', '三', '四', '五', '六', '日'];
 
 // ============================================================
 // 每月模式：子模式 + 日期多选 + 星期位置
 // ============================================================
-
-// ✅ 阶段2：每月模式状态已从 useTaskForm 中解构，删除重复定义
-// monthlySubMode, monthlyDays, monthlyWeekNum, monthlyWeekday
 
 /** 第N个 标签 */
 const weekNumLabels = ['第一个', '第二个', '第三个', '第四个', '最后一个'];
@@ -1018,9 +999,6 @@ const weekdayFullLabels = ['星期一', '星期二', '星期三', '星期四', '
 // ============================================================
 // 每年模式：月和日
 // ============================================================
-
-// ✅ 阶段2：每年模式状态已从 useTaskForm 中解构，删除重复定义
-// yearlyMonth, yearlyDay
 
 // ============================================================
 // 通用滚轮选择器弹窗
@@ -1136,8 +1114,6 @@ function onSelectMonthlySubMode(mode) {
   repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
-// ✅ 阶段2：toggleMonthlyDay 已从 useTaskForm 中解构，删除重复定义
-
 // ============================================================
 // 重复模式：设置结束重复日历弹窗
 // ============================================================
@@ -1176,7 +1152,7 @@ const repeatCalRows = computed(() => {
       day: d, dateStr, otherMonth: false,
       isToday: dateStr === today,
       isPast: dateStr < today,
-      lunar: showRepeatLunar.value ? getLunarSimple(new Date(year, month, d)) : ''
+      lunar: '' // 暂不显示农历（后续可接入 lunar-javascript 库）
     });
   }
   // 后补位
@@ -1282,10 +1258,6 @@ function onSelectRepeatMode(mode) {
 
   repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
-
-// ✅ 阶段2：toggleWeekDay 已从 useTaskForm 中解构，删除重复定义
-
-// ✅ 阶段2：syncRrule 已从 useTaskForm 中解构，删除重复定义
 
 /** 处理重复间隔选择器变化 */
 function onIntervalChange(e) {
@@ -1696,29 +1668,10 @@ function parseRruleToUI(rrule) {
 }
 
 // ============================================================
-// 阶段1：工具函数（已从 taskFormApi 解构，删除重复定义）
-// ============================================================
-// ❌ 已删除：formatDate、getWeekdayName、calcDays、timeDiffMinutes、formatDuration
-// ✅ 现在从 taskFormApi 解构使用（见第888-899行）
-
-/** 格式化为"M月D日，周X"（组件特有的辅助函数，保留） */
-function formatDateDisplay(date) {
-  const d = new Date(date);
-  return `${d.getMonth() + 1}月${d.getDate()}日，${getWeekdayName(d)}`;
-}
-
-/** 简单农历（仅显示农历日期名，无需精确，后续可接入 lunar-javascript 库） */
-function getLunarSimple(_date) {
-  // 暂时返回空，界面保留农历显示位置
-  return '';
-}
-
-// ============================================================
 // 保存 / 删除
 // ============================================================
 /**
  * 保存任务（调用 useTaskForm.update()）
- * ⭐ 阶段3.1：已迁移到 useTaskForm.update()，保留 localStorage 特殊逻辑
  */
 async function save() {
   console.log('[TaskEdit] ========== 开始保存 ==========');
