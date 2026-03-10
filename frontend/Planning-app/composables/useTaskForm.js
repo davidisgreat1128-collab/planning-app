@@ -125,6 +125,14 @@ export function useTaskForm(options = {}) {
       return false
     }
 
+    // ✅ 修复：直接访问响应式变量，让 Vue 追踪依赖
+    const repeatMode = repeatRuleManager.repeatMode.value
+    const repeatInterval = repeatRuleManager.repeatInterval.value
+    const repeatWeekDays = repeatRuleManager.repeatWeekDays.value
+    const repeatEndDate = repeatRuleManager.repeatEndDate.value
+    const monthlySubMode = repeatRuleManager.monthlySubMode.value
+    const monthlyDays = repeatRuleManager.monthlyDays.value
+
     const currentRrule = repeatRuleManager.generateRrule() || ''
     const originalRrule = originalForm.value.rrule || ''
     const changed = currentRrule !== originalRrule
@@ -133,8 +141,10 @@ export function useTaskForm(options = {}) {
       currentRrule,
       originalRrule,
       changed,
-      repeatMode: repeatRuleManager.repeatMode.value,
-      repeatInterval: repeatRuleManager.repeatInterval.value
+      repeatMode,
+      repeatInterval,
+      repeatWeekDays,
+      repeatEndDate
     })
 
     return changed
