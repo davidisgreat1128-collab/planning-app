@@ -473,6 +473,8 @@ import DayPicker from './DayPicker.vue';
 import { useTaskForm } from '@/composables/useTaskForm.js';
 // ✅ 阶段4重构：导入工具函数（不再从useTaskForm解构）
 import { formatDate } from '@/utils/date.js';
+// ✅ 架构重构(2026-03-10)：导入RRULE构建工具（业务规则移至utils层）
+import { buildRrule } from '@/utils/rruleBuilder.js';
 
 // ============================================================
 // Props & Emits
@@ -1192,53 +1194,10 @@ function onReminderCancel() {
 // ============================================================
 // 提交
 // ============================================================
-/**
- * 将 repeatData 转为标准 RRULE 字符串（后端要求格式）
- * 例：FREQ=WEEKLY;INTERVAL=2;BYDAY=MO,TH
- */
-function buildRrule(rd) {
-  if (!rd || rd.mode === 'none') return '';
+// ============================================================
+// ⚠️ buildRrule 函数已移至 @/utils/rruleBuilder.js (架构重构 2026-03-10)
+// ============================================================
 
-  const freqMap = { daily: 'DAILY', weekly: 'WEEKLY', monthly: 'MONTHLY', yearly: 'YEARLY' };
-  const freq = freqMap[rd.mode];
-  if (!freq) return '';
-
-  const parts = [`FREQ=${freq}`];
-
-  if (rd.interval > 1) parts.push(`INTERVAL=${rd.interval}`);
-
-  // 每周：BYDAY（0=周一 MO ... 6=周日 SU）
-  if (rd.mode === 'weekly' && rd.weekDays && rd.weekDays.length > 0) {
-    const dayMap = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
-    parts.push(`BYDAY=${rd.weekDays.map(d => dayMap[d]).join(',')}`);
-  }
-
-  // 每月-日期：BYMONTHDAY
-  if (rd.mode === 'monthly' && rd.monthlySubMode === 'date' && rd.monthDays && rd.monthDays.length > 0) {
-    parts.push(`BYMONTHDAY=${rd.monthDays.join(',')}`);
-  }
-
-  // 每月-星期：BYDAY（带序号，第几个）
-  if (rd.mode === 'monthly' && rd.monthlySubMode === 'week') {
-    const dayMap = ['MO', 'TU', 'WE', 'TH', 'FR', 'SA', 'SU'];
-    // monthWeekOrdinal: 0-3=第一到第四个，4=最后一个（-1）
-    const pos = rd.monthWeekOrdinal === 4 ? -1 : rd.monthWeekOrdinal + 1;
-    parts.push(`BYDAY=${pos}${dayMap[rd.monthWeekDay]}`);
-  }
-
-  // 每年：BYMONTH + BYMONTHDAY
-  if (rd.mode === 'yearly') {
-    parts.push(`BYMONTH=${rd.yearlyMonth}`);
-    parts.push(`BYMONTHDAY=${rd.yearlyDay}`);
-  }
-
-  // 结束日期：UNTIL
-  if (rd.endDate) {
-    parts.push(`UNTIL=${rd.endDate.replace(/-/g, '')}T235959Z`);
-  }
-
-  return parts.join(';');
-}
 
 // 防重复提交标志
 let _submitting = false;
@@ -1287,6 +1246,13 @@ async function handlePanelSubmit() {
       form.value.reminderTime = reminderData.value.time;
       form.value.reminderPersistent = reminderData.value.persistent;
     }
+    // 同步重复规则字段（✅ 使用utils/rruleBuilder.js）
+    if (repeatData.value && repeatData.value.mode !== 'none') {
+      form.value.rrule = buildRrule(repeatData.value);
+    } else {
+      form.value.rrule = '';
+    }
+
 
     // ============================================================
     // 调用 useTaskForm.submit()
