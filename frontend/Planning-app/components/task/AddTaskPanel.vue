@@ -472,7 +472,7 @@ import DayPicker from './DayPicker.vue';
 // ✅ 阶段3：引入 useTaskForm 业务逻辑层
 import { useTaskForm } from '@/composables/useTaskForm.js';
 // ✅ 阶段4重构：导入工具函数（不再从useTaskForm解构）
-import { formatDate } from '@/utils/date.js';
+import { formatDate, timeDiffMinutes, formatDuration, formatDateWithWeekday, getRelativeDateLabel } from '@/utils/date.js';
 // ✅ 架构重构(2026-03-10)：导入RRULE构建工具（业务规则移至utils层）
 import { buildRrule } from '@/utils/rruleBuilder.js';
 
@@ -912,17 +912,8 @@ const endDateDisplay = computed(() => {
 });
 
 // ----- 持续时间计算 -----
-const timeDuration = computed(() => {
-  if (!timeStart.value || !timeEnd.value) return '';
-  const [sh, sm] = timeStart.value.split(':').map(Number);
-  const [eh, em] = timeEnd.value.split(':').map(Number);
-  const totalMin = (eh * 60 + em) - (sh * 60 + sm);
-  if (totalMin <= 0) return '';
-  if (totalMin < 60) return `${totalMin}分钟`;
-  const h = Math.floor(totalMin / 60);
-  const min = totalMin % 60;
-  return min > 0 ? `${h}小时${min}分钟` : `${h}小时`;
-});
+// ✅ 架构重构(2026-03-10): 时间计算逻辑移至utils/date.js
+const timeDuration = computed(() => {  if (!timeStart.value || !timeEnd.value) return '';  const totalMin = timeDiffMinutes(timeStart.value, timeEnd.value);  if (totalMin <= 0) return '';  return formatDuration(totalMin);});
 
 /** 点击工具栏时间段按钮 */
 function onTimeTap() {

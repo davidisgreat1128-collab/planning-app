@@ -470,3 +470,50 @@ export function formatDuration(minutes) {
   const m = minutes % 60
   return m > 0 ? `${h}小时${m}分钟` : `${h}小时`
 }
+
+/**
+ * 格式化日期显示（月日+星期）
+ * @param {Date|string} date - 日期对象或字符串
+ * @returns {string} 格式化字符串（如"3月10日，周日"）
+ * @example
+ * formatDateWithWeekday(new Date('2026-03-10')) // => "3月10日，周日"
+ */
+export function formatDateWithWeekday(date) {
+  const d = typeof date === 'string' ? new Date(date) : date
+  const m = d.getMonth() + 1
+  const day = d.getDate()
+  const weekNames = ['周日', '周一', '周二', '周三', '周四', '周五', '周六']
+  const w = weekNames[d.getDay()]
+  return `${m}月${day}日，${w}`
+}
+
+/**
+ * 获取相对日期描述（今天/明天/N天后/N天前）
+ * @param {string} dateStr - 日期字符串（YYYY-MM-DD）
+ * @param {string} baseStr - 基准日期字符串（默认今天）
+ * @returns {string} 相对描述
+ * @example
+ * getRelativeDateLabel('2026-03-11', '2026-03-10') // => "明天"
+ * getRelativeDateLabel('2026-03-15', '2026-03-10') // => "5天后"
+ */
+export function getRelativeDateLabel(dateStr, baseStr = null) {
+  const todayStr = baseStr || formatDate(new Date())
+  if (dateStr === todayStr) return '今天'
+
+  const tomorrowDate = new Date(todayStr)
+  tomorrowDate.setDate(tomorrowDate.getDate() + 1)
+  const tomorrowStr = formatDate(tomorrowDate)
+  if (dateStr === tomorrowStr) return '明天'
+
+  const yesterdayDate = new Date(todayStr)
+  yesterdayDate.setDate(yesterdayDate.getDate() - 1)
+  const yesterdayStr = formatDate(yesterdayDate)
+  if (dateStr === yesterdayStr) return '昨天'
+
+  const targetDate = new Date(dateStr)
+  const today = new Date(todayStr)
+  const diffDays = Math.floor((targetDate - today) / (1000 * 60 * 60 * 24))
+  if (diffDays > 0) return `${diffDays}天后`
+  if (diffDays < 0) return `${Math.abs(diffDays)}天前`
+  return '今天'
+}
