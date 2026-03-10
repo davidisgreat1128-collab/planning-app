@@ -347,7 +347,7 @@ export function useTaskForm(options = {}) {
     console.log('[useTaskForm] 提交任务数据:', taskData)
 
     // 调用 Store 创建任务
-    const newTask = await taskStore.createTask(taskData)
+    const newTask = await taskStore.addTask(taskData)
 
     console.log('[useTaskForm] 任务创建成功:', newTask)
 

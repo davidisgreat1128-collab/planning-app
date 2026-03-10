@@ -882,7 +882,9 @@ const {
   // ✅ 重复规则管理器（阶段4重构）
   repeatRuleManager,
   // ✅ 表单变化检测（包含重复规则变化检测）
-  hasFormChanged
+  hasFormChanged,
+  // ✅ 阶段3.1：解构更新方法
+  update
 } = taskFormApi;
 
 // ✅ 从 repeatRuleManager 解构重复规则状态和方法
@@ -1836,25 +1838,22 @@ function getLunarSimple(_date) {
 // ============================================================
 // 保存 / 删除
 // ============================================================
+/**
+ * 保存任务（调用 useTaskForm.update()）
+ * ⭐ 阶段3.1：已迁移到 useTaskForm.update()，保留 localStorage 特殊逻辑
+ */
 async function save() {
   console.log('[TaskEdit] ========== 开始保存 ==========');
   console.log('[TaskEdit] isEdit:', isEdit.value);
   console.log('[TaskEdit] taskId:', taskId.value);
   console.log('[TaskEdit] originalTaskId:', originalTaskId.value);
-  console.log('[TaskEdit] form.title:', form.value.title);
-  console.log('[TaskEdit] subtasks:', JSON.stringify(subtasks.value));
-
-  if (!form.value.title.trim()) {
-    uni.showToast({ title: '请填写任务标题', icon: 'none' });
-    return;
-  }
-
-  const startDate = form.value.taskDate || formatDate(new Date());
 
   try {
     uni.showLoading({ title: '保存中...' });
 
-    // 尝试从 localStorage 查找任务（无论ID前缀是什么）
+    // ============================================================
+    // localStorage 任务特殊处理（访客模式、离线模式）
+    // ============================================================
     let isLocalStorageTask = false;
     console.log('[TaskEdit] 检查是否为 localStorage 任务...');
     if (isEdit.value && taskId.value) {
@@ -1862,184 +1861,79 @@ async function save() {
         const savedTasks = uni.getStorageSync('tasks');
         if (savedTasks) {
           const tasks = JSON.parse(savedTasks);
-          // 对于重复任务，使用原始ID；否则使用实例ID
           const idToFind = originalTaskId.value || taskId.value;
           const taskIndex = tasks.findIndex(t => String(t.id) === String(idToFind));
 
           if (taskIndex !== -1) {
-            // 确认任务在 localStorage 中，标记为 localStorage 任务
             isLocalStorageTask = true;
-            console.log('[TaskEdit] ✅ 检测到 localStorage 任务，ID:', idToFind, ', 索引:', taskIndex);
-          } else {
-            console.log('[TaskEdit] ❌ localStorage 中未找到任务，ID:', idToFind);
+            console.log('[TaskEdit] ✅ 检测到 localStorage 任务，ID:', idToFind);
           }
-        } else {
-          console.log('[TaskEdit] localStorage 中没有任务数据');
         }
       } catch (e) {
         console.error('[TaskEdit] 检查 localStorage 任务失败:', e);
       }
-    } else {
-      console.log('[TaskEdit] 不是编辑模式或 taskId 为空，跳过 localStorage 检查');
     }
 
     if (isLocalStorageTask) {
       // localStorage 任务：直接更新 localStorage，不调用后端 API
       console.log('[TaskEdit] 使用 localStorage 保存模式');
 
-      try {
-        const savedTasks = uni.getStorageSync('tasks');
-        let tasks = savedTasks ? JSON.parse(savedTasks) : [];
+      const savedTasks = uni.getStorageSync('tasks');
+      let tasks = savedTasks ? JSON.parse(savedTasks) : [];
+      const idToFind = originalTaskId.value || taskId.value;
+      const taskIndex = tasks.findIndex(t => String(t.id) === String(idToFind));
 
-        // 对于重复任务，使用原始ID；否则使用实例ID
-        const idToFind = originalTaskId.value || taskId.value;
-        const taskIndex = tasks.findIndex(t => String(t.id) === String(idToFind));
+      if (taskIndex !== -1) {
+        const subtasksData = subtasks.value.length > 0
+          ? subtasks.value.map(s => ({ title: s.title, done: s.done }))
+          : [];
 
-        if (taskIndex !== -1) {
-          // 准备子任务数据
-          const subtasksData = subtasks.value.length > 0
-            ? subtasks.value.map(s => ({ title: s.title, done: s.done }))
-            : [];
+        tasks[taskIndex] = {
+          ...tasks[taskIndex],
+          title: form.value.title.trim(),
+          description: form.value.description || '',
+          isUrgent: form.value.isUrgent,
+          isImportant: form.value.isImportant,
+          date: form.value.taskDate || formatDate(new Date()),
+          occurDate: form.value.taskDate || formatDate(new Date()),
+          status: taskDone.value ? 'completed' : 'pending',
+          subtasks: subtasksData,
+          updateTime: new Date().toISOString(),
+          ...(taskDone.value && !tasks[taskIndex].completedAt ? { completedAt: new Date().toISOString() } : {})
+        };
 
-          // 更新任务数据
-          tasks[taskIndex] = {
-            ...tasks[taskIndex],
-            title: form.value.title.trim(),
-            description: form.value.description || '',
-            isUrgent: form.value.isUrgent,
-            isImportant: form.value.isImportant,
-            date: startDate,
-            occurDate: startDate,
-            status: taskDone.value ? 'completed' : 'pending',
-            subtasks: subtasksData,
-            updateTime: new Date().toISOString(),
-            // 如果任务被标记为完成，记录完成时间
-            ...(taskDone.value && !tasks[taskIndex].completedAt ? { completedAt: new Date().toISOString() } : {})
-          };
+        uni.setStorageSync('tasks', JSON.stringify(tasks));
+        console.log('[TaskEdit] localStorage 保存成功');
 
-          // 保存回 localStorage
-          uni.setStorageSync('tasks', JSON.stringify(tasks));
-          console.log('[TaskEdit] localStorage 保存成功');
-
-          // 同时更新 taskStore 中的任务（如果存在）
-          const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === String(idToFind));
-          if (storeTaskIndex !== -1) {
-            taskStore.tasks[storeTaskIndex] = tasks[taskIndex];
-            console.log('[TaskEdit] 同步更新 taskStore 成功');
-          }
-
-          uni.hideLoading();
-          uni.showToast({ title: '修改成功', icon: 'success' });
-          setTimeout(() => { uni.navigateBack(); }, 800);
-          return;
-        } else {
-          // 理论上不应该到这里，因为前面已经检查过了
-          throw new Error('任务不存在');
+        // 同步更新 taskStore
+        const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === String(idToFind));
+        if (storeTaskIndex !== -1) {
+          taskStore.tasks[storeTaskIndex] = tasks[taskIndex];
         }
-      } catch (e) {
-        console.error('[TaskEdit] 保存 localStorage 任务失败:', e);
-        throw e;
-      }
-    }
 
-    // 后端任务：调用 API
-    let payload;
-
-    // 准备子任务数据
-    const subtasksData = subtasks.value.length > 0
-      ? subtasks.value.map(s => ({ title: s.title, done: s.done }))
-      : null;
-
-    if (form.value.hasTimeRange) {
-      // 当天时间段模式
-      if (!form.value.startTime || !form.value.endTime) {
         uni.hideLoading();
-        uni.showToast({ title: '请选择开始/结束时间', icon: 'none' });
+        uni.showToast({ title: '修改成功', icon: 'success' });
+        setTimeout(() => { uni.navigateBack(); }, 800);
         return;
+      } else {
+        throw new Error('任务不存在');
       }
-      payload = {
-        title:       form.value.title.trim(),
-        description: form.value.description || null,
-        isUrgent:    form.value.isUrgent,
-        isImportant: form.value.isImportant,
-        isAllDay:    false,
-        dateType:    'single',
-        taskDate:    startDate,
-        startTime:   form.value.startTime,
-        endTime:     form.value.endTime,
-        isRecurring: !!form.value.rrule,
-        rrule:       form.value.rrule || null,
-        planId:      form.value.planId || null,
-        subtasks:    subtasksData
-      };
-    } else if (form.value.endDate && form.value.endDate !== startDate) {
-      // 多天范围模式
-      payload = {
-        title:       form.value.title.trim(),
-        description: form.value.description || null,
-        isUrgent:    form.value.isUrgent,
-        isImportant: form.value.isImportant,
-        isAllDay:    true,
-        dateType:    'range',
-        taskDate:    startDate,
-        endDate:     form.value.endDate,
-        startTime:   null,
-        endTime:     null,
-        isRecurring: !!form.value.rrule,
-        rrule:       form.value.rrule || null,
-        planId:      form.value.planId || null,
-        subtasks:    subtasksData
-      };
-    } else {
-      // 单天全天模式
-      payload = {
-        title:       form.value.title.trim(),
-        description: form.value.description || null,
-        isUrgent:    form.value.isUrgent,
-        isImportant: form.value.isImportant,
-        isAllDay:    true,
-        dateType:    'single',
-        taskDate:    startDate,
-        startTime:   null,
-        endTime:     null,
-        isRecurring: !!form.value.rrule,
-        rrule:       form.value.rrule || null,
-        planId:      form.value.planId || null,
-        subtasks:    subtasksData
-      };
     }
 
-    console.log('[TaskEdit] 准备调用后端API保存任务');
-    console.log('[TaskEdit] payload:', JSON.stringify(payload, null, 2));
+    // ============================================================
+    // 后端任务：调用 useTaskForm.update()
+    // ============================================================
+    console.log('[TaskEdit] 调用 useTaskForm.update()...');
 
-    if (isEdit.value) {
-      // 使用原始任务ID（对于重复任务，这是正确的ID）
-      const idToUpdate = originalTaskId.value || taskId.value;
-      console.log('[TaskEdit] 编辑模式，更新任务 ID:', idToUpdate);
-      console.log('[TaskEdit] 调用 taskStore.updateTask...');
+    await update();
 
-      await taskStore.updateTask(idToUpdate, payload);
-      console.log('[TaskEdit] ✅ taskStore.updateTask 调用成功');
+    console.log('[TaskEdit] ✅ useTaskForm.update() 调用成功');
 
-      // 强制重新加载任务数据
-      console.log('[TaskEdit] 重新加载任务数据...');
-      await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
+    // 强制重新加载任务数据
+    console.log('[TaskEdit] 重新加载任务数据...');
+    await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
 
-      uni.showToast({ title: '修改成功', icon: 'success' });
-    } else {
-      console.log('[TaskEdit] 创建模式，新建任务');
-      console.log('[TaskEdit] 调用 taskStore.addTask...');
-
-      await taskStore.addTask(payload);
-      console.log('[TaskEdit] ✅ taskStore.addTask 调用成功');
-
-      // 强制重新加载任务数据
-      console.log('[TaskEdit] 重新加载任务数据...');
-      await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
-
-      uni.showToast({ title: '创建成功', icon: 'success' });
-    }
-
+    uni.showToast({ title: '修改成功', icon: 'success' });
     console.log('[TaskEdit] ========== 保存成功，准备返回 ==========');
     setTimeout(() => { uni.navigateBack(); }, 800);
   } catch (err) {

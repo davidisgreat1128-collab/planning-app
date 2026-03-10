@@ -1413,66 +1413,57 @@ let _submitting = false;
 
 // ✅ 阶段3：保留面板特有的提交逻辑（包含时间段、天数范围、重复数据、提醒等面板特有功能）
 // 重命名为 handlePanelSubmit 以避免与 useTaskForm.submit 冲突
+/**
+ * 提交面板任务（调用 useTaskForm.submit()）
+ * ⭐ 阶段3.1：已迁移到 useTaskForm.submit()
+ */
 async function handlePanelSubmit() {
-  if (!form.value.title.trim()) {
-    uni.showToast({ title: '请填写任务内容', icon: 'none' });
-    return;
-  }
   if (_submitting) return;
   _submitting = true;
 
   try {
     uni.showLoading({ title: '保存中...' });
 
+    // ============================================================
+    // 面板特有逻辑：同步面板状态到 form
+    // ============================================================
     // 判断是否有时间段设置
     const hasTimeRange = timeToggle.value && timeStart.value && timeEnd.value;
     const hasDayRange  = !timeToggle.value && endDayCount.value > 1;
 
-    const rd = repeatData.value;
-    // 跨天任务（range）与重复任务互斥：range 时强制视为不重复
-    const isRecurring = !hasDayRange && rd.mode !== 'none';
-    const rrule = isRecurring ? buildRrule(rd) : undefined;
+    form.value.isAllDay = !hasTimeRange;
+    form.value.hasTimeRange = hasTimeRange;
 
-    const todayStr = resolvedDate.value || getTodayStr();
-
-    const payload = {
-      title:       form.value.title.trim(),
-      isUrgent:    form.value.isUrgent,
-      isImportant: form.value.isImportant,
-      isAllDay:    !hasTimeRange,
-      dateType:    hasDayRange ? 'range' : 'single',
-      isRecurring,
-      // 重复字段：rrule（后端要求的标准格式）
-      rrule,
-      // 提醒字段
-      reminderTime:       reminderData.value.enabled && reminderData.value.time ? reminderData.value.time : undefined,
-      reminderPersistent: reminderData.value.enabled ? reminderData.value.persistent : undefined
-    };
-
-    // 分类字段：优先使用用户选择的分类，其次使用 props 传入的
-    // 注意：规划也是特殊类型的分类，所以用同一个 categoryId 字段
-    if (selectedCategoryId.value) {
-      payload.categoryId = selectedCategoryId.value;
-    } else if (props.categoryId && typeof props.categoryId === 'string') {
-      payload.categoryId = props.categoryId;
+    if (hasTimeRange) {
+      form.value.startTime = timeStart.value;
+      form.value.endTime = timeEnd.value;
     }
 
     if (hasDayRange) {
-      // range 模式：startDate + endDate（后端不接受 taskDate）
-      payload.startDate = todayStr;
-      payload.endDate   = endDate.value ? formatDate(endDate.value) : todayStr;
-    } else {
-      // single 模式：taskDate
-      payload.taskDate = todayStr;
+      form.value.endDate = endDate.value ? formatDate(endDate.value) : form.value.taskDate;
     }
 
-    // 有具体时间段时，附加 startTime / endTime
-    if (hasTimeRange) {
-      payload.startTime = timeStart.value;
-      payload.endTime   = timeEnd.value;
+    // 同步分类字段
+    if (selectedCategoryId.value) {
+      form.value.planId = selectedCategoryId.value;
+    } else if (props.categoryId && typeof props.categoryId === 'string') {
+      form.value.planId = props.categoryId;
     }
 
-    await taskStore.addTask(payload);
+    // 同步提醒字段
+    if (reminderData.value.enabled && reminderData.value.time) {
+      form.value.reminderTime = reminderData.value.time;
+      form.value.reminderPersistent = reminderData.value.persistent;
+    }
+
+    // ============================================================
+    // 调用 useTaskForm.submit()
+    // ============================================================
+    console.log('[AddTaskPanel] 调用 useTaskForm.submit()...');
+
+    await submit();
+
+    console.log('[AddTaskPanel] ✅ useTaskForm.submit() 调用成功');
 
     uni.hideLoading();
     resetPanel();
