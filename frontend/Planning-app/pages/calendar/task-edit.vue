@@ -324,14 +324,14 @@
               <view
                 class="repeat-sub-tab"
                 :class="{ 'repeat-sub-tab-active': monthlySubMode === 'day' }"
-                @tap="monthlySubMode = 'day'; syncRrule()"
+                @tap="monthlySubMode = 'day'; repeatRuleManager.loadFromRrule(form.value.rrule || '')"
               >
                 <text>日期</text>
               </view>
               <view
                 class="repeat-sub-tab"
                 :class="{ 'repeat-sub-tab-active': monthlySubMode === 'weekday' }"
-                @tap="monthlySubMode = 'weekday'; syncRrule()"
+                @tap="monthlySubMode = 'weekday'; repeatRuleManager.loadFromRrule(form.value.rrule || '')"
               >
                 <text>星期</text>
               </view>
@@ -671,6 +671,7 @@ import QuadrantPicker from '@/components/task/QuadrantPicker.vue';
 // 新增：引入 useTaskForm 业务逻辑层
 // ============================================================
 import { useTaskForm } from '@/composables/useTaskForm.js';
+import { formatDate, getWeekdayName, calcDays, timeDiffMinutes, formatDuration } from '@/utils/date.js';
 
 // ============================================================
 // Store
@@ -1164,13 +1165,13 @@ function confirmWheelPicker() {
     monthlyWeekday.value = val;
   }
   showWheelPicker.value = false;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 /** 切换每月子模式 */
 function onSelectMonthlySubMode(mode) {
   monthlySubMode.value = mode;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 // ✅ 阶段2：toggleMonthlyDay 已从 useTaskForm 中解构，删除重复定义
@@ -1263,14 +1264,14 @@ function confirmRepeatEndDate() {
     repeatEndDate.value = tempRepeatEndDate.value;
   }
   showRepeatEndPicker.value = false;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 function clearRepeatEndDate() {
   repeatEndDate.value = '';
   tempRepeatEndDate.value = '';
   showRepeatEndPicker.value = false;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 function repeatCalPrevMonth() {
@@ -1315,7 +1316,7 @@ function onSelectRepeatMode(mode) {
     yearlyDay.value   = today.getDate();
   }
 
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 // ✅ 阶段2：toggleWeekDay 已从 useTaskForm 中解构，删除重复定义
@@ -1325,31 +1326,31 @@ function onSelectRepeatMode(mode) {
 /** 处理重复间隔选择器变化 */
 function onIntervalChange(e) {
   repeatInterval.value = parseInt(e.detail.value) + 1;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 /** 处理月度星期数选择器变化 */
 function onMonthlyWeekNumChange(e) {
   monthlyWeekNum.value = parseInt(e.detail.value) + 1;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 /** 处理月度星期几选择器变化 */
 function onMonthlyWeekdayChange(e) {
   monthlyWeekday.value = parseInt(e.detail.value) + 1;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 /** 处理年度月份选择器变化 */
 function onYearlyMonthChange(e) {
   yearlyMonth.value = parseInt(e.detail.value) + 1;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 /** 处理年度日期选择器变化 */
 function onYearlyDayChange(e) {
   yearlyDay.value = parseInt(e.detail.value) + 1;
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 /** 取消重复规则设置 */
@@ -1359,7 +1360,7 @@ function cancelRepeatSettings() {
 
 /** 确认重复规则设置 */
 function confirmRepeatSettings() {
-  syncRrule();
+  repeatRuleManager.loadFromRrule(form.value.rrule || '');
   showRepeatSheet.value = false;
 }
 
