@@ -471,6 +471,8 @@ import QuadrantPicker from './QuadrantPicker.vue';
 import DayPicker from './DayPicker.vue';
 // ✅ 阶段3：引入 useTaskForm 业务逻辑层
 import { useTaskForm } from '@/composables/useTaskForm.js';
+// ✅ 架构重构(2026-03-10): 导入分类管理业务逻辑（从Component层移至Composable层）
+import { useCategoryManager } from '@/composables/useCategoryManager.js';
 // ✅ 阶段4重构：导入工具函数（不再从useTaskForm解构）
 import { formatDate, timeDiffMinutes, formatDuration, formatDateWithWeekday, getRelativeDateLabel } from '@/utils/date.js';
 // ✅ 架构重构(2026-03-10)：导入RRULE构建工具（业务规则移至utils层）
@@ -561,6 +563,20 @@ const {
   toggleWeekDay,
   toggleMonthlyDay
 } = repeatRuleManager;
+n// ============================================================
+// ✅ 架构重构(2026-03-10): 使用分类管理Composable
+// ============================================================
+const categoryManager = useCategoryManager();
+const {
+  userCategories,
+  selectedCategoryId,
+  loadCategories,
+  loadSelectedCategory,
+  createCategory,
+  selectCategory,
+  getCategoryById,
+  getCurrentCategoryIcon: getCategoryIconHelper
+} = categoryManager;
 
 // ============================================================
 // 面板特有数据（不从 useTaskForm 获取）
