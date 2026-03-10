@@ -204,7 +204,7 @@
           <view
             class="cp-item"
             :class="{ 'cp-item-selected': selectedCategoryId === null }"
-            @tap="selectCategory(null)"
+            @tap="handleCategorySelect(null)"
           >
             <view class="cp-icon-wrapper">
               <text class="cp-icon">无</text>
@@ -219,7 +219,7 @@
             :key="category.id"
             class="cp-item"
             :class="{ 'cp-item-selected': selectedCategoryId === category.id }"
-            @tap="selectCategory(category.id)"
+            @tap="handleCategorySelect(category.id)"
           >
             <view class="cp-icon-wrapper">
               <text class="cp-icon">{{ category.iconEmoji || category.name.charAt(0) }}</text>
@@ -607,20 +607,9 @@ const showCategoryPicker = ref(false);
 /** 新建分类弹窗是否显示 */
 const showCategoryDialog = ref(false);
 
-/** 当前图标显示 */
+/** 当前图标显示（使用 composable 的 helper 方法） */
 const currentCategoryIcon = computed(() => {
-  // 优先使用用户手动选择的分类
-  if (selectedCategoryId.value) {
-    const category = userCategories.value.find(c => c.id === selectedCategoryId.value);
-    return category ? (category.iconEmoji || category.name.charAt(0)) : '无';
-  }
-  // 其次使用 props 传入的 categoryId（规划详情页传入的当前规划ID）
-  if (props.categoryId) {
-    const category = userCategories.value.find(c => c.id === props.categoryId);
-    return category ? (category.iconEmoji || category.name.charAt(0)) : '无';
-  }
-  // 都没有时显示"无"
-  return '无';
+  return getCategoryIconHelper(props.categoryId);
 });
 
 /** 展开/折叠分类选择器 */
@@ -633,76 +622,53 @@ function closeCategoryPicker() {
   showCategoryPicker.value = false;
 }
 
-/** 选择分类 */
-function selectCategory(categoryId) {
-  selectedCategoryId.value = categoryId;
+// ⚠️ 旧的 selectCategory 函数已删除，现使用 useCategoryManager 的方法
+// 包装函数处理UI交互逻辑
+function handleCategorySelect(categoryId) {
+  selectCategory(categoryId);  // 调用 composable 方法
   showCategoryPicker.value = false;
 }
 
 /** 新建分类 */
 function createNewCategory() {
   console.log('[AddTaskPanel] 新建分类');
-  // 打开新建分类弹窗
   showCategoryDialog.value = true;
 }
 
-/** 保存新建的分类 */
+/** 保存新建的分类（调用 composable 的 createCategory 方法） */
 function onCategorySave(data) {
   console.log('[AddTaskPanel] 保存分类:', data);
-
-  // 创建新分类对象
-  const newCategory = {
-    id: Date.now().toString(),
-    name: data.name,
-    icon: data.icon,
-    iconEmoji: data.iconEmoji,
-    createTime: new Date().toISOString()
-  };
-
-  // 添加到分类列表
-  userCategories.value.push(newCategory);
-
-  // 保存到本地存储
-  uni.setStorageSync('user_categories', JSON.stringify(userCategories.value));
-
-  // 自动选中新创建的分类
-  selectedCategoryId.value = newCategory.id;
-  selectedPlanId.value = null;
-
-  // 关闭分类弹窗
-  showCategoryDialog.value = false;
-
-  // 关闭分类选择器
-  showCategoryPicker.value = false;
-
-  uni.showToast({
-    title: '分类创建成功',
-    icon: 'success'
-  });
+  
+  try {
+    // ✅ 使用 composable 的 createCategory 方法
+    createCategory(data);
+    
+    // UI 交互逻辑
+    showCategoryDialog.value = false;
+    showCategoryPicker.value = false;
+    
+    uni.showToast({
+      title: '分类创建成功',
+      icon: 'success'
+    });
+  } catch (error) {
+    uni.showToast({
+      title: error.message || '创建失败',
+      icon: 'none'
+    });
+  }
 }
 
 /** 新建规划 */
 function createNewPlan() {
   console.log('[AddTaskPanel] 新建目标');
   showCategoryPicker.value = false;
-  // 跳转到规划模板页面
   uni.navigateTo({
     url: '/pages/planning/template/index'
   });
 }
 
-/** 加载用户分类列表 */
-function loadUserCategories() {
-  const savedCategories = uni.getStorageSync('user_categories');
-  if (savedCategories) {
-    try {
-      userCategories.value = JSON.parse(savedCategories);
-    } catch (e) {
-      console.error('加载分类失败:', e);
-      userCategories.value = [];
-    }
-  }
-}
+// ⚠️ loadUserCategories 函数已删除，现使用 useCategoryManager.loadCategories()
 
 // ============================================================
 // 日期 Tab
@@ -1328,32 +1294,23 @@ function onMaskTap() {
 /** 组件挂载时加载数据 */
 onMounted(() => {
   // 加载用户分类列表（包含规划）
-  loadUserCategories();
+  loadCategories();
 });
 
 /** 监听面板显示状态 */
 watch(() => props.visible, (newVal) => {
   if (newVal) {
     // 每次打开面板时重新加载数据
-    loadUserCategories();
+    loadCategories();
 
     // 加载全局选中的容器（分类，包含规划）
-    loadSelectedContainer();
+    loadSelectedCategory();
   }
 });
 
 /**
  * 加载全局选中的容器（分类，包含规划类型的分类）
  */
-function loadSelectedContainer() {
-  const savedCategoryId = uni.getStorageSync('selected_category_id');
-  if (savedCategoryId && savedCategoryId !== 'all' && savedCategoryId !== 'none') {
-    selectedCategoryId.value = savedCategoryId;
-  } else {
-    // 默认为无分类
-    selectedCategoryId.value = null;
-  }
-}
 </script>
 
 <style scoped>
