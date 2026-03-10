@@ -118,6 +118,16 @@ export function useTaskForm(options = {}) {
     return 'q4'
   })
 
+  /** 重复规则是否有变化 */
+  const hasRepeatChanged = computed(() => {
+    if (!originalForm.value) return false
+
+    const currentRrule = repeatRuleManager.generateRrule() || ''
+    const originalRrule = originalForm.value.rrule || ''
+
+    return currentRrule !== originalRrule
+  })
+
   /** 表单是否有变化 */
   const hasFormChanged = computed(() => {
     if (!originalForm.value) return false
@@ -128,7 +138,10 @@ export function useTaskForm(options = {}) {
     // 检测子任务变化
     const subtasksChanged = JSON.stringify(subtasks.value) !== JSON.stringify(originalSubtasks.value || [])
 
-    return formChanged || subtasksChanged
+    // 检测重复规则变化
+    const repeatChanged = hasRepeatChanged.value
+
+    return formChanged || subtasksChanged || repeatChanged
   })
 
   /** 创建时间显示文本 */
