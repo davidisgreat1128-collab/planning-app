@@ -771,11 +771,7 @@ const deadlineText = computed(() => {
   return `${d.getMonth() + 1}月${d.getDate()}日`;
 });
 
-/** 重复模式显示文本 */
-const repeatModeLabel = computed(() => {
-  const map = { none: '未开启', daily: '每日', weekly: '每周', monthly: '每月', yearly: '每年' };
-  return map[repeatMode.value] || '未开启';
-});
+// ✅ repeatModeLabel 已从 repeatRuleManager 解构，删除重复定义
 
 // ============================================================
 // 新增方法
@@ -879,16 +875,15 @@ const {
   subtasks,
   activeDateTab,
   customDate,
-  // 阶段1：解构工具函数
-  formatDate,
-  getWeekdayName,
-  calcDays,
-  timeDiffMinutes,
-  formatDuration,
   // 阶段2：解构高级功能
   selectQuadrant,
   currentQuadrant,
-  // 重复规则相关状态
+  // ✅ 重复规则管理器（阶段4重构）
+  repeatRuleManager
+} = taskFormApi;
+
+// ✅ 从 repeatRuleManager 解构重复规则状态和方法
+const {
   repeatMode,
   repeatInterval,
   repeatWeekDays,
@@ -899,11 +894,10 @@ const {
   monthlyWeekday,
   yearlyMonth,
   yearlyDay,
-  // 重复规则相关方法
+  repeatModeLabel,
   toggleWeekDay,
-  toggleMonthlyDay,
-  syncRrule
-} = taskFormApi;
+  toggleMonthlyDay
+} = repeatRuleManager;
 
 // ============================================================
 // 计算属性：显示逻辑

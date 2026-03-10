@@ -548,18 +548,6 @@ const {
   activeDateTab,
   customDate,
 
-  // 重复规则状态
-  repeatMode,
-  repeatInterval,
-  repeatWeekDays,
-  repeatEndDate,
-  monthlySubMode,
-  monthlyDays,
-  monthlyWeekNum,
-  monthlyWeekday,
-  yearlyMonth,
-  yearlyDay,
-
   // 计算属性
   currentQuadrant,
   hasFormChanged,
@@ -575,23 +563,29 @@ const {
   // 四象限方法
   selectQuadrant,
 
-  // 重复规则方法
-  toggleWeekDay,
-  toggleMonthlyDay,
-  syncRrule,
+  // ✅ 重复规则管理器（阶段4重构）
+  repeatRuleManager,
 
   // 表单提交方法
   submit,
-  validateForm,
-  resetForm,
-
-  // 工具函数
-  formatDate,
-  getWeekdayName,
-  calcDays,
-  timeDiffMinutes,
-  formatDuration
+  resetForm
 } = taskFormApi;
+
+// ✅ 从 repeatRuleManager 解构重复规则状态和方法
+const {
+  repeatMode,
+  repeatInterval,
+  repeatWeekDays,
+  repeatEndDate,
+  monthlySubMode,
+  monthlyDays,
+  monthlyWeekNum,
+  monthlyWeekday,
+  yearlyMonth,
+  yearlyDay,
+  toggleWeekDay,
+  toggleMonthlyDay
+} = repeatRuleManager;
 
 // ============================================================
 // 面板特有数据（不从 useTaskForm 获取）
