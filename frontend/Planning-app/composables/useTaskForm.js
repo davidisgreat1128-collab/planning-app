@@ -120,17 +120,32 @@ export function useTaskForm(options = {}) {
 
   /** 重复规则是否有变化 */
   const hasRepeatChanged = computed(() => {
-    if (!originalForm.value) return false
+    if (!originalForm.value) {
+      console.log('[hasRepeatChanged] originalForm 不存在，返回 false')
+      return false
+    }
 
     const currentRrule = repeatRuleManager.generateRrule() || ''
     const originalRrule = originalForm.value.rrule || ''
+    const changed = currentRrule !== originalRrule
 
-    return currentRrule !== originalRrule
+    console.log('[hasRepeatChanged] 重复规则检测:', {
+      currentRrule,
+      originalRrule,
+      changed,
+      repeatMode: repeatRuleManager.repeatMode.value,
+      repeatInterval: repeatRuleManager.repeatInterval.value
+    })
+
+    return changed
   })
 
   /** 表单是否有变化 */
   const hasFormChanged = computed(() => {
-    if (!originalForm.value) return false
+    if (!originalForm.value) {
+      console.log('[hasFormChanged] originalForm 不存在，返回 false')
+      return false
+    }
 
     // 检测表单变化
     const formChanged = JSON.stringify(form.value) !== JSON.stringify(originalForm.value)
@@ -141,7 +156,16 @@ export function useTaskForm(options = {}) {
     // 检测重复规则变化
     const repeatChanged = hasRepeatChanged.value
 
-    return formChanged || subtasksChanged || repeatChanged
+    const result = formChanged || subtasksChanged || repeatChanged
+
+    console.log('[hasFormChanged] 表单变化检测汇总:', {
+      formChanged,
+      subtasksChanged,
+      repeatChanged,
+      最终结果: result
+    })
+
+    return result
   })
 
   /** 创建时间显示文本 */

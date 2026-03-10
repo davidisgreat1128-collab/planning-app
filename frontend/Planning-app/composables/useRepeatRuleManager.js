@@ -100,7 +100,17 @@ export function useRepeatRuleManager(options = {}) {
    * @returns {string} RRULE字符串
    */
   function generateRrule() {
+    console.log('[generateRrule] 开始生成 RRULE，当前状态:', {
+      repeatMode: repeatMode.value,
+      repeatInterval: repeatInterval.value,
+      repeatWeekDays: repeatWeekDays.value,
+      repeatEndDate: repeatEndDate.value,
+      monthlySubMode: monthlySubMode.value,
+      monthlyDays: monthlyDays.value
+    })
+
     if (repeatMode.value === 'none') {
+      console.log('[generateRrule] repeatMode = none，返回空字符串')
       return ''
     }
 
@@ -145,7 +155,10 @@ export function useRepeatRuleManager(options = {}) {
    * @param {string} rrule - RRULE字符串
    */
   function loadFromRrule(rrule) {
+    console.log('[loadFromRrule] 被调用，传入的 rrule:', rrule)
+
     if (!rrule) {
+      console.log('[loadFromRrule] rrule 为空，执行 resetRepeatRule()')
       resetRepeatRule()
       return
     }
@@ -157,13 +170,18 @@ export function useRepeatRuleManager(options = {}) {
       const [key, value] = part.split('=')
       if (key === 'FREQ') {
         repeatMode.value = value.toLowerCase()
+        console.log('[loadFromRrule] 设置 repeatMode =', value.toLowerCase())
       } else if (key === 'INTERVAL') {
         repeatInterval.value = parseInt(value)
+        console.log('[loadFromRrule] 设置 repeatInterval =', parseInt(value))
       }
       // ... 其他字段解析
     })
 
-    console.log('[useRepeatRuleManager] 从 RRULE 加载:', rrule)
+    console.log('[loadFromRrule] 解析完成，当前状态:', {
+      repeatMode: repeatMode.value,
+      repeatInterval: repeatInterval.value
+    })
   }
 
   /**

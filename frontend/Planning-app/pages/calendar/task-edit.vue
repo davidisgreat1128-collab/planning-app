@@ -1288,8 +1288,10 @@ function repeatCalNextMonth() {
 
 /** 选择重复模式（切换时设置合理默认值） */
 function onSelectRepeatMode(mode) {
+  console.log('[onSelectRepeatMode] 用户选择重复模式:', mode)
   repeatMode.value = mode;
   repeatInterval.value = 1;
+  console.log('[onSelectRepeatMode] 设置后 repeatMode =', repeatMode.value, ', repeatInterval =', repeatInterval.value)
 
   const today = new Date();
   const dow = today.getDay();           // 0=周日
@@ -1360,7 +1362,16 @@ function cancelRepeatSettings() {
 
 /** 确认重复规则设置 */
 function confirmRepeatSettings() {
-  repeatRuleManager.loadFromRrule(form.value.rrule || '');
+  console.log('[confirmRepeatSettings] 确认重复设置，当前状态:', {
+    'repeatMode': repeatMode.value,
+    'repeatInterval': repeatInterval.value,
+    'form.value.rrule': form.value.rrule
+  })
+
+  // ❌ BUG：这行代码会用旧的 form.value.rrule 覆盖用户刚修改的 repeatRuleManager 状态！
+  // repeatRuleManager.loadFromRrule(form.value.rrule || '');
+
+  console.log('[confirmRepeatSettings] 关闭弹窗，不执行 loadFromRrule（用户修改已在 repeatRuleManager 中）')
   showRepeatSheet.value = false;
 }
 
