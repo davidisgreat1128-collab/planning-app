@@ -563,7 +563,8 @@ const {
   toggleWeekDay,
   toggleMonthlyDay
 } = repeatRuleManager;
-n// ============================================================
+
+// ============================================================
 // ✅ 架构重构(2026-03-10): 使用分类管理Composable
 // ============================================================
 const categoryManager = useCategoryManager();
@@ -602,12 +603,6 @@ const showQuadrantPicker = ref(false);
 
 /** 分类/规划选择器是否展开 */
 const showCategoryPicker = ref(false);
-
-/** 选中的分类ID（包含普通分类和规划） */
-const selectedCategoryId = ref(null);
-
-/** 用户分类列表（包含普通分类和规划） */
-const userCategories = ref([]);
 
 /** 新建分类弹窗是否显示 */
 const showCategoryDialog = ref(false);
