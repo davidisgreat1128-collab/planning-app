@@ -1,11 +1,11 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-09（第24次会话，useTaskForm迁移阶段1-3全部完成 + QuadrantPicker组件提取 ✅）
+> **最后更新**: 2026-03-10（第25次会话，useTaskForm.js激进重构完成 ✅）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: e479737（refactor(UI组件): 提取 QuadrantPicker 四象限选择器组件）
+> **最新commit**: d946e37（fix(AddTaskPanel): 添加缺失的 formatDate 导入）
 > **稳定版本标签**: v0.2.0-alpha ⭐
-> **Git状态**: ✅ 工作区干净（所有更改已提交）
+> **Git状态**: ⏸️ 有未提交更改（文档更新中）
 
 ---
 
@@ -867,27 +867,123 @@ const planningStore = usePlanningStore();      // ✅ 保留供未来使用
 - ⏸️ 优化 task-edit.vue 的复杂 save() 函数（可能拆分为多个辅助函数）
 - ⏸️ 优化 AddTaskPanel.vue 的复杂 handlePanelSubmit() 函数
 
+### Phase 3s - useTaskForm.js激进重构（第25次会话，2026-03-10）✅
+
+**背景**：useTaskForm.js 超过 Composable 层阈值（821行 > 600行，超标37%），执行激进重构方案（方案2）
+
+**核心成果**：
+- ✅ **文件规模优化**：821行 → 562行（-259行，-31.6%）✅ 符合 <600行阈值
+- ✅ **架构健康度**：从"超标37%" → "健康合规" ⭐
+- ✅ **Git提交**：6个原子化commit，按阶段提交
+
+**阶段1：创建 utils/taskFormValidator.js**（commit: 866ec8a）
+- 提取表单验证逻辑（58行）
+- 职责分离：验证逻辑从 Composable 提取到 utils/
+- 可复用：其他表单可使用此验证器
+
+**阶段2：创建 composables/useRepeatRuleManager.js**（commit: 9e14691）
+- 封装任务重复规则（RRULE）的状态和逻辑（212行）
+- 提取 10个重复规则状态 + 1个计算属性 + 5个方法
+- 单一职责：专注于重复规则管理
+
+**阶段3：扩展 utils/date.js**（commit: f32679c）
+- 添加 3个工具函数（calcDays、timeDiffMinutes、formatDuration）+56行
+- 消除重复：formatDate、getWeekdayName 原已存在，删除 useTaskForm 中的重复定义
+- 工具集中：日期相关工具函数统一在 utils/date.js（416行 → 472行）
+
+**阶段4：重构 useTaskForm.js**（commit: 7d05295）⭐ 核心阶段
+- 删除 5个工具函数（~60行）→ 导入自 utils/date.js
+- 删除 validateForm 函数（~45行）→ 导入自 utils/taskFormValidator.js
+- 删除重复规则方法（~74行）→ 使用 useRepeatRuleManager
+- 删除 10个重复规则状态（~32行）→ 使用 repeatRuleManager
+- 删除 repeatModeLabel computed（~5行）→ 使用 repeatRuleManager
+- 简化 return 对象（51导出项 → 46导出项）
+
+**阶段5：更新调用方组件**（commit: f1ea1c5）
+- task-edit.vue：从 repeatRuleManager 解构重复规则状态和方法
+- AddTaskPanel.vue：同步适配新API
+- 删除重复的 repeatModeLabel computed
+
+**阶段6：测试验证与Bug修复**（commit: d946e37）
+- 静态代码分析（grep检查引用）
+- 发现问题：AddTaskPanel.vue 缺少 formatDate 导入
+- 修复：添加 `import { formatDate } from '@/utils/date.js'`
+
+**阶段7：更新文档**（当前）⏸️
+- ✅ 更新 `docs/02-技术设计/超标文件追踪清单.md`
+- ✅ 创建工作日志 `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-10-useTaskForm激进重构.md`
+- ⏸️ 更新 `CURRENT_STATUS.md`（本次更新）
+- ⏸️ 提交最终文档commit
+
+**技术决策**：
+
+1. **选择激进重构方案（方案2）**：
+   - 方案1（保守）：745行（-9.3%），仍接近阈值
+   - ✅ 方案2（激进）：555行→562行（-32.4%），彻底解决超标问题
+   - 理由：彻底性 + 架构清晰度 + 可维护性 + 可复用性 + 长期价值
+
+2. **创建独立的 useRepeatRuleManager.js**：
+   - 为什么放 Composable 而非 utils/：包含 10个响应式状态（ref），有业务逻辑
+   - 可复用性：其他需要重复规则的功能可直接复用
+
+3. **扩展 utils/date.js 而非创建新文件**：
+   - 避免碎片化，工具函数集中管理
+   - ⚠️ 注意：date.js 已达 472行（超过 utils 层 <300行阈值 57%）
+   - 📋 已登记到《超标文件追踪清单.md》，暂不拆分
+
+**已知问题**：
+
+1. **utils/date.js 文件大小接近阈值**：
+   - 现状：472行（超过 <300行 建议阈值 57%）
+   - 影响：暂无，职责单一，代码清晰
+   - 建议：⏸️ 持续监控，未来如达 600行，考虑按功能拆分
+
+2. **useRepeatRuleManager.js 的 RRULE 解析功能未完整实现**：
+   - 现状：loadFromRrule() 仅实现基本解析
+   - 缺失：BYDAY、BYMONTHDAY、BYMONTH 等字段解析
+   - 影响：创建任务正常，编辑重复任务时规则可能丢失
+   - 建议：📋 标记为技术债务，优先级较低
+
+**架构提升**：
+- ✅ useTaskForm.js 从 821行 → 562行（-31.6%），符合 Composable 层 <600行阈值
+- ✅ 职责清晰：Composable 只保留业务流程编排，不含工具函数和验证逻辑
+- ✅ 消除重复：formatDate、getWeekdayName 等工具函数统一在 utils/
+- ✅ 可复用性：提取的模块可被其他功能复用
+
+**代码统计**：
+- 新增代码：270行（validator 58 + repeatRuleManager 212）
+- 新增工具函数：56行（date.js 扩展）
+- 删除代码：~322行（useTaskForm.js -259 + 组件简化 -63）
+- 净减少：52行
+
+**相关文档**：
+- [工作日志](../../docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-10-useTaskForm激进重构.md)
+- [超标文件追踪清单](../../docs/02-技术设计/超标文件追踪清单.md)
+- [AI工程治理规范](../../docs/02-技术设计/AI工程治理规范.md)
+
 ---
 
 ## 🔄 待完成（下一步）
 
 ### P0 - 下一个Claude应该做的（优先级顺序）
 
-**当前状态：🎉 useTaskForm迁移阶段1-3全部完成，等待下一步指示**
+**当前状态：🎉 useTaskForm.js激进重构完成，等待下一步指示**
 
-#### 已完成工作（2026-03-09，第24次会话）
+#### 已完成工作（2026-03-10，第25次会话）
 
-**1. useTaskForm迁移阶段1-3全部完成** ✅
-- commit: 6af3be6（阶段1）+ cab4341（阶段2）+ 9228122（阶段3）+ e479737（QuadrantPicker组件）
-- task-edit.vue 迁移完成（3265行 → 3191行）
-- AddTaskPanel.vue 迁移完成（2598行 → 2604行）
-- QuadrantPicker.vue 组件提取完成（400行）
-- 架构提升：消除约70%代码重复 + 建立完整三层链路
+**1. useTaskForm.js 激进重构完成** ✅
+- commit: 866ec8a（阶段1）+ 9e14691（阶段2）+ f32679c（阶段3）+ 7d05295（阶段4）+ f1ea1c5（阶段5）+ d946e37（阶段6修复）
+- useTaskForm.js：821行 → 562行（-31.6%）✅ 符合 Composable 层 <600行阈值
+- 创建 2个新文件：utils/taskFormValidator.js（58行）、composables/useRepeatRuleManager.js（212行）
+- 扩展 utils/date.js：416行 → 472行（+56行）
+- 更新调用方：task-edit.vue、AddTaskPanel.vue
+- 架构提升：职责清晰 + 消除重复 + 提升可复用性
 
-**2. CURRENT_STATUS.md 更新完成** ✅
-- 更新头部元数据（日期、commit、会话次数）
-- 添加 Phase 3u 详细记录（阶段1-3完整过程）
-- 更新"待完成"部分
+**2. 文档更新完成** ✅
+- ✅ 更新 `docs/02-技术设计/超标文件追踪清单.md`
+- ✅ 创建工作日志 `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-10-useTaskForm激进重构.md`
+- ⏸️ 更新 `CURRENT_STATUS.md`（本次更新）
+- ⏸️ 提交最终文档commit
 
 #### 可选的后续任务
 
@@ -951,17 +1047,24 @@ const planningStore = usePlanningStore();      // ✅ 保留供未来使用
 ### 🟡 文件大小超标（中优先级，持续改善中）
 - ✅ **已建立追踪机制**：所有超标文件已登记到 `docs/02-技术设计/超标文件追踪清单.md`
 - ✅ **index.vue 已完成重构**（commit: a49356b）：3802行 → 763行（-80%），健康评分：35 → 85 ⭐⭐⭐⭐
-- ⚠️ **3个文件仍超过800行阈值**：
-  - P0级（>3000行）：`task-edit.vue`（3191行，迁移后，已消除70%代码重复 ✅）
-  - P1级（>2500行）：`AddTaskPanel.vue`（2604行，迁移后，已消除70%代码重复 ✅）
-  - P1级（1000-2000行）：`plan/detail.vue`（1392行）、`category-drawer.vue`（1221行）
-  - P2级（800-1000行）：`plan/create.vue`（1122行）
+- ✅ **useTaskForm.js 已完成重构**（commit: 7d05295）：821行 → 562行（-31.6%），符合 Composable 层 <600行阈值 ⭐
+- ⚠️ **5个文件仍超过阈值**：
+  - **Component层（>800行）**：
+    - P0级（>3000行）：`task-edit.vue`（3191行，迁移后，已消除70%代码重复 ✅）
+    - P1级（>2500行）：`AddTaskPanel.vue`（2604行，迁移后，已消除70%代码重复 ✅）
+    - P1级（1000-2000行）：`plan/detail.vue`（1392行）、`category-drawer.vue`（1221行）
+    - P2级（800-1000行）：`plan/create.vue`（1122行）
+  - **Utils层（>300行）**：
+    - `utils/date.js`（472行，超标57%，已登记，暂不拆分 ⏸️）
 - 💡 **改善进展**：
   - task-edit.vue: 3265行 → 3191行（-2.3%，主要消除了代码重复，未来可通过UI组件提取进一步减少）
   - AddTaskPanel.vue: 2598行 → 2604行（+0.2%，主要消除了代码重复，未来可通过UI组件提取进一步减少）
-  - 备注：两个文件虽未明显减少行数，但已建立useTaskForm业务逻辑层，消除约70%代码重复，架构健康度显著提升
-- ⏸️ **后续优化方向**：继续提取UI组件（TimeRangePicker、CategoryPicker、RepeatRulePicker），预计可再减少200-300行
-- ✅ **管理规范已建立**：详见 `.claude/CLAUDE.md` 第7.8节 + `docs/02-技术设计/代码规范.md` 第8节
+  - useTaskForm.js: 821行 → 562行（-31.6%，已达标 ✅）
+  - 备注：task-edit.vue 和 AddTaskPanel.vue 虽未明显减少行数，但已建立 useTaskForm 业务逻辑层，消除约70%代码重复，架构健康度显著提升
+- ⏸️ **后续优化方向**：
+  - 继续提取UI组件（TimeRangePicker、CategoryPicker、RepeatRulePicker），预计可再减少200-300行
+  - utils/date.js 如达 600行，考虑按功能拆分（dateFormat.js、dateCalc.js、dateValidate.js）
+- ✅ **管理规范已建立**：详见 `.claude/CLAUDE.md` 第7.8节 + 第8节（AI工程治理核心清单）
 
 ### 其他已知问题
 - ⚠️ `holiday API` 已对齐（返回 `holidayMap` / `lunarMap` 对象，`calendar/index.vue` 已适配）

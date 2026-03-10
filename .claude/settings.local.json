@@ -17,7 +17,8 @@
       "Read(//d/MyProject/Planning设计/**)",
       "Bash(rm:*)",
       "Bash(git fetch:*)",
-      "Read(//d//**)"
+      "Read(//d//**)",
+      "Bash(git tag:*)"
     ],
     "deny": [],
     "ask": []
