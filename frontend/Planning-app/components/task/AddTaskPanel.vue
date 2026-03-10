@@ -500,6 +500,8 @@ import CustomDatePicker from './CustomDatePicker.vue';
 import QuadrantPicker from './QuadrantPicker.vue';
 // ✅ 阶段3：引入 useTaskForm 业务逻辑层
 import { useTaskForm } from '@/composables/useTaskForm.js';
+// ✅ 阶段4重构：导入工具函数（不再从useTaskForm解构）
+import { formatDate } from '@/utils/date.js';
 
 // ============================================================
 // Props & Emits
