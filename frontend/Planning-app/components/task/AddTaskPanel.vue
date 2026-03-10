@@ -849,43 +849,23 @@ const endDayCount = ref(0);
 const endDate = ref(null);
 
 // ----- 左卡片显示 -----
+// ✅ 架构重构(2026-03-10): 日期格式化逻辑移至utils/date.js
 const timeCardLeftMain = computed(() => {
-  // 使用任务的实际日期，而不是今天
   const taskDateStr = resolvedDate.value || getTodayStr();
-  const taskDate = new Date(taskDateStr);
-  const m = taskDate.getMonth() + 1;
-  const d = taskDate.getDate();
-  const weekNames = ['周日','周一','周二','周三','周四','周五','周六'];
-  const w = weekNames[taskDate.getDay()];
-  return `${m}月${d}日，${w}`;
+  return formatDateWithWeekday(taskDateStr);
 });
 
+// ✅ 架构重构(2026-03-10): 相对日期计算逻辑移至utils/date.js
 const timeCardLeftSub = computed(() => {
-  // 判断任务日期是否为今天
   const taskDateStr = resolvedDate.value || getTodayStr();
-  const todayStr = getTodayStr();
-  if (taskDateStr === todayStr) return '今天';
-
-  const tomorrowStr = getTomorrowStr();
-  if (taskDateStr === tomorrowStr) return '明天';
-
-  // 其他日期显示相对天数
-  const taskDate = new Date(taskDateStr);
-  const today = new Date(todayStr);
-  const diffDays = Math.floor((taskDate - today) / (1000 * 60 * 60 * 24));
-  if (diffDays > 0) return `${diffDays}天后`;
-  if (diffDays < 0) return `${Math.abs(diffDays)}天前`;
-  return '今天';
+  return getRelativeDateLabel(taskDateStr);
 });
 
 // ----- 右卡片：结束日期显示 -----
+// ✅ 架构重构(2026-03-10): 日期格式化逻辑移至utils/date.js
 const endDateDisplay = computed(() => {
   if (!endDate.value) return '';
-  const m = endDate.value.getMonth() + 1;
-  const d = endDate.value.getDate();
-  const weekNames = ['周日','周一','周二','周三','周四','周五','周六'];
-  const w = weekNames[endDate.value.getDay()];
-  return `${m}月${d}日，${w}`;
+  return formatDateWithWeekday(endDate.value);
 });
 
 // ----- 持续时间计算 -----
