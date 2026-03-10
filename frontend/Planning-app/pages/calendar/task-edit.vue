@@ -880,7 +880,9 @@ const {
   selectQuadrant,
   currentQuadrant,
   // ✅ 重复规则管理器（阶段4重构）
-  repeatRuleManager
+  repeatRuleManager,
+  // ✅ 表单变化检测（包含重复规则变化检测）
+  hasFormChanged
 } = taskFormApi;
 
 // ✅ 从 repeatRuleManager 解构重复规则状态和方法
@@ -911,25 +913,6 @@ const {
 
 /** 选中的规划名称（显示用） */
 const selectedPlanName = ref('');
-
-/** 原始表单数据（用于检测变化） */
-const originalForm = ref(null);
-
-/** 原始子任务数据（用于检测变化） */
-const originalSubtasks = ref(null);
-
-/** 表单是否有变化 */
-const hasFormChanged = computed(() => {
-  if (!originalForm.value) return false;
-
-  // 检测表单变化
-  const formChanged = JSON.stringify(form.value) !== JSON.stringify(originalForm.value);
-
-  // 检测子任务变化
-  const subtasksChanged = JSON.stringify(subtasks.value) !== JSON.stringify(originalSubtasks.value || []);
-
-  return formChanged || subtasksChanged;
-});
 
 /** 左卡片：开始日期显示 */
 const startDateDisplay = computed(() => {
@@ -2420,9 +2403,6 @@ onMounted(() => {
     customDate.value = form.value.taskDate;
   }
 
-  // 保存原始表单数据和子任务数据用于检测变化
-  originalForm.value = JSON.parse(JSON.stringify(form.value));
-  originalSubtasks.value = JSON.parse(JSON.stringify(subtasks.value));
 });
 </script>
 
