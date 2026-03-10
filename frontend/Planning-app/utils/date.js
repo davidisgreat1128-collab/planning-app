@@ -428,3 +428,45 @@ export function getCurrentMinutes() {
   const now = new Date();
   return now.getHours() * 60 + now.getMinutes();
 }
+
+// ============================================================
+// 日期/时间计算
+// ============================================================
+
+/**
+ * 计算两个日期之间的天数
+ * @param {string} start - 开始日期 YYYY-MM-DD
+ * @param {string} end - 结束日期 YYYY-MM-DD
+ * @returns {number} 天数
+ */
+export function calcDays(start, end) {
+  if (!start || !end) return 0
+  const s = new Date(start).getTime()
+  const e = new Date(end).getTime()
+  return Math.ceil((e - s) / 86400000) + 1
+}
+
+/**
+ * 计算两个时间的分钟差
+ * @param {string} start - 开始时间 HH:mm
+ * @param {string} end - 结束时间 HH:mm
+ * @returns {number} 分钟差
+ */
+export function timeDiffMinutes(start, end) {
+  if (!start || !end) return 0
+  const [sh, sm] = start.split(':').map(Number)
+  const [eh, em] = end.split(':').map(Number)
+  return (eh * 60 + em) - (sh * 60 + sm)
+}
+
+/**
+ * 格式化持续时间
+ * @param {number} minutes - 分钟数
+ * @returns {string} 格式化字符串（如"2小时30分钟"）
+ */
+export function formatDuration(minutes) {
+  if (minutes < 60) return `${minutes}分钟`
+  const h = Math.floor(minutes / 60)
+  const m = minutes % 60
+  return m > 0 ? `${h}小时${m}分钟` : `${h}小时`
+}
