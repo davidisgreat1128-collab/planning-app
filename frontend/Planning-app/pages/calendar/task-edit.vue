@@ -1370,7 +1370,8 @@ async function deleteFutureTasks() {
 }
 
 /**
- * 删除任务的实际执行逻辑（原 deleteTask 的内容）
+ * 删除任务的实际执行逻辑
+ * 由 deleteCurrentDayTask、deleteAllRecurringTasks、deleteFutureTasks 调用
  */
 async function deleteTaskImpl() {
   const isLocalStorageTask = taskId.value && String(taskId.value).startsWith('task_');
@@ -1397,51 +1398,6 @@ async function deleteTaskImpl() {
     // 后端任务：调用 API
     await taskStore.removeTask(taskId.value);
   }
-}
-
-function deleteTask() {
-  uni.showModal({
-    title: '确认删除',
-    content: '删除后无法恢复，确定要删除这个任务吗？',
-    success: async (res) => {
-      if (res.confirm) {
-        try {
-          // 检查是否是 localStorage 任务
-          const isLocalStorageTask = taskId.value && String(taskId.value).startsWith('task_');
-
-          if (isLocalStorageTask) {
-            // localStorage 任务：直接从 localStorage 删除
-            console.log('[TaskEdit] 删除 localStorage 任务:', taskId.value);
-
-            const savedTasks = uni.getStorageSync('tasks');
-            let tasks = savedTasks ? JSON.parse(savedTasks) : [];
-
-            // 过滤掉要删除的任务
-            tasks = tasks.filter(t => String(t.id) !== String(taskId.value));
-
-            // 保存回 localStorage
-            uni.setStorageSync('tasks', JSON.stringify(tasks));
-
-            // 从 taskStore 中移除
-            const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === String(taskId.value));
-            if (storeTaskIndex !== -1) {
-              taskStore.tasks.splice(storeTaskIndex, 1);
-            }
-
-            uni.showToast({ title: '已删除', icon: 'success' });
-            setTimeout(() => uni.navigateBack(), 800);
-          } else {
-            // 后端任务：调用 API
-            await taskStore.removeTask(taskId.value);
-            uni.showToast({ title: '已删除', icon: 'success' });
-            setTimeout(() => uni.navigateBack(), 800);
-          }
-        } catch (err) {
-          uni.showToast({ title: err.message || '删除失败', icon: 'none' });
-        }
-      }
-    }
-  });
 }
 
 function goBack() {
