@@ -1244,12 +1244,30 @@ async function handlePanelSubmit() {
       form.value.endDate = endDate.value ? formatDate(endDate.value) : form.value.taskDate;
     }
 
-    // 同步分类字段
+    // 🔥 关键修复：同步分类字段（修复BUG-003）
+    console.group('%c📦 同步分类字段到表单', 'color: #EC4899; font-size: 14px; font-weight: bold;')
+    console.log('%c[handlePanelSubmit] selectedCategoryId.value', 'color: #3B82F6; font-weight: bold;', selectedCategoryId.value)
+    console.log('%c[handlePanelSubmit] props.categoryId', 'color: #3B82F6; font-weight: bold;', props.categoryId)
+    console.log('%c[handlePanelSubmit] form.value.planId 同步前', 'color: #F59E0B; font-weight: bold;', form.value.planId)
+
+    // 优先使用用户在AddTaskPanel中选择的分类（selectedCategoryId）
+    // 如果用户没选择，则使用从父组件传入的 categoryId
     if (selectedCategoryId.value) {
+      // 用户选择了具体的分类/规划
       form.value.planId = selectedCategoryId.value;
+      console.log('%c[handlePanelSubmit] ✅ 使用 selectedCategoryId', 'color: #10B981; font-weight: bold;', selectedCategoryId.value)
     } else if (props.categoryId && typeof props.categoryId === 'string') {
+      // 从父组件传入的分类ID（如从日历页点击某个分类下的"+"按钮）
       form.value.planId = props.categoryId;
+      console.log('%c[handlePanelSubmit] ✅ 使用 props.categoryId', 'color: #10B981; font-weight: bold;', props.categoryId)
+    } else {
+      // 用户选择了"无分类"或"全部"，或没有选择任何分类
+      form.value.planId = null;
+      console.log('%c[handlePanelSubmit] ✅ 设置为 null（无分类）', 'color: #10B981; font-weight: bold;')
     }
+
+    console.log('%c[handlePanelSubmit] form.value.planId 同步后', 'color: #10B981; font-weight: bold;', form.value.planId)
+    console.groupEnd()
 
     // 同步提醒字段（适配新的 ReminderPicker 数据格式）
     if (reminderData.value.enabled) {
