@@ -88,7 +88,7 @@ export function useTaskForm(options = {}) {
   const subtasks = ref([])
 
   /** 日期 Tab：today / tomorrow / custom / preset / other */
-  const activeDateTab = ref('today')
+  const activeDateTab = ref(initialPresetDate ? 'preset' : 'today')
 
   /** 用户自定义选择的日期（用于动态Tab显示，YYYY-MM-DD格式） */
   const customDate = ref('')
