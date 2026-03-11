@@ -354,6 +354,7 @@ import EndDateCalendar from '@/components/task/EndDateCalendar.vue';
 // ============================================================
 import { useTaskForm } from '@/composables/useTaskForm.js';
 import { formatDate, getWeekdayName, calcDays, timeDiffMinutes, formatDuration, formatDateWithWeekday, formatDateTimeDot, formatMonthDay, getToday, getTomorrow, getDateAfterDays } from '@/utils/date.js';
+import { parseRrule } from '@/utils/rruleBuilder.js';
 
 // ============================================================
 // Store
@@ -1094,60 +1095,23 @@ function pickPlan() {
 
 /**
  * 编辑模式：将已有的 RRULE 字符串解析回 UI 状态
- * 支持：DAILY / WEEKLY / MONTHLY / YEARLY
- * 示例：FREQ=MONTHLY;BYMONTHDAY=10,19;INTERVAL=1;UNTIL=20270101T235959Z
+ * 使用 utils/rruleBuilder.js 的 parseRrule 函数
  */
 function parseRruleToUI(rrule) {
   if (!rrule) return;
-  const parts = {};
-  rrule.split(';').forEach(p => {
-    const [k, v] = p.split('=');
-    if (k && v !== undefined) parts[k] = v;
-  });
+  const parsed = parseRrule(rrule);
 
-  // 频率
-  const freqMap = { DAILY: 'daily', WEEKLY: 'weekly', MONTHLY: 'monthly', YEARLY: 'yearly' };
-  repeatMode.value = freqMap[parts.FREQ] || 'none';
-
-  // 间隔
-  repeatInterval.value = parts.INTERVAL ? parseInt(parts.INTERVAL) : 1;
-
-  // 每周 BYDAY（纯字母，如 MO,FR）
-  if (repeatMode.value === 'weekly' && parts.BYDAY) {
-    const dayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 7 };
-    repeatWeekDays.value = parts.BYDAY.split(',').map(d => dayMap[d]).filter(Boolean);
+  // 应用解析结果到当前状态
+  repeatMode.value = parsed.mode || 'none';
+  repeatInterval.value = parsed.interval || 1;
+  if (parsed.weekDays) repeatWeekDays.value = parsed.weekDays;
+  if (parsed.monthDays) {
+    monthlySubMode.value = 'day';
+    monthlyDays.value = parsed.monthDays;
   }
-
-  // 每月
-  if (repeatMode.value === 'monthly') {
-    if (parts.BYMONTHDAY) {
-      // 按日期：BYMONTHDAY=10,19
-      monthlySubMode.value = 'day';
-      monthlyDays.value = parts.BYMONTHDAY.split(',').map(Number).filter(n => n > 0);
-    } else if (parts.BYDAY) {
-      // 按星期位置：BYDAY=3TH 或 -1SU
-      monthlySubMode.value = 'weekday';
-      const m = parts.BYDAY.match(/^(-?\d+)([A-Z]{2})$/);
-      if (m) {
-        const pos = parseInt(m[1]);
-        const dayMap = { MO: 1, TU: 2, WE: 3, TH: 4, FR: 5, SA: 6, SU: 7 };
-        monthlyWeekNum.value  = pos === -1 ? 5 : pos;
-        monthlyWeekday.value  = dayMap[m[2]] || 1;
-      }
-    }
-  }
-
-  // 每年
-  if (repeatMode.value === 'yearly') {
-    if (parts.BYMONTH)    yearlyMonth.value = parseInt(parts.BYMONTH);
-    if (parts.BYMONTHDAY) yearlyDay.value   = parseInt(parts.BYMONTHDAY);
-  }
-
-  // UNTIL → 结束日期
-  if (parts.UNTIL) {
-    const s = parts.UNTIL.replace('T235959Z', '');
-    repeatEndDate.value = `${s.slice(0,4)}-${s.slice(4,6)}-${s.slice(6,8)}`;
-  }
+  if (parsed.yearlyMonth) yearlyMonth.value = parsed.yearlyMonth;
+  if (parsed.yearlyDay) yearlyDay.value = parsed.yearlyDay;
+  if (parsed.endDate) repeatEndDate.value = parsed.endDate;
 }
 
 // ============================================================
