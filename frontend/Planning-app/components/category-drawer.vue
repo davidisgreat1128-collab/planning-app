@@ -162,11 +162,9 @@ watch(() => props.visible, async (newVal) => {
 
     // 加载选中状态
     loadContainerSelection();
-  } else {
-    // 关闭所有左滑（使用Composable方法）
-    categorySwipe.closeSwipe();
-    planSwipe.closeSwipe();
   }
+  // 注意：左滑状态由子组件（PlanList、CategoryList）各自管理，
+  // 主组件不再需要手动关闭左滑状态
 });
 
 /**
@@ -369,19 +367,19 @@ async function onSaveCategory(data) {
  * 编辑分类
  */
 function editCategory(category) {
-  categorySwipe.closeSwipe();
   isEditMode.value = true;
   editingCategory.value = category;
   showCategoryDialog.value = true;
+  // 注意：左滑状态由 CategoryList 子组件管理，打开弹窗后会自动关闭
 }
 
 /**
  * 删除分类（打开确认弹窗）
  */
 function deleteCategory(category) {
-  categorySwipe.closeSwipe();
   deletingCategory.value = category;
   showDeleteDialog.value = true;
+  // 注意：左滑状态由 CategoryList 子组件管理，打开弹窗后会自动关闭
 }
 
 /**
@@ -434,8 +432,6 @@ async function onDeleteConfirm(deleteMode) {
  * 编辑规划
  */
 function editPlan(plan) {
-  planSwipe.closeSwipe();
-
   // 关闭抽屉
   emit('update:visible', false);
 
@@ -443,15 +439,16 @@ function editPlan(plan) {
   uni.navigateTo({
     url: `/pages/planning/plan/detail?id=${plan.id}`
   });
+  // 注意：左滑状态由 PlanList 子组件管理，关闭抽屉后会自动重置
 }
 
 /**
  * 删除规划（打开确认弹窗）
  */
 function deletePlan(plan) {
-  planSwipe.closeSwipe();
   deletingPlan.value = plan;
   showDeletePlanDialog.value = true;
+  // 注意：左滑状态由 PlanList 子组件管理，打开弹窗后会自动关闭
 }
 
 /**
