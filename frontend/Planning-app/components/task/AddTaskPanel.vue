@@ -1087,11 +1087,10 @@ const showRepeatPanel = ref(false);
 /** 重复规则结束日期选择器是否展开 */
 const showRepeatEndPicker = ref(false);
 
-/** 重复结束日期临时变量 */
-const repeatEndDate = ref('');
-
 /** 重复日历是否显示农历 */
 const showRepeatLunar = ref(true);
+
+// ⚠️ repeatEndDate 已从 repeatRuleManager 解构（第568行），无需重复声明
 
 /** 重复数据（保留用于兼容旧逻辑） */
 const repeatData = ref({
@@ -1120,7 +1119,6 @@ function openRepeatEndPicker() {
  */
 function onRepeatEndDateConfirm(payload) {
   repeatEndDate.value = payload.date;
-  repeatRuleManager.setRepeatEndDate(payload.date);
   showRepeatEndPicker.value = false;
 }
 
@@ -1294,7 +1292,7 @@ function resetPanel() {
   // 重置重复
   showRepeatPanel.value = false;
   showRepeatEndPicker.value = false;
-  repeatEndDate.value = '';
+  repeatEndDate.value = '';  // repeatEndDate 来自 repeatRuleManager
   repeatData.value = { mode: 'none', interval: 1, weekDays: [], endDate: '' };
   // 重置提醒
   showReminderPanel.value = false;
