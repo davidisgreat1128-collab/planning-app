@@ -2,156 +2,44 @@
   <view v-if="visible" class="drawer-overlay" @tap="handleOverlayClick">
     <view class="drawer-container" @tap.stop :class="{ 'drawer-open': visible }">
       <!-- 顶部用户信息 -->
-      <view class="user-info">
-        <text class="user-avatar">{{ userAvatar }}</text>
-        <view class="user-details">
-          <text class="user-nickname">{{ userNickname }}</text>
-          <text class="user-stats">已坚持做计划{{ persistDays }}天</text>
-        </view>
-        <view class="toggle-completed" @tap="toggleShowCompleted">
-          <text class="toggle-icon">{{ showCompleted ? '👁️' : '🚫' }}</text>
-          <text class="toggle-text">{{ showCompleted ? '显示已完成' : '隐藏已完成' }}</text>
-        </view>
-      </view>
+      <UserInfoHeader
+        :user-avatar="userAvatar"
+        :user-nickname="userNickname"
+        :persist-days="persistDays"
+        :show-completed="showCompleted"
+        @toggle-completed="toggleShowCompleted"
+      />
 
       <view class="divider"></view>
 
       <!-- 滚动内容区 -->
       <scroll-view class="scroll-content" scroll-y>
         <!-- 我的规划 -->
-        <view class="section">
-          <text class="section-title">我的规划</text>
-
-          <!-- 规划列表 -->
-          <view v-if="activePlans.length > 0" class="plans-list">
-            <view
-              v-for="plan in activePlans"
-              :key="plan.id"
-              class="plan-card-wrapper"
-            >
-              <!-- 左滑容器 -->
-              <view
-                class="plan-card-swipe"
-                :class="{ 'swipe-open': swipeOpenPlanId === plan.id }"
-                @touchstart="onPlanTouchStart($event, plan.id)"
-                @touchmove="onPlanTouchMove($event, plan.id)"
-                @touchend="onPlanTouchEnd($event, plan.id)"
-              >
-                <!-- 规划卡片内容 -->
-                <view class="plan-card" :class="{ active: selectedCategory === plan.id }" @tap="togglePlanSelection(plan.id)">
-                  <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
-                  <view class="plan-content">
-                    <text class="plan-title">{{ plan.name }}</text>
-                    <text class="plan-buff">{{ plan.buff }}</text>
-                    <text class="plan-stats">
-                      里程碑：{{ getPlanCompletedMilestones(plan) }}/{{ getPlanTotalMilestones(plan) }}
-                      已进行{{ getPlanProgressDays(plan) }}天
-                    </text>
-                  </view>
-                  <!-- 右侧操作按钮：垂直排列 -->
-                  <view class="plan-actions-vertical">
-                    <view class="plan-action-btn" @tap.stop="editPlan(plan)">
-                      <text class="action-icon">✏️</text>
-                    </view>
-                    <view class="plan-action-btn" @tap.stop="deletePlan(plan)">
-                      <text class="action-icon">🗑️</text>
-                    </view>
-                  </view>
-                </view>
-              </view>
-            </view>
-          </view>
-
-          <!-- 创建规划卡片 -->
-          <view class="create-goal-card" @tap="handleCreateGoal">
-            <text class="create-icon">🔭</text>
-            <view class="create-text-wrapper">
-              <text class="create-title">+ 创建规划</text>
-              <text class="create-desc">收获触手可及的成果</text>
-            </view>
-          </view>
-        </view>
+        <PlanList
+          :plans="activePlans"
+          :selected-id="selectedCategory"
+          @select="togglePlanSelection"
+          @edit="editPlan"
+          @delete="deletePlan"
+          @create="handleCreateGoal"
+        />
 
         <!-- 我的分类 -->
-        <view class="section">
-          <text class="section-title">我的分类</text>
+        <CategoryList
+          :categories="normalCategories"
+          :selected-id="selectedCategory"
+          @select="selectCategory"
+          @edit="editCategory"
+          @delete="deleteCategory"
+        />
 
-          <view class="category-list">
-            <view
-              class="category-item"
-              :class="{ active: selectedCategory === 'all' }"
-              @tap="selectCategory('all')"
-            >
-              <text class="category-text">全部</text>
-              <text v-if="selectedCategory === 'all'" class="category-check">✓</text>
-            </view>
-
-            <view
-              class="category-item uncategorized"
-              :class="{ active: selectedCategory === 'none' }"
-              @tap="selectCategory('none')"
-            >
-              <text class="category-text">无分类</text>
-              <text v-if="selectedCategory === 'none'" class="category-check">✓</text>
-            </view>
-
-            <!-- 用户创建的普通分类（不包含规划，支持左滑操作） -->
-            <view
-              v-for="category in normalCategories"
-              :key="category.id"
-              class="category-item-wrapper"
-            >
-              <!-- 左滑容器 -->
-              <view
-                class="category-item-swipe"
-                :class="{ 'swipe-open': swipeOpenId === category.id }"
-                @touchstart="onTouchStart($event, category.id)"
-                @touchmove="onTouchMove($event, category.id)"
-                @touchend="onTouchEnd($event, category.id)"
-              >
-                <!-- 前景：分类内容 -->
-                <view
-                  class="category-item"
-                  :class="{ active: selectedCategory === category.id }"
-                  @tap="selectCategory(category.id)"
-                >
-                  <view class="category-name-wrapper">
-                    <text class="category-icon">{{ category.iconEmoji }}</text>
-                    <text class="category-text">{{ category.name }}</text>
-                  </view>
-                  <text v-if="selectedCategory === category.id" class="category-check">✓</text>
-                </view>
-
-                <!-- 背景：操作按钮 -->
-                <view class="swipe-actions">
-                  <view class="swipe-btn edit-btn" @tap.stop="editCategory(category)">
-                    <text class="swipe-icon">✏️</text>
-                  </view>
-                  <view class="swipe-btn delete-btn" @tap.stop="deleteCategory(category)">
-                    <text class="swipe-icon">🗑️</text>
-                  </view>
-                </view>
-              </view>
-            </view>
-          </view>
-        </view>
-
-        <!-- 底部占位 -->
-        <view class="bottom-spacer"></view>
       </scroll-view>
 
       <!-- 底部按钮 -->
-      <view class="bottom-buttons">
-        <view class="bottom-btn" @tap="showCategoryDialog = true">
-          <text class="btn-text">新建分类</text>
-        </view>
-        <view class="bottom-btn" @tap="handleCreateGoal">
-          <text class="btn-text">新建规划</text>
-        </view>
-        <view class="bottom-btn icon-btn">
-          <text class="btn-icon">📷</text>
-        </view>
-      </view>
+      <DrawerFooter
+        @create-category="showCategoryDialog = true"
+        @create-plan="handleCreateGoal"
+      />
 
       <!-- 新建/编辑分类弹窗 -->
       <CategoryDialog
@@ -186,11 +74,14 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
 import { useCategoryStore } from '@/store/category.js';
 import { usePlanStore } from '@/store/plan.js';
-import { useSwipeGesture } from '@/composables/useSwipeGesture.js';
-import { getPlanTotalMilestones, getPlanCompletedMilestones, getPlanProgressDays, calculatePersistDays } from '@/utils/planStats.js';
+import { calculatePersistDays } from '@/utils/planStats.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
 import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
+import UserInfoHeader from '@/components/category-drawer/UserInfoHeader.vue';
+import PlanList from '@/components/category-drawer/PlanList.vue';
+import CategoryList from '@/components/category-drawer/CategoryList.vue';
+import DrawerFooter from '@/components/category-drawer/DrawerFooter.vue';
 
 const props = defineProps({
   visible: {
@@ -223,21 +114,6 @@ const deletingCategory = ref(null); // 正在删除的分类
 // 旧代码：const userCategories = ref([])  // ❌ 直接在组件维护状态
 // 新代码：从 categoryStore 获取 ✅
 const userCategories = computed(() => categoryStore.categories);
-
-// ============================================================
-// 左滑手势 Composable（阶段1.2：提取到Composable层）
-// ============================================================
-const categorySwipe = useSwipeGesture(); // 分类左滑
-const planSwipe = useSwipeGesture(); // 规划左滑
-
-// 解构出需要的状态和方法
-const { swipeOpenId, onTouchStart, onTouchMove, onTouchEnd } = categorySwipe;
-const {
-  swipeOpenId: swipeOpenPlanId,
-  onTouchStart: onPlanTouchStart,
-  onTouchMove: onPlanTouchMove,
-  onTouchEnd: onPlanTouchEnd
-} = planSwipe;
 
 // 删除规划相关状态
 const showDeletePlanDialog = ref(false); // 删除规划确认弹窗
@@ -656,68 +532,6 @@ async function onDeletePlanConfirm(deleteWithTasks) {
   left: 0;
 }
 
-/* ============================================================
-   用户信息
-   ============================================================ */
-.user-info {
-  display: flex;
-  align-items: center;
-  padding: 30rpx 20rpx;
-  gap: 15rpx;
-  background-color: #fff;
-  box-sizing: border-box;
-}
-
-.user-avatar {
-  font-size: 60rpx;
-  width: 80rpx;
-  height: 80rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-}
-
-.user-details {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 5rpx;
-  min-width: 0;
-}
-
-.user-nickname {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #333;
-}
-
-.user-stats {
-  font-size: 24rpx;
-  color: #999;
-}
-
-.toggle-completed {
-  display: flex;
-  align-items: center;
-  gap: 5rpx;
-  padding: 10rpx 15rpx;
-  background-color: #f9f9f9;
-  border-radius: 30rpx;
-  cursor: pointer;
-  flex-shrink: 0;
-}
-
-.toggle-icon {
-  font-size: 24rpx;
-}
-
-.toggle-text {
-  font-size: 22rpx;
-  color: #666;
-  white-space: nowrap;
-}
-
 .divider {
   height: 1rpx;
   background-color: #e0e0e0;
@@ -744,345 +558,4 @@ async function onDeletePlanConfirm(deleteWithTasks) {
   display: block;
 }
 
-/* 规划列表 */
-.plans-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15rpx;
-  margin-bottom: 20rpx;
-}
-
-.plan-card-wrapper {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-}
-
-.plan-card-swipe {
-  position: relative;
-  transition: transform 0.3s ease-out;
-  width: 100%;
-}
-
-.plan-card-swipe.swipe-open {
-  transform: translateX(-160rpx);
-}
-
-.plan-card {
-  display: flex;
-  align-items: flex-start;
-  gap: 15rpx;
-  background-color: #fff;
-  border: 2rpx solid #e0e0e0;
-  border-radius: 16rpx;
-  padding: 20rpx;
-  box-sizing: border-box;
-  cursor: pointer;
-  transition: all 0.2s;
-  height: auto;
-  min-height: auto;
-  justify-content: space-between;
-}
-
-.plan-card.active {
-  background-color: #7CA1FF;
-  border-color: #7CA1FF;
-}
-
-.plan-icon {
-  font-size: 40rpx;
-  flex-shrink: 0;
-  line-height: 1;
-  height: auto;
-}
-
-.plan-content {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  min-width: 0;
-  height: auto;
-}
-
-.plan-title {
-  font-size: 28rpx;
-  font-weight: 600;
-  color: #333;
-  word-wrap: break-word;
-  word-break: break-all;
-  line-height: 1.4;
-  height: auto;
-}
-
-.plan-card.active .plan-title {
-  color: #fff;
-}
-
-.plan-buff {
-  font-size: 24rpx;
-  color: #666;
-  word-wrap: break-word;
-  word-break: break-all;
-  line-height: 1.5;
-  white-space: normal;
-  height: auto;
-}
-
-.plan-card.active .plan-buff {
-  color: rgba(255, 255, 255, 0.9);
-}
-
-.plan-stats {
-  font-size: 22rpx;
-  color: #999;
-  word-wrap: break-word;
-  height: auto;
-}
-
-.plan-card.active .plan-stats {
-  color: rgba(255, 255, 255, 0.8);
-}
-
-.plan-check {
-  font-size: 32rpx;
-  color: #fff;
-  flex-shrink: 0;
-  margin-top: 4rpx;
-}
-
-/* 规划卡片右侧操作按钮：垂直排列 */
-.plan-actions-vertical {
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-  flex-shrink: 0;
-}
-
-.plan-action-btn {
-  width: 60rpx;
-  height: 60rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background-color: #f5f5f5;
-  border-radius: 10rpx;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.plan-action-btn:active {
-  background-color: #e0e0e0;
-  transform: scale(0.95);
-}
-
-.action-icon {
-  font-size: 36rpx;
-}
-
-/* 创建规划卡片 */
-.create-goal-card {
-  display: flex;
-  align-items: center;
-  gap: 20rpx;
-  background: linear-gradient(135deg, #8B9FEE 0%, #9B7BC2 100%);
-  border-radius: 16rpx;
-  padding: 30rpx 25rpx;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.create-goal-card:active {
-  transform: scale(0.98);
-}
-
-.create-icon {
-  font-size: 48rpx;
-}
-
-.create-text-wrapper {
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  gap: 8rpx;
-}
-
-.create-title {
-  font-size: 32rpx;
-  font-weight: 600;
-  color: #fff;
-}
-
-.create-desc {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.8);
-}
-
-/* 分类列表 */
-.category-list {
-  display: flex;
-  flex-direction: column;
-  gap: 15rpx;
-}
-
-.category-item-wrapper {
-  position: relative;
-  width: 100%;
-  overflow: hidden;
-}
-
-.category-item-swipe {
-  position: relative;
-  transition: transform 0.3s ease-out;
-  width: 100%;
-}
-
-.category-item-swipe.swipe-open {
-  transform: translateX(-160rpx);
-}
-
-.category-item {
-  background-color: #fafafa;
-  border-radius: 12rpx;
-  padding: 20rpx 25rpx;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-sizing: border-box;
-}
-
-.category-item.active {
-  background-color: #7CA1FF;
-}
-
-.category-item.uncategorized {
-  background-color: #fff;
-  border: 2rpx dashed #ccc;
-}
-
-.category-name-wrapper {
-  display: flex;
-  align-items: center;
-  gap: 10rpx;
-  flex: 1;
-  min-width: 0;
-}
-
-.category-icon {
-  font-size: 40rpx;
-  flex-shrink: 0;
-}
-
-.category-text {
-  font-size: 28rpx;
-  color: #333;
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.category-item.active .category-text {
-  color: #fff;
-}
-
-.category-check {
-  font-size: 32rpx;
-  color: #fff;
-  flex-shrink: 0;
-}
-
-/* 左滑操作按钮 */
-.swipe-actions {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  gap: 10rpx;
-}
-
-.swipe-btn {
-  width: 75rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  background-color: transparent;
-}
-
-.edit-btn {
-  border-radius: 12rpx 0 0 12rpx;
-}
-
-.delete-btn {
-  border-radius: 0 12rpx 12rpx 0;
-}
-
-.swipe-icon {
-  font-size: 36rpx;
-}
-
-/* 规划左滑操作按钮 */
-.plan-swipe-actions {
-  position: absolute;
-  right: 0;
-  top: 0;
-  bottom: 0;
-  display: flex;
-  gap: 10rpx;
-  z-index: 1;  /* 背景层，在前景卡片之下 */
-  background-color: pink !important;  /* 🎀 调试：粉色背景，查看背景层位置 */
-}
-
-.bottom-spacer {
-  height: 40rpx;
-}
-
-/* ============================================================
-   底部按钮
-   ============================================================ */
-.bottom-buttons {
-  display: flex;
-  gap: 15rpx;
-  padding: 20rpx;
-  background-color: #fff;
-  border-top: 1rpx solid #e0e0e0;
-  box-sizing: border-box;
-}
-
-.bottom-btn {
-  flex: 1;
-  height: 80rpx;
-  background-color: #7CA1FF;
-  border-radius: 12rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-}
-
-.bottom-btn:active {
-  opacity: 0.8;
-  transform: scale(0.98);
-}
-
-.bottom-btn.icon-btn {
-  flex: none;
-  width: 80rpx;
-  background-color: #f9f9f9;
-}
-
-.btn-text {
-  font-size: 28rpx;
-  color: #fff;
-  font-weight: 500;
-}
-
-.btn-icon {
-  font-size: 36rpx;
-}
 </style>
