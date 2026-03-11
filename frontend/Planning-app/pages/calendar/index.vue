@@ -193,7 +193,6 @@
     <AddTaskPanel
       :visible="showAddTaskPanel"
       :preset-date="calendarComposable.selectedDate.value"
-      :category-id="taskFilterComposable.selectedContainer.value.id === 'all' || taskFilterComposable.selectedContainer.value.id === 'none' ? null : taskFilterComposable.selectedContainer.value.id"
       @close="showAddTaskPanel = false"
       @submitted="handleTaskSubmitted"
     />
