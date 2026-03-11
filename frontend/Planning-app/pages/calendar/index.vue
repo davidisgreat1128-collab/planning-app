@@ -55,6 +55,7 @@
         :all-day-tasks-pending="allDayTasksPending"
         :all-day-tasks-done="allDayTasksDone"
         :timed-tasks="timelineTasks"
+        :container-name="containerName"
         @task-click="openTask"
         @drag-start="dragDropComposable.startDrag"
         @goals-click="goToPlanningCategory"
@@ -71,6 +72,7 @@
         :urgent-not-important-done="urgentNotImportantDone"
         :not-urgent-not-important="notUrgentNotImportant"
         :not-urgent-not-important-done="notUrgentNotImportantDone"
+        :container-name="containerName"
         @task-click="openTask"
         @checkbox-click="toggleTaskDone"
         @drag-start="dragDropComposable.startDrag"
@@ -198,6 +200,7 @@
     <!-- 规划和分类侧边抽屉 -->
     <CategoryDrawer
       v-model:visible="showCategoryDrawer"
+      @container-changed="handleContainerChanged"
     />
   </view>
 </template>
@@ -205,6 +208,8 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task';
+import { useCategoryStore } from '@/store/category';
+import { usePlanStore } from '@/store/plan';
 import { useCalendar } from '@/composables/useCalendar';
 import { useDragDrop } from '@/composables/useDragDrop';
 import { useTaskQuadrant } from '@/composables/useTaskQuadrant';
@@ -220,6 +225,8 @@ import CategoryDrawer from '@/components/category-drawer.vue';
 
 // Store
 const taskStore = useTaskStore();
+const categoryStore = useCategoryStore();
+const planStore = usePlanStore();
 
 // Composables
 const calendarComposable = useCalendar();
@@ -237,6 +244,12 @@ const showSubtaskPopup = ref(false);
 const currentSubtaskParent = ref(null);
 const showAddTaskPanel = ref(false);
 const showCategoryDrawer = ref(false);
+
+// 选中的分类/规划容器
+const selectedContainer = ref({
+  type: 'category', // 'category' | 'plan'
+  id: 'all'         // 'all' | 'none' | categoryId | planId
+});
 
 // DragOverlay组件ref
 const dragOverlayRef = ref(null);
@@ -256,6 +269,36 @@ const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '�
 
 // 计算属性
 const todayStr = computed(() => getToday());
+
+/**
+ * 获取当前选中容器的显示名称
+ */
+const containerName = computed(() => {
+  const { type, id } = selectedContainer.value;
+
+  if (id === 'all') {
+    return '全部';
+  }
+
+  if (id === 'none') {
+    return '无分类';
+  }
+
+  // 先尝试从 categoryStore 查找
+  const category = categoryStore.categories.find(cat => cat.id === id);
+  if (category) {
+    return category.name;
+  }
+
+  // 再尝试从 planStore 查找
+  const plan = planStore.plans.find(p => p.id === id);
+  if (plan) {
+    return plan.title;
+  }
+
+  // 找不到，返回默认值
+  return '规划和分类';
+});
 
 // 四象限任务分组（使用 taskStore 的计算属性）
 const urgentImportant = computed(() => taskStore.urgentImportant);
@@ -467,6 +510,30 @@ async function handleDeleteTaskConfirm(option) {
  */
 function goToPlanningCategory() {
   showCategoryDrawer.value = true;
+}
+
+/**
+ * 处理容器变更事件（来自 CategoryDrawer）
+ * @param {object} container - 容器信息 { type, id }
+ */
+function handleContainerChanged(container) {
+  console.log('[Index] 容器变更:', container);
+
+  if (container) {
+    selectedContainer.value = {
+      type: container.type || 'category',
+      id: container.id || 'all'
+    };
+  } else {
+    // 如果没有传容器信息，重置为"全部"
+    selectedContainer.value = {
+      type: 'category',
+      id: 'all'
+    };
+  }
+
+  // 保存到 localStorage
+  uni.setStorageSync('selected_container', JSON.stringify(selectedContainer.value));
 }
 
 /**

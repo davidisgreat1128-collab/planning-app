@@ -3,7 +3,7 @@
     <!-- 顶部工具栏 -->
     <view class="top-toolbar">
       <view class="toolbar-left" @tap="handleGoalsClick">
-        <text class="toolbar-text">规划和分类</text>
+        <text class="toolbar-text">{{ containerName }}</text>
         <text class="toolbar-icon">≡</text>
       </view>
       <view class="toolbar-right">
@@ -222,6 +222,10 @@ import TaskCard from './TaskCard.vue';
 
 // Props
 const props = defineProps({
+  containerName: {
+    type: String,
+    default: '规划和分类'
+  },
   urgentImportant: {
     type: Array,
     default: () => []
