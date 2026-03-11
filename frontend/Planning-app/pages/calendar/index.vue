@@ -55,7 +55,7 @@
         :all-day-tasks-pending="allDayTasksPending"
         :all-day-tasks-done="allDayTasksDone"
         :timed-tasks="timelineTasks"
-        :container-name="containerName"
+        :container-name="taskFilterComposable.containerName.value"
         @task-click="openTask"
         @drag-start="dragDropComposable.startDrag"
         @goals-click="goToPlanningCategory"
@@ -72,7 +72,7 @@
         :urgent-not-important-done="urgentNotImportantDone"
         :not-urgent-not-important="notUrgentNotImportant"
         :not-urgent-not-important-done="notUrgentNotImportantDone"
-        :container-name="containerName"
+        :container-name="taskFilterComposable.containerName.value"
         @task-click="openTask"
         @checkbox-click="toggleTaskDone"
         @drag-start="dragDropComposable.startDrag"
@@ -208,11 +208,10 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task';
-import { useCategoryStore } from '@/store/category';
-import { usePlanStore } from '@/store/plan';
 import { useCalendar } from '@/composables/useCalendar';
 import { useDragDrop } from '@/composables/useDragDrop';
 import { useTaskQuadrant } from '@/composables/useTaskQuadrant';
+import { useTaskFilter } from '@/composables/useTaskFilter';
 import { getQuadrant, getQuadrantColor } from '@/utils/quadrant';
 import { formatDate, getToday } from '@/utils/date';
 import CalendarBar from '@/components/calendar/CalendarBar.vue';
@@ -225,8 +224,6 @@ import CategoryDrawer from '@/components/category-drawer.vue';
 
 // Store
 const taskStore = useTaskStore();
-const categoryStore = useCategoryStore();
-const planStore = usePlanStore();
 
 // Composables
 const calendarComposable = useCalendar();
@@ -234,6 +231,7 @@ const dragDropComposable = useDragDrop({
   onDragEnd: handleDragEnd
 });
 const quadrantComposable = useTaskQuadrant();
+const taskFilterComposable = useTaskFilter();
 
 // 状态
 const statusBarHeight = ref(0);
@@ -244,12 +242,6 @@ const showSubtaskPopup = ref(false);
 const currentSubtaskParent = ref(null);
 const showAddTaskPanel = ref(false);
 const showCategoryDrawer = ref(false);
-
-// 选中的分类/规划容器
-const selectedContainer = ref({
-  type: 'category', // 'category' | 'plan'
-  id: 'all'         // 'all' | 'none' | categoryId | planId
-});
 
 // DragOverlay组件ref
 const dragOverlayRef = ref(null);
@@ -270,63 +262,55 @@ const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '�
 // 计算属性
 const todayStr = computed(() => getToday());
 
-/**
- * 获取当前选中容器的显示名称
- */
-const containerName = computed(() => {
-  const { type, id } = selectedContainer.value;
-
-  if (id === 'all') {
-    return '全部';
-  }
-
-  if (id === 'none') {
-    return '无分类';
-  }
-
-  // 先尝试从 categoryStore 查找
-  const category = categoryStore.categories.find(cat => cat.id === id);
-  if (category) {
-    return category.name;
-  }
-
-  // 再尝试从 planStore 查找
-  const plan = planStore.plans.find(p => p.id === id);
-  if (plan) {
-    return plan.title;
-  }
-
-  // 找不到，返回默认值
-  return '规划和分类';
-});
-
-// 四象限任务分组（使用 taskStore 的计算属性）
-const urgentImportant = computed(() => taskStore.urgentImportant);
+// 四象限任务分组（从 taskStore 获取，然后应用容器过滤）
+const urgentImportant = computed(() =>
+  taskFilterComposable.filterTasks(taskStore.urgentImportant)
+);
 const urgentImportantDone = computed(() =>
-  taskStore.doneTasks.filter(t => t.isUrgent && t.isImportant)
+  taskFilterComposable.filterTasks(
+    taskStore.doneTasks.filter(t => t.isUrgent && t.isImportant)
+  )
 );
-const notUrgentImportant = computed(() => taskStore.notUrgentImportant);
+const notUrgentImportant = computed(() =>
+  taskFilterComposable.filterTasks(taskStore.notUrgentImportant)
+);
 const notUrgentImportantDone = computed(() =>
-  taskStore.doneTasks.filter(t => !t.isUrgent && t.isImportant)
+  taskFilterComposable.filterTasks(
+    taskStore.doneTasks.filter(t => !t.isUrgent && t.isImportant)
+  )
 );
-const urgentNotImportant = computed(() => taskStore.urgentNotImportant);
+const urgentNotImportant = computed(() =>
+  taskFilterComposable.filterTasks(taskStore.urgentNotImportant)
+);
 const urgentNotImportantDone = computed(() =>
-  taskStore.doneTasks.filter(t => t.isUrgent && !t.isImportant)
+  taskFilterComposable.filterTasks(
+    taskStore.doneTasks.filter(t => t.isUrgent && !t.isImportant)
+  )
 );
-const notUrgentNotImportant = computed(() => taskStore.notUrgentNotImportant);
+const notUrgentNotImportant = computed(() =>
+  taskFilterComposable.filterTasks(taskStore.notUrgentNotImportant)
+);
 const notUrgentNotImportantDone = computed(() =>
-  taskStore.doneTasks.filter(t => !t.isUrgent && !t.isImportant)
+  taskFilterComposable.filterTasks(
+    taskStore.doneTasks.filter(t => !t.isUrgent && !t.isImportant)
+  )
 );
 
-// 时间轴任务分组
+// 时间轴任务分组（也应用容器过滤）
 const allDayTasksPending = computed(() =>
-  taskStore.tasks.filter(t => t.isAllDay && t.status !== 'completed')
+  taskFilterComposable.filterTasks(
+    taskStore.tasks.filter(t => t.isAllDay && t.status !== 'completed')
+  )
 );
 const allDayTasksDone = computed(() =>
-  taskStore.tasks.filter(t => t.isAllDay && t.status === 'completed')
+  taskFilterComposable.filterTasks(
+    taskStore.tasks.filter(t => t.isAllDay && t.status === 'completed')
+  )
 );
 const timelineTasks = computed(() =>
-  taskStore.tasks.filter(t => !t.isAllDay && t.startTime)
+  taskFilterComposable.filterTasks(
+    taskStore.tasks.filter(t => !t.isAllDay && t.startTime)
+  )
 );
 
 // 方法
@@ -518,22 +502,8 @@ function goToPlanningCategory() {
  */
 function handleContainerChanged(container) {
   console.log('[Index] 容器变更:', container);
-
-  if (container) {
-    selectedContainer.value = {
-      type: container.type || 'category',
-      id: container.id || 'all'
-    };
-  } else {
-    // 如果没有传容器信息，重置为"全部"
-    selectedContainer.value = {
-      type: 'category',
-      id: 'all'
-    };
-  }
-
-  // 保存到 localStorage
-  uni.setStorageSync('selected_container', JSON.stringify(selectedContainer.value));
+  // 使用 Composable 的方法设置选中容器
+  taskFilterComposable.setSelectedContainer(container);
 }
 
 /**
@@ -573,6 +543,10 @@ onMounted(async () => {
     statusBarHeight.value = systemInfo.statusBarHeight || 0;
     //console.log('[index.vue] APP状态栏高度:', statusBarHeight.value);
     // #endif
+
+    // 恢复选中的容器（分类/规划）
+    taskFilterComposable.restoreSelectedContainer();
+    console.log('[index.vue] 容器已恢复:', taskFilterComposable.selectedContainer.value);
 
     // 初始化日历（这会设置 currentWeekStart、selectedDate，并触发 loadHolidays）
     //console.log('[index.vue] 开始初始化日历...');
