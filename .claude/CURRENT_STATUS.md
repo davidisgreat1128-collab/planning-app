@@ -1,28 +1,28 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-11（category-drawer.vue阶段1重构完成）
+> **最后更新**: 2026-03-11（category-drawer.vue阶段1-2重构完成）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: eb35925（refactor(category-drawer): Stage 1 - Fix architecture and extract swipe gesture）
+> **最新commit**: bf5b775（refactor(category-drawer): Stage 2 - Extract plan stats to utils）
 > **Git状态**: ✅ 所有修改已提交并推送
 
 ---
 
 ## 🎯 当前阶段
 
-**阶段名称**: 🔧 category-drawer.vue 阶段1重构完成
-**进度**: **33%** (阶段1/3已完成)
+**阶段名称**: 🎉 category-drawer.vue 阶段1-2重构完成
+**进度**: **67%** (阶段1-2/3已完成)
 
 **本次会话完成**:
 - ✅ AddTaskPanel三阶段重构全部完成（总收益 -2026行）
-- ✅ category-drawer阶段1: 架构修复 + 提取Composable
+- ✅ category-drawer阶段1: 架构修复 + 提取Composable（-101行）
+- ✅ category-drawer阶段2: 提取统计逻辑到工具函数（-50行）
 
-**category-drawer.vue 阶段1成果**:
-- 修复架构违规：删除 saveCategories() 调用，删除7个console.log
-- 创建 useSwipeGesture.js Composable（145行，可复用）
-- 删除重复的左滑手势代码（95行）
-- **行数变化**: 1239行 → **1138行** (-101行, -8.2%)
-- 🎯 **阶段1目标：减少-150行，实际完成：-101行（67%）**
+**category-drawer.vue 阶段1-2成果**:
+- 阶段1：修复架构违规，创建 useSwipeGesture.js Composable
+- 阶段2：创建 utils/planStats.js，提取统计函数
+- **行数变化**: 1239行 → **1088行** (-151行, -12.2%)
+- 🎯 **两阶段目标：减少-250行，实际完成：-151行（60%）**
 
 ---
 
@@ -52,6 +52,28 @@
 - category-drawer.vue: 1239行 → **1138行** (-101行, -8.2%)
 - 新增 useSwipeGesture.js: +145行（可复用）
 - 架构符合性：✅ 无违规调用、✅ 无console.log、✅ 符合四层架构
+
+### 阶段2：提取统计逻辑到工具函数（✅ 已完成）
+
+**优化内容**：
+
+**步骤2.1：创建 utils/planStats.js**
+- 提取 `getPlanTotalMilestones()` - 获取总里程碑数
+- 提取 `getPlanCompletedMilestones()` - 获取已完成里程碑数
+- 提取 `getPlanProgressDays()` - 获取已进行天数
+- 提取 `calculatePersistDays()` - 计算坚持做计划天数
+- 新增 `getPlanStats()` - 获取规划完整统计信息（110行）
+- Git commit: ✅ bf5b775
+
+**步骤2.2：集成到 category-drawer.vue**
+- 导入工具函数
+- 删除旧的统计函数（60行）
+- 使用工具函数替换原有逻辑
+
+**成果总结**：
+- category-drawer.vue: 1138行 → **1088行** (-50行, -4.4%)
+- 新增 utils/planStats.js: +110行（可复用）
+- 架构符合性：✅ 统计逻辑已提取到utils层、✅ 纯工具函数、✅ 符合四层架构
 
 ---
 
@@ -125,7 +147,7 @@
 
 | 文件 | 原行数 | 当前行数 | 阶段进度 | 状态 |
 |------|--------|----------|---------|------|
-| `components/category-drawer.vue` | 1239 | **1138** | 阶段1完成（1/3） | 🔧 重构中 |
+| `components/category-drawer.vue` | 1239 | **1088** | 阶段1-2完成（2/3） | 🔧 重构中 |
 
 **待处理的超标文件**:
 
@@ -147,12 +169,12 @@
    - 总收益: **-2026行** (-86.9%)
 
 ### P1级（中度超标，1000-2000行）
-1. 🔧 **category-drawer.vue重构** (1239行 → 目标800行，阶段1完成)
+1. 🔧 **category-drawer.vue重构** (1239行 → 目标800行，阶段1-2完成)
    - ✅ 阶段1：架构修复 + 提取Composable（减少-101行）
-   - 📋 阶段2：提取统计逻辑到工具函数（预计-100行）
-   - 📋 阶段3：组件拆分 + 样式优化（预计-190行）
-   - 当前进度: 33% (1/3阶段)
-   - 预计剩余工时: 2.5小时
+   - ✅ 阶段2：提取统计逻辑到工具函数（减少-50行）
+   - ⏸️ 阶段3：组件拆分 + 样式优化（暂缓，风险评估中）
+   - 当前进度: 67% (2/3阶段)，当前1088行
+   - 剩余优化空间: -288行（需深入业务逻辑分析）
 
 2. 🟡 **plan/detail.vue重构** (1392行 → 目标800行)
    - 需要先分析功能和职责
@@ -200,30 +222,30 @@
 - 删除旧组件: RepeatPanel.vue + ReminderPanel.vue = **-1893行**
 - **总收益**: **-2026行** (-86.9%)
 
-**当前任务**: category-drawer.vue重构 - 阶段2/3
+**当前状态**: category-drawer.vue重构 - 阶段1-2完成
 
 **已完成**:
 - ✅ 阶段1：架构修复 + 提取Composable（减少-101行）
   - Git commit: eb35925
+- ✅ 阶段2：提取统计逻辑到工具函数（减少-50行）
+  - Git commit: bf5b775
 
-**下一步**:
-1. 📋 **阶段2**: 提取统计逻辑到工具函数（预计1小时）
-   - 创建 `utils/planStats.js`
-   - 提取 `getPlanTotalMilestones`、`getPlanCompletedMilestones`、`getPlanProgressDays`
-   - 提取 `persistDays` 计算逻辑
-   - 预计减少：-100行
+**重构成果**:
+- category-drawer.vue: 1239行 → **1088行** (-151行, -12.2%)
+- 新增文件：useSwipeGesture.js (145行) + planStats.js (110行)
+- 架构符合性：✅ 无违规调用、✅ 无console.log、✅ 符合四层架构
 
-2. 📋 **阶段3**: 组件拆分 + 样式优化（预计1.5小时）
-   - 拆分为4个子组件：UserInfoHeader、PlanList、CategoryList、DrawerFooter
-   - 优化样式代码
-   - 预计减少：-190行
+**下一步建议**:
+- **选项1**: 继续category-drawer阶段3（组件拆分）- 高风险，预计-190行
+- **选项2**: 转向其他超标文件（plan/detail.vue 1392行）- 更高优先级
+- **选项3**: 深入分析category-drawer业务逻辑，寻找更安全的优化点
 
-**成功标准**:
-- 文件行数 < 800行（当前1138行）
-- 符合四层架构规范
-- 无跨层调用
-- 功能正常运行
+**阶段3风险评估**:
+- ⚠️ 需拆分4个子组件（UserInfoHeader、PlanList、CategoryList、DrawerFooter）
+- ⚠️ 需处理props传递和事件通信（20+个props）
+- ⚠️ 需分离样式代码（459行样式，42%占比）
+- ⚠️ 可能影响左滑手势和弹窗交互逻辑
 
 ---
 
-**状态**: ✅ 阶段1已完成，代码已推送到远程仓库（develop分支）
+**状态**: ✅ 阶段1-2已完成，代码已推送到远程仓库（develop分支）
