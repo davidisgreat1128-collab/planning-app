@@ -517,3 +517,35 @@ export function getRelativeDateLabel(dateStr, baseStr = null) {
   if (diffDays < 0) return `${Math.abs(diffDays)}天前`
   return '今天'
 }
+
+/**
+ * 格式化日期时间为 YYYY.MM.DD  HH:MM 格式（用于显示创建时间等）
+ * @param {Date|string|number} datetime - 日期时间
+ * @returns {string} 格式化字符串
+ * @example
+ * formatDateTimeDot(new Date('2026-03-10 14:30:00')) // => "2026.03.10  14:30"
+ */
+export function formatDateTimeDot(datetime) {
+  if (!datetime) return '暂无'
+  const d = new Date(datetime)
+  if (isNaN(d.getTime())) return String(datetime)
+  const Y = d.getFullYear()
+  const M = String(d.getMonth() + 1).padStart(2, '0')
+  const D = String(d.getDate()).padStart(2, '0')
+  const hh = String(d.getHours()).padStart(2, '0')
+  const mm = String(d.getMinutes()).padStart(2, '0')
+  return `${Y}.${M}.${D}  ${hh}:${mm}`
+}
+
+/**
+ * 格式化日期为"X月X日"格式
+ * @param {Date|string} date - 日期
+ * @returns {string} 格式化字符串
+ * @example
+ * formatMonthDay('2026-03-10') // => "3月10日"
+ */
+export function formatMonthDay(date) {
+  const d = typeof date === 'string' ? new Date(date) : date
+  if (isNaN(d.getTime())) return ''
+  return `${d.getMonth() + 1}月${d.getDate()}日`
+}

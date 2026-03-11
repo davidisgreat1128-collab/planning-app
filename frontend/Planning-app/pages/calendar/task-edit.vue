@@ -353,7 +353,7 @@ import EndDateCalendar from '@/components/task/EndDateCalendar.vue';
 // 新增：引入 useTaskForm 业务逻辑层
 // ============================================================
 import { useTaskForm } from '@/composables/useTaskForm.js';
-import { formatDate, getWeekdayName, calcDays, timeDiffMinutes, formatDuration } from '@/utils/date.js';
+import { formatDate, getWeekdayName, calcDays, timeDiffMinutes, formatDuration, formatDateWithWeekday, formatDateTimeDot, formatMonthDay, getToday, getTomorrow, getDateAfterDays } from '@/utils/date.js';
 
 // ============================================================
 // Store
@@ -409,45 +409,22 @@ const createdAt = ref('');
 const completedAt = ref('');
 
 /** 创建时间显示文本 */
-const createdAtText = computed(() => {
-  if (!createdAt.value) return '暂无';
-  const d = new Date(createdAt.value);
-  if (isNaN(d.getTime())) return createdAt.value;
-  const Y = d.getFullYear();
-  const M = String(d.getMonth() + 1).padStart(2, '0');
-  const D = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${Y}.${M}.${D}  ${hh}:${mm}`;
-});
+const createdAtText = computed(() => formatDateTimeDot(createdAt.value));
 
 /** 完成时间显示文本（43.jpg：已完成时有具体时间） */
-const completedAtText = computed(() => {
-  if (!completedAt.value) return '暂无';
-  const d = new Date(completedAt.value);
-  if (isNaN(d.getTime())) return completedAt.value;
-  const Y = d.getFullYear();
-  const M = String(d.getMonth() + 1).padStart(2, '0');
-  const D = String(d.getDate()).padStart(2, '0');
-  const hh = String(d.getHours()).padStart(2, '0');
-  const mm = String(d.getMinutes()).padStart(2, '0');
-  return `${Y}.${M}.${D}  ${hh}:${mm}`;
-});
+const completedAtText = computed(() => formatDateTimeDot(completedAt.value));
 
 /** 完成期限显示文本 */
 const deadlineText = computed(() => {
+  const today = getToday();
+  const tomorrow = getTomorrow();
   if (form.value.endDate) {
-    const d = new Date(form.value.endDate);
-    const today = formatDate(new Date());
-    const tomorrow = formatDate(new Date(Date.now() + 86400000));
     if (form.value.endDate === today) return '当天';
     if (form.value.endDate === tomorrow) return '明天';
-    return `${d.getMonth() + 1}月${d.getDate()}日`;
+    return formatMonthDay(form.value.endDate);
   }
-  const d = new Date(form.value.taskDate || new Date());
-  const today = formatDate(new Date());
   if ((form.value.taskDate || today) === today) return '当天';
-  return `${d.getMonth() + 1}月${d.getDate()}日`;
+  return formatMonthDay(form.value.taskDate || new Date());
 });
 
 // ✅ repeatModeLabel 已从 repeatRuleManager 解构，删除重复定义
@@ -590,15 +567,15 @@ const selectedPlanName = ref('');
 
 /** 左卡片：开始日期显示 */
 const startDateDisplay = computed(() => {
-  const dateStr = form.value.taskDate || formatDate(new Date());
+  const dateStr = form.value.taskDate || getToday();
   return formatDateWithWeekday(dateStr);
 });
 
 /** 左卡片：副标题（今天/明天/后天） */
 const startDateSub = computed(() => {
-  const today = formatDate(new Date());
-  const tomorrow = formatDate(new Date(Date.now() + 86400000));
-  const dayAfter = formatDate(new Date(Date.now() + 86400000 * 2));
+  const today = getToday();
+  const tomorrow = getTomorrow();
+  const dayAfter = getDateAfterDays(2, today);
   const d = form.value.taskDate || today;
   if (d === today) return '今天';
   if (d === tomorrow) return '明天';
@@ -625,9 +602,7 @@ const endValueDisplay = computed(() => {
   if (form.value.hasTimeRange) {
     return `${form.value.startTime}-${form.value.endTime}`;
   } else {
-    // 结束日期：显示 X月X日，周X
-    const d = new Date(form.value.endDate);
-    return `${d.getMonth() + 1}月${d.getDate()}日`;
+    return formatMonthDay(form.value.endDate);
   }
 });
 
@@ -905,15 +880,11 @@ const reminderDisplayText = computed(() => {
   if (!form.value.reminderEnabled) return '';
   const hh = String(form.value.reminderHour).padStart(2, '0');
   const mm = String(form.value.reminderMin).padStart(2, '0');
-  const taskDateStr = form.value.taskDate || formatDate(new Date());
-  const taskDate = new Date(taskDateStr);
+  const taskDateStr = form.value.taskDate || getToday();
   let offsetDays = form.value.reminderAdvanceDays;
   if (form.value.reminderAdvanceMode === 'week') offsetDays *= 7;
-  const reminderDate = new Date(taskDate);
-  reminderDate.setDate(reminderDate.getDate() - offsetDays);
-  const month = reminderDate.getMonth() + 1;
-  const day   = reminderDate.getDate();
-  return `${month}月${day}日 ${hh}:${mm}`;
+  const reminderDateStr = getDateAfterDays(-offsetDays, taskDateStr);
+  return `${formatMonthDay(reminderDateStr)} ${hh}:${mm}`;
 });
 
 function openReminderPicker() {
