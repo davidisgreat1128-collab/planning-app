@@ -472,6 +472,7 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
+import { useCategoryStore } from '@/store/category.js';
 import RepeatRuleSheet from '@/components/task/RepeatRuleSheet.vue';
 import ReminderPicker from '@/components/task/ReminderPicker.vue';
 import EndDateCalendar from '@/components/task/EndDateCalendar.vue';
@@ -513,6 +514,7 @@ const emit = defineEmits(['close', 'submitted']);
 // Store
 // ============================================================
 const taskStore = useTaskStore();
+const categoryStore = useCategoryStore();
 
 // ============================================================
 // 阶段3：初始化 useTaskForm（创建模式）
@@ -579,7 +581,6 @@ const {
   selectedCategoryId,
   loadCategories,
   loadSelectedCategory,
-  createCategory,
   selectCategory,
   getCategoryById,
   getCurrentCategoryIcon: getCategoryIconHelper
@@ -615,12 +616,34 @@ const showCategoryDialog = ref(false);
 
 /** 当前图标显示（使用 composable 的 helper 方法） */
 const currentCategoryIcon = computed(() => {
-  return getCategoryIconHelper(props.categoryId);
+  console.group('%c🎨 currentCategoryIcon 计算属性触发', 'color: #EC4899; font-size: 14px; font-weight: bold;')
+  console.log('%c[currentCategoryIcon] props.categoryId', 'color: #3B82F6; font-weight: bold;', props.categoryId)
+  console.log('%c[currentCategoryIcon] selectedCategoryId.value', 'color: #3B82F6; font-weight: bold;', selectedCategoryId.value)
+
+  const icon = getCategoryIconHelper(props.categoryId)
+
+  console.log('%c[currentCategoryIcon] 最终返回的图标', 'color: #10B981; font-weight: bold;', icon)
+  console.groupEnd()
+
+  return icon
 });
 
 /** 展开/折叠分类选择器 */
 function toggleCategoryPicker() {
   showCategoryPicker.value = !showCategoryPicker.value;
+
+  if (showCategoryPicker.value) {
+    console.group('%c📋 分类选择器打开', 'color: #6366F1; font-size: 14px; font-weight: bold;')
+    console.log('%c[toggleCategoryPicker] 当前 selectedCategoryId.value', 'color: #3B82F6; font-weight: bold;', selectedCategoryId.value)
+    console.log('%c[toggleCategoryPicker] 当前 userCategories', 'color: #3B82F6; font-weight: bold;', userCategories.value.map(c => ({
+      id: c.id,
+      name: c.name,
+      iconEmoji: c.iconEmoji,
+      type: c.type,
+      isSelected: selectedCategoryId.value === c.id
+    })))
+    console.groupEnd()
+  }
 }
 
 /** 关闭分类选择器 */
@@ -630,7 +653,16 @@ function closeCategoryPicker() {
 
 // 包装函数处理UI交互逻辑
 function handleCategorySelect(categoryId) {
+  console.group('%c👆 用户点击选择分类', 'color: #F59E0B; font-size: 14px; font-weight: bold;')
+  console.log('%c[handleCategorySelect] 用户选择的 categoryId', 'color: #3B82F6; font-weight: bold;', categoryId)
+  console.log('%c[handleCategorySelect] 选择前 selectedCategoryId.value', 'color: #3B82F6; font-weight: bold;', selectedCategoryId.value)
+
   selectCategory(categoryId);  // 调用 composable 方法
+
+  console.log('%c[handleCategorySelect] 选择后 selectedCategoryId.value', 'color: #10B981; font-weight: bold;', selectedCategoryId.value)
+  console.log('%c[handleCategorySelect] 关闭分类选择器', 'color: #3B82F6; font-weight: bold;')
+  console.groupEnd()
+
   showCategoryPicker.value = false;
 }
 
@@ -640,19 +672,35 @@ function createNewCategory() {
 }
 
 /** 保存新建的分类 */
-function onCategorySave(data) {
+async function onCategorySave(data) {
+  console.group('%c💾 保存新分类', 'color: #10B981; font-size: 14px; font-weight: bold;')
+  console.log('%c[onCategorySave] 分类数据', 'color: #3B82F6; font-weight: bold;', data)
+
   try {
-    createCategory(data);
-    
+    // ✅ 使用 CategoryStore 创建分类（统一数据源）
+    const newCategory = await categoryStore.createCategory(data);
+    console.log('%c[onCategorySave] 分类创建成功', 'color: #10B981; font-weight: bold;', newCategory)
+
+    // 重新加载分类列表（从 CategoryRepository 获取最新数据）
+    loadCategories();
+
+    // 自动选中新创建的分类
+    selectedCategoryId.value = newCategory.id;
+    console.log('%c[onCategorySave] 自动选中新分类', 'color: #10B981; font-weight: bold;', selectedCategoryId.value)
+
     // UI 交互逻辑
     showCategoryDialog.value = false;
     showCategoryPicker.value = false;
-    
+
     uni.showToast({
       title: '分类创建成功',
       icon: 'success'
     });
+    console.groupEnd()
   } catch (error) {
+    console.error('[onCategorySave] 创建失败', error)
+    console.groupEnd()
+
     uni.showToast({
       title: error.message || '创建失败',
       icon: 'none'
@@ -1295,11 +1343,18 @@ onMounted(() => {
 /** 监听面板显示状态 */
 watch(() => props.visible, (newVal) => {
   if (newVal) {
+    console.group('%c👁️ AddTaskPanel 面板打开事件', 'color: #8B5CF6; font-size: 16px; font-weight: bold;')
+    console.log('%c[watch visible] props.categoryId', 'color: #3B82F6; font-weight: bold;', props.categoryId)
+
     // 每次打开面板时重新加载数据
     loadCategories();
 
     // 加载全局选中的容器（分类，包含规划）
     loadSelectedCategory();
+
+    console.log('%c[watch visible] 数据加载完成后 selectedCategoryId.value', 'color: #10B981; font-weight: bold;', selectedCategoryId.value)
+    console.log('%c[watch visible] 数据加载完成后 userCategories 数量', 'color: #10B981; font-weight: bold;', userCategories.value.length)
+    console.groupEnd()
   }
 });
 
