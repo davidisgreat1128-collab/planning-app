@@ -126,10 +126,12 @@ const userNickname = computed(() => userStore.userInfo?.nickname || userStore.us
 const userAvatar = computed(() => userStore.userInfo?.avatar || '🐣');
 
 /**
- * 获取所有规划（从 userCategories 中过滤 type='plan'）
+ * 获取所有规划
+ * ⚠️ 临时方案：从 planStore 读取（planStore 和 categoryStore 未统一）
+ * TODO: 长期方案是让 planStore 也使用 CategoryRepository，type='plan'
  */
 const activePlans = computed(() => {
-  return userCategories.value.filter(cat => cat.type === 'plan');
+  return planStore.activePlans || [];
 });
 
 /**
