@@ -187,6 +187,7 @@ import { useUserStore } from '@/store/user.js';
 import { useCategoryStore } from '@/store/category.js';
 import { usePlanStore } from '@/store/plan.js';
 import { useSwipeGesture } from '@/composables/useSwipeGesture.js';
+import { getPlanTotalMilestones, getPlanCompletedMilestones, getPlanProgressDays, calculatePersistDays } from '@/utils/planStats.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
 import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
@@ -263,66 +264,15 @@ const normalCategories = computed(() => {
 });
 
 /**
- * 计算坚持天数
+ * 计算坚持天数（阶段2：已提取到 utils/planStats.js）
  */
-const persistDays = computed(() => {
-  const firstInstallDate = uni.getStorageSync('first_install_date');
-  if (!firstInstallDate) {
-    return 1;
-  }
-
-  const startDate = new Date(firstInstallDate);
-  const today = new Date();
-
-  startDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  const diffTime = today - startDate;
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  return diffDays + 1;
-});
+const persistDays = computed(() => calculatePersistDays());
 
 // ============================================================
-// 规划统计函数
+// ✅ 规划统计函数已提取到 utils/planStats.js（阶段2）
 // ============================================================
-
-/**
- * 获取规划的总里程碑数
- */
-function getPlanTotalMilestones(plan) {
-  return plan.milestones?.length || 0;
-}
-
-/**
- * 获取规划已完成的里程碑数
- */
-function getPlanCompletedMilestones(plan) {
-  if (!plan.milestones || plan.milestones.length === 0) return 0;
-  return plan.milestones.filter(m => m.isCompleted).length;
-}
-
-/**
- * 获取规划已进行天数
- * 计算方式：当前日期 - 创建日期 + 1
- */
-function getPlanProgressDays(plan) {
-  if (!plan.createTime) return 1;
-
-  const createDate = new Date(plan.createTime);
-  const today = new Date();
-
-  // 清除时间部分，只比较日期
-  createDate.setHours(0, 0, 0, 0);
-  today.setHours(0, 0, 0, 0);
-
-  // 计算天数差
-  const diffTime = today - createDate;
-  const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
-
-  // 包含创建当天，所以 +1
-  return diffDays + 1;
-}
+// getPlanTotalMilestones, getPlanCompletedMilestones, getPlanProgressDays
+// 现在从 utils/planStats.js 导入使用
 
 // ============================================================
 // 监听弹窗显示状态
