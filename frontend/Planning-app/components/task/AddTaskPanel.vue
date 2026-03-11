@@ -112,21 +112,32 @@
       </view>
     </view>
 
-    <!-- ④-B 重复面板（点击工具栏重复按钮后展开） -->
-    <repeat-panel
-      :visible="showRepeatPanel"
-      @update:repeatData="onRepeatDataUpdate"
+    <!-- ④-B 重复规则选择器（点击工具栏重复按钮后展开） -->
+    <RepeatRuleSheet
+      v-model:visible="showRepeatPanel"
+      :repeatRuleManager="repeatRuleManager"
+      :form="form"
       @confirm="onRepeatConfirm"
       @cancel="onRepeatCancel"
+      @open-end-date-picker="openRepeatEndPicker"
     />
 
-    <!-- ④-C 提醒面板（点击工具栏提醒按钮后展开） -->
-    <reminder-panel
-      :visible="showReminderPanel"
+    <!-- ④-C 提醒时间选择器（点击工具栏提醒按钮后展开） -->
+    <ReminderPicker
+      v-model:visible="showReminderPanel"
       :taskDate="resolvedDate || getTodayStr()"
-      @update:reminderData="onReminderDataUpdate"
+      :reminderData="reminderData"
       @confirm="onReminderConfirm"
       @cancel="onReminderCancel"
+    />
+
+    <!-- ④-D 重复规则：结束重复日期选择器弹窗 -->
+    <EndDateCalendar
+      v-model:visible="showRepeatEndPicker"
+      :startDate="resolvedDate || getTodayStr()"
+      :initialEndDate="repeatEndDate"
+      :showLunar="showRepeatLunar"
+      @confirm="onRepeatEndDateConfirm"
     />
 
     <!-- ④ 底部工具栏 -->
@@ -461,8 +472,9 @@
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
-import RepeatPanel from './RepeatPanel.vue';
-import ReminderPanel from './ReminderPanel.vue';
+import RepeatRuleSheet from '@/components/task/RepeatRuleSheet.vue';
+import ReminderPicker from '@/components/task/ReminderPicker.vue';
+import EndDateCalendar from '@/components/task/EndDateCalendar.vue';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DateTabBar from './DateTabBar.vue';
 import SubtaskList from './SubtaskList.vue';
@@ -1072,7 +1084,16 @@ function onEndMinScroll(e) {
 /** 重复面板是否展开 */
 const showRepeatPanel = ref(false);
 
-/** 重复数据 */
+/** 重复规则结束日期选择器是否展开 */
+const showRepeatEndPicker = ref(false);
+
+/** 重复结束日期临时变量 */
+const repeatEndDate = ref('');
+
+/** 重复日历是否显示农历 */
+const showRepeatLunar = ref(true);
+
+/** 重复数据（保留用于兼容旧逻辑） */
 const repeatData = ref({
   mode:     'none',
   interval: 1,
@@ -1086,20 +1107,33 @@ function onRepeatTap() {
   showRepeatPanel.value = !showRepeatPanel.value;
 }
 
-/** RepeatPanel emit update:repeatData */
-function onRepeatDataUpdate(data) {
-  repeatData.value = data;
+/**
+ * 打开重复规则结束日期选择器
+ */
+function openRepeatEndPicker() {
+  showRepeatEndPicker.value = true;
 }
 
-/** RepeatPanel 确定 */
+/**
+ * 重复结束日期选择确认回调
+ * @param {object} payload - { date: string }
+ */
+function onRepeatEndDateConfirm(payload) {
+  repeatEndDate.value = payload.date;
+  repeatRuleManager.setRepeatEndDate(payload.date);
+  showRepeatEndPicker.value = false;
+}
+
+/** RepeatRuleSheet 确定 */
 function onRepeatConfirm() {
+  // 新组件自动管理 repeatRuleManager 状态，无需额外处理
   showRepeatPanel.value = false;
 }
 
-/** RepeatPanel 取消 */
+/** RepeatRuleSheet 取消 */
 function onRepeatCancel() {
-  // 取消时恢复不重复
-  repeatData.value = { mode: 'none', interval: 1, weekDays: [], endDate: '' };
+  // 取消时重置重复规则
+  repeatRuleManager.resetRepeatRule();
   showRepeatPanel.value = false;
 }
 
@@ -1110,11 +1144,13 @@ function onRepeatCancel() {
 /** 提醒面板是否展开 */
 const showReminderPanel = ref(false);
 
-/** 提醒数据 */
+/** 提醒数据（适配 ReminderPicker 组件格式） */
 const reminderData = ref({
-  enabled:    false,
-  time:       null,
-  persistent: true
+  enabled: false,
+  advanceMode: 'day',   // 'day' | 'week'
+  advanceDays: 0,       // 提前天数/周数
+  hour: 0,              // 小时
+  min: 0                // 分钟
 });
 
 /** 点击工具栏提醒按钮：展开/折叠面板 */
@@ -1123,19 +1159,25 @@ function onReminderTap() {
   showReminderPanel.value = !showReminderPanel.value;
 }
 
-/** ReminderPanel emit update:reminderData */
-function onReminderDataUpdate(data) {
+/**
+ * ReminderPicker 确定回调
+ * @param {object} data - { enabled, advanceMode, advanceDays, hour, min }
+ */
+function onReminderConfirm(data) {
   reminderData.value = data;
-}
-
-/** ReminderPanel 确定 */
-function onReminderConfirm() {
   showReminderPanel.value = false;
 }
 
-/** ReminderPanel 取消 */
+/** ReminderPicker 取消 */
 function onReminderCancel() {
-  reminderData.value = { enabled: false, time: null, persistent: true };
+  // 取消时重置提醒数据
+  reminderData.value = {
+    enabled: false,
+    advanceMode: 'day',
+    advanceDays: 0,
+    hour: 0,
+    min: 0
+  };
   showReminderPanel.value = false;
 }
 
@@ -1189,17 +1231,19 @@ async function handlePanelSubmit() {
       form.value.planId = props.categoryId;
     }
 
-    // 同步提醒字段
-    if (reminderData.value.enabled && reminderData.value.time) {
-      form.value.reminderTime = reminderData.value.time;
-      form.value.reminderPersistent = reminderData.value.persistent;
-    }
-    // 同步重复规则字段（✅ 使用utils/rruleBuilder.js）
-    if (repeatData.value && repeatData.value.mode !== 'none') {
-      form.value.rrule = buildRrule(repeatData.value);
+    // 同步提醒字段（适配新的 ReminderPicker 数据格式）
+    if (reminderData.value.enabled) {
+      form.value.reminderEnabled = true;
+      form.value.reminderAdvanceMode = reminderData.value.advanceMode;
+      form.value.reminderAdvanceDays = reminderData.value.advanceDays;
+      form.value.reminderHour = reminderData.value.hour;
+      form.value.reminderMin = reminderData.value.min;
     } else {
-      form.value.rrule = '';
+      form.value.reminderEnabled = false;
     }
+
+    // 同步重复规则字段（✅ 使用 repeatRuleManager）
+    // repeatRuleManager 已经在 useTaskForm 中管理，表单提交时会自动处理 rrule
 
 
     // ============================================================
@@ -1249,10 +1293,18 @@ function resetPanel() {
   endDate.value = null;
   // 重置重复
   showRepeatPanel.value = false;
+  showRepeatEndPicker.value = false;
+  repeatEndDate.value = '';
   repeatData.value = { mode: 'none', interval: 1, weekDays: [], endDate: '' };
   // 重置提醒
   showReminderPanel.value = false;
-  reminderData.value = { enabled: false, time: null, persistent: true };
+  reminderData.value = {
+    enabled: false,
+    advanceMode: 'day',
+    advanceDays: 0,
+    hour: 0,
+    min: 0
+  };
 }
 
 /** 关闭面板 */
