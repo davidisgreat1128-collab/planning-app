@@ -1050,41 +1050,26 @@ function parseRruleToUI(rrule) {
  * 保存任务（调用 useTaskForm.update()）
  */
 async function save() {
-  console.log('[TaskEdit] ========== 开始保存 ==========');
-  console.log('[TaskEdit] isEdit:', isEdit.value);
-  console.log('[TaskEdit] taskId:', taskId.value);
-  console.log('[TaskEdit] originalTaskId:', originalTaskId.value);
-
   try {
     uni.showLoading({ title: '保存中...' });
 
-    // ============================================================
-    // localStorage 任务特殊处理（访客模式、离线模式）
-    // ============================================================
+    // 检查是否为localStorage任务
     let isLocalStorageTask = false;
-    console.log('[TaskEdit] 检查是否为 localStorage 任务...');
     if (isEdit.value && taskId.value) {
       try {
         const savedTasks = uni.getStorageSync('tasks');
         if (savedTasks) {
           const tasks = JSON.parse(savedTasks);
           const idToFind = originalTaskId.value || taskId.value;
-          const taskIndex = tasks.findIndex(t => String(t.id) === String(idToFind));
-
-          if (taskIndex !== -1) {
-            isLocalStorageTask = true;
-            console.log('[TaskEdit] ✅ 检测到 localStorage 任务，ID:', idToFind);
-          }
+          isLocalStorageTask = tasks.findIndex(t => String(t.id) === String(idToFind)) !== -1;
         }
       } catch (e) {
-        console.error('[TaskEdit] 检查 localStorage 任务失败:', e);
+        console.error('[TaskEdit] 检查localStorage任务失败:', e);
       }
     }
 
     if (isLocalStorageTask) {
-      // localStorage 任务：直接更新 localStorage，不调用后端 API
-      console.log('[TaskEdit] 使用 localStorage 保存模式');
-
+      // localStorage任务：直接更新localStorage
       const savedTasks = uni.getStorageSync('tasks');
       let tasks = savedTasks ? JSON.parse(savedTasks) : [];
       const idToFind = originalTaskId.value || taskId.value;
@@ -1110,9 +1095,8 @@ async function save() {
         };
 
         uni.setStorageSync('tasks', JSON.stringify(tasks));
-        console.log('[TaskEdit] localStorage 保存成功');
 
-        // 同步更新 taskStore
+        // 同步更新taskStore
         const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === String(idToFind));
         if (storeTaskIndex !== -1) {
           taskStore.tasks[storeTaskIndex] = tasks[taskIndex];
@@ -1127,30 +1111,16 @@ async function save() {
       }
     }
 
-    // ============================================================
-    // 后端任务：调用 useTaskForm.update()
-    // ============================================================
-    console.log('[TaskEdit] 调用 useTaskForm.update()...');
-
+    // 后端任务：调用useTaskForm.update()
     await update();
-
-    console.log('[TaskEdit] ✅ useTaskForm.update() 调用成功');
-
-    // 强制重新加载任务数据
-    console.log('[TaskEdit] 重新加载任务数据...');
     await taskStore.fetchTasksByDate(form.value.taskDate || formatDate(new Date()));
 
     uni.showToast({ title: '修改成功', icon: 'success' });
-    console.log('[TaskEdit] ========== 保存成功，准备返回 ==========');
     setTimeout(() => { uni.navigateBack(); }, 800);
   } catch (err) {
-    console.error('[TaskEdit] ========== 保存失败 ==========');
-    console.error('[TaskEdit] 错误类型:', err.constructor.name);
-    console.error('[TaskEdit] 错误信息:', err.message);
-    console.error('[TaskEdit] 错误堆栈:', err.stack);
+    console.error('[TaskEdit] 保存失败:', err.message);
     uni.showToast({ title: err.message || '保存失败', icon: 'none' });
   } finally {
-    console.log('[TaskEdit] 清理：隐藏加载提示');
     uni.hideLoading();
   }
 }
@@ -1163,30 +1133,7 @@ async function save() {
  * 处理保存按钮点击
  */
 async function handleSave() {
-  // 如果没有变化，不执行保存
-  if (!hasFormChanged.value) {
-    return;
-  }
-
-  // TODO: 暂时注释掉重复任务弹窗逻辑，先测试基本保存功能
-  // // 检查是否是重复任务
-  // const wasRecurring = !!(originalForm.value && originalForm.value.rrule);
-  // const isRecurring = !!form.value.rrule;
-
-  // // 如果当前任务是重复任务（无论之前是不是），都需要用户选择更新范围
-  // if (isRecurring) {
-  //   // 重复任务的任何修改都显示对话框
-  //   saveRecurringOption.value = 1;
-  //   showSaveRecurringDialog.value = true;
-  // } else if (wasRecurring && !isRecurring) {
-  //   // 从重复变为不重复 - 直接保存
-  //   await save();
-  // } else {
-  //   // 普通任务修改 - 直接保存
-  //   await save();
-  // }
-
-  // 暂时所有情况都直接保存
+  if (!hasFormChanged.value) return;
   await save();
 }
 
@@ -1201,14 +1148,7 @@ function closeSaveRecurringDialog() {
  * 确认保存重复任务
  */
 async function confirmSaveRecurring() {
-  const option = saveRecurringOption.value;
   closeSaveRecurringDialog();
-
-  // TODO: 根据选项保存
-  // option === 1: 完整更改此条重复计划
-  // option === 2: 更改当天及未来计划
-  // 目前先统一调用 save，后续需要实现不同的API
-
   await save();
 }
 
@@ -1255,76 +1195,39 @@ async function confirmDelete(option) {
   }
 }
 
-/**
- * 选项1：仅删除当天任务
- * - 对于重复任务：只删除当前日期的实例（TaskOccurrence）
- * - 对于普通任务：直接删除任务
- */
+/** 选项1：仅删除当天任务 */
 async function deleteCurrentDayTask() {
-  // TODO: 实现仅删除当天任务的逻辑
-  // 需要区分：
-  // 1. 如果是重复任务的实例（TaskOccurrence），只删除该实例
-  // 2. 如果是普通任务，直接删除整个任务
-  console.log('[TaskEdit] 仅删除当天任务');
-
-  // 暂时调用原有的删除逻辑
   await deleteTaskImpl();
 }
 
-/**
- * 选项2：完整清空此条重复任务
- * - 删除重复任务的主任务（Task），会级联删除所有实例（TaskOccurrence）
- */
+/** 选项2：完整清空此条重复任务 */
 async function deleteAllRecurringTasks() {
-  // TODO: 实现完整清空重复任务的逻辑
-  // 需要删除父任务，后端会级联删除所有子实例
-  console.log('[TaskEdit] 完整清空此条重复任务');
-
   await deleteTaskImpl();
 }
 
-/**
- * 选项3：删除当天及未来任务
- * - 删除当前日期及之后的所有任务实例
- * - 保留过去的任务记录
- */
+/** 选项3：删除当天及未来任务 */
 async function deleteFutureTasks() {
-  // TODO: 实现删除当天及未来任务的逻辑
-  // 需要：
-  // 1. 更新父任务的 rruleUntil 为昨天
-  // 2. 删除当天及未来的所有 TaskOccurrence 实例
-  console.log('[TaskEdit] 删除当天及未来任务');
-
   await deleteTaskImpl();
 }
 
-/**
- * 删除任务的实际执行逻辑
- * 由 deleteCurrentDayTask、deleteAllRecurringTasks、deleteFutureTasks 调用
- */
+/** 删除任务的实际执行逻辑 */
 async function deleteTaskImpl() {
   const isLocalStorageTask = taskId.value && String(taskId.value).startsWith('task_');
 
   if (isLocalStorageTask) {
-    // localStorage 任务：直接从 localStorage 删除
-    console.log('[TaskEdit] 删除 localStorage 任务:', taskId.value);
-
+    // localStorage任务：直接从localStorage删除
     const savedTasks = uni.getStorageSync('tasks');
     let tasks = savedTasks ? JSON.parse(savedTasks) : [];
-
-    // 过滤掉要删除的任务
     tasks = tasks.filter(t => String(t.id) !== String(taskId.value));
-
-    // 保存回 localStorage
     uni.setStorageSync('tasks', JSON.stringify(tasks));
 
-    // 从 taskStore 中移除
+    // 从taskStore中移除
     const storeTaskIndex = taskStore.tasks.findIndex(t => String(t.id) === String(taskId.value));
     if (storeTaskIndex !== -1) {
       taskStore.tasks.splice(storeTaskIndex, 1);
     }
   } else {
-    // 后端任务：调用 API
+    // 后端任务：调用API
     await taskStore.removeTask(taskId.value);
   }
 }
