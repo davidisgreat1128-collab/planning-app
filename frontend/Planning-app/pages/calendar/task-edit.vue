@@ -248,79 +248,20 @@
     />
 
     <!-- 弹窗：提醒时间选择 -->
-    <view v-if="showReminderPicker" class="tep-modal-mask" @tap.self="closeReminderPicker">
-      <view class="tep-modal-sheet">
-        <view class="reminder-tabs">
-          <view
-            class="reminder-tab"
-            :class="{ 'reminder-tab-active': reminderTempMode === 'day' }"
-            @tap="reminderTempMode = 'day'"
-          >
-            <text class="reminder-tab-text">按天提前</text>
-          </view>
-          <view
-            class="reminder-tab"
-            :class="{ 'reminder-tab-active': reminderTempMode === 'week' }"
-            @tap="reminderTempMode = 'week'"
-          >
-            <text class="reminder-tab-text">按周提前</text>
-          </view>
-        </view>
-        <view class="reminder-wheels">
-          <scroll-view class="reminder-wheel" scroll-y :scroll-top="reminderDayScrollTop" scroll-with-animation>
-            <view class="reminder-wheel-padding"></view>
-            <view
-              v-for="item in reminderDayItems"
-              :key="item.value"
-              class="reminder-wheel-item"
-              :class="{ 'reminder-wheel-item-sel': reminderTempDays === item.value }"
-              @tap="reminderTempDays = item.value"
-            >
-              <text class="reminder-wheel-item-text">{{ item.label }}</text>
-            </view>
-            <view class="reminder-wheel-padding"></view>
-          </scroll-view>
-          <scroll-view class="reminder-wheel reminder-wheel-num" scroll-y :scroll-top="reminderHourScrollTop" scroll-with-animation>
-            <view class="reminder-wheel-padding"></view>
-            <view
-              v-for="h in 24"
-              :key="h - 1"
-              class="reminder-wheel-item"
-              :class="{ 'reminder-wheel-item-sel': reminderTempHour === h - 1 }"
-              @tap="reminderTempHour = h - 1"
-            >
-              <text class="reminder-wheel-item-text">{{ String(h - 1).padStart(2, '0') }}</text>
-            </view>
-            <view class="reminder-wheel-padding"></view>
-          </scroll-view>
-          <text class="reminder-wheel-unit">时</text>
-          <scroll-view class="reminder-wheel reminder-wheel-num" scroll-y :scroll-top="reminderMinScrollTop" scroll-with-animation>
-            <view class="reminder-wheel-padding"></view>
-            <view
-              v-for="m in 60"
-              :key="m - 1"
-              class="reminder-wheel-item"
-              :class="{ 'reminder-wheel-item-sel': reminderTempMin === m - 1 }"
-              @tap="reminderTempMin = m - 1"
-            >
-              <text class="reminder-wheel-item-text">{{ String(m - 1).padStart(2, '0') }}</text>
-            </view>
-            <view class="reminder-wheel-padding"></view>
-          </scroll-view>
-          <text class="reminder-wheel-unit">分</text>
-        </view>
-        <view class="reminder-hint-row">
-          <view v-if="reminderIsInvalid" class="reminder-hint-invalid">
-            <text class="reminder-hint-text">鸭~这个提醒时间无效哦</text>
-          </view>
-          <text v-else class="reminder-hint-valid">{{ reminderHintText }}</text>
-        </view>
-        <view class="tep-modal-btns">
-          <text class="tep-modal-cancel" @tap="closeReminderPicker">取消</text>
-          <text class="tep-modal-confirm" @tap="confirmReminderPicker">确定</text>
-        </view>
-      </view>
-    </view>
+    <!-- 提醒选择器组件 -->
+    <ReminderPicker
+      v-model:visible="showReminderPicker"
+      :taskDate="form.taskDate"
+      :reminderData="{
+        enabled: form.reminderEnabled,
+        advanceMode: form.reminderAdvanceMode,
+        advanceDays: form.reminderAdvanceDays,
+        hour: form.reminderHour,
+        min: form.reminderMin
+      }"
+      @confirm="onReminderConfirm"
+      @cancel="closeReminderPicker"
+    />
 
     <!-- ⑪ 删除任务确认弹窗 -->
     <DeleteTaskDialog
@@ -427,6 +368,7 @@ import CustomDatePicker from '@/components/task/CustomDatePicker.vue';
 import QuadrantPicker from '@/components/task/QuadrantPicker.vue';
 import DayPicker from '@/components/task/DayPicker.vue';
 import RepeatRuleSheet from '@/components/task/RepeatRuleSheet.vue';
+import ReminderPicker from '@/components/task/ReminderPicker.vue';
 
 // ============================================================
 // 新增：引入 useTaskForm 业务逻辑层
@@ -1057,65 +999,6 @@ function confirmRepeatSettings() {
 
 const showReminderPicker = ref(false);
 
-/** 弹窗内临时值 */
-const reminderTempMode  = ref('day');  // 'day' | 'week'
-const reminderTempDays  = ref(0);      // 按天：0=当天,1=提前1天…  按周：0=当天,1=提前1周…
-const reminderTempHour  = ref(0);
-const reminderTempMin   = ref(0);
-
-/** 按天/按周的选项列表 */
-const reminderDayItems = computed(() => {
-  if (reminderTempMode.value === 'day') {
-    return [
-      { value: 0, label: '当天' },
-      ...Array.from({ length: 6 }, (_, i) => ({ value: i + 1, label: `提前${i + 1}天` }))
-    ];
-  } else {
-    return [
-      { value: 0, label: '当天' },
-      ...Array.from({ length: 7 }, (_, i) => ({ value: i + 1, label: `提前${i + 1}周` }))
-    ];
-  }
-});
-
-/** scroll-top 辅助（每项高度 120rpx ≈ 60px） */
-const REMINDER_ITEM_H = 60;
-const reminderDayScrollTop  = computed(() => Math.max(0, reminderTempDays.value * REMINDER_ITEM_H));
-const reminderHourScrollTop = computed(() => Math.max(0, reminderTempHour.value * REMINDER_ITEM_H));
-const reminderMinScrollTop  = computed(() => Math.max(0, reminderTempMin.value  * REMINDER_ITEM_H));
-
-/**
- * 计算当前弹窗选中的绝对提醒时间（Date 对象）
- * 基准 = 任务日期（form.taskDate）+ 当天时间；提前N天/周 = 任务日期 - N天/周
- */
-const reminderAbsoluteTime = computed(() => {
-  const taskDateStr = form.value.taskDate || formatDate(new Date());
-  const taskDate = new Date(taskDateStr);
-
-  let offsetDays = reminderTempDays.value;
-  if (reminderTempMode.value === 'week') offsetDays = reminderTempDays.value * 7;
-
-  const reminderDate = new Date(taskDate);
-  reminderDate.setDate(reminderDate.getDate() - offsetDays);
-  reminderDate.setHours(reminderTempHour.value, reminderTempMin.value, 0, 0);
-  return reminderDate;
-});
-
-/** 提醒时间是否无效（≤ 当前时刻） */
-const reminderIsInvalid = computed(() => {
-  return reminderAbsoluteTime.value <= new Date();
-});
-
-/** 底部提示文字（有效时显示） */
-const reminderHintText = computed(() => {
-  const d = reminderAbsoluteTime.value;
-  const month = d.getMonth() + 1;
-  const day   = d.getDate();
-  const hh    = String(d.getHours()).padStart(2, '0');
-  const mm    = String(d.getMinutes()).padStart(2, '0');
-  return `将于${month}月${day}日，${hh}:${mm}提醒你`;
-});
-
 /** 主区域显示文字（已设置后显示） */
 const reminderDisplayText = computed(() => {
   if (!form.value.reminderEnabled) return '';
@@ -1133,18 +1016,6 @@ const reminderDisplayText = computed(() => {
 });
 
 function openReminderPicker() {
-  // 初始化临时值
-  reminderTempMode.value  = form.value.reminderAdvanceMode || 'day';
-  reminderTempDays.value  = form.value.reminderAdvanceDays || 0;
-  // 若尚未设置，默认当前时刻（触发无效提示）
-  if (!form.value.reminderEnabled) {
-    const now = new Date();
-    reminderTempHour.value = now.getHours();
-    reminderTempMin.value  = now.getMinutes();
-  } else {
-    reminderTempHour.value = form.value.reminderHour;
-    reminderTempMin.value  = form.value.reminderMin;
-  }
   showReminderPicker.value = true;
 }
 
@@ -1152,18 +1023,16 @@ function closeReminderPicker() {
   showReminderPicker.value = false;
 }
 
-function confirmReminderPicker() {
-  if (reminderIsInvalid.value) {
-    // 无效时不能确定
-    uni.showToast({ title: '提醒时间无效，请选择未来时间', icon: 'none' });
-    return;
-  }
-  form.value.reminderEnabled     = true;
-  form.value.reminderAdvanceMode = reminderTempMode.value;
-  form.value.reminderAdvanceDays = reminderTempDays.value;
-  form.value.reminderHour        = reminderTempHour.value;
-  form.value.reminderMin         = reminderTempMin.value;
-  showReminderPicker.value = false;
+/**
+ * ReminderPicker 组件确认回调
+ * @param {object} reminderData - { enabled, advanceMode, advanceDays, hour, min }
+ */
+function onReminderConfirm(reminderData) {
+  form.value.reminderEnabled     = reminderData.enabled;
+  form.value.reminderAdvanceMode = reminderData.advanceMode;
+  form.value.reminderAdvanceDays = reminderData.advanceDays;
+  form.value.reminderHour        = reminderData.hour;
+  form.value.reminderMin         = reminderData.min;
 }
 
 function onTapWechatReminder() {
@@ -2253,27 +2122,6 @@ onMounted(() => {
 .cal-cell.in-range { background-color: #E8EEFF; }
 
 
-/* 提醒弹窗 */
-.reminder-tabs { display: flex; flex-direction: row; margin-bottom: 16rpx; }
-.reminder-tab { flex: 1; text-align: center; padding: 16rpx 0; border-bottom: 3rpx solid transparent; }
-.reminder-tab-active { border-bottom-color: #1A1A2E; }
-.reminder-tab-text { font-size: 26rpx; color: #999; }
-.reminder-tab-active .reminder-tab-text { color: #1A1A2E; font-weight: bold; }
-.reminder-wheels {
-  display: flex; flex-direction: row; align-items: center;
-  height: 240rpx; overflow: hidden;
-}
-.reminder-wheel { flex: 1; height: 240rpx; }
-.reminder-wheel-num { flex: 0 0 100rpx; }
-.reminder-wheel-padding { height: 80rpx; }
-.reminder-wheel-item { height: 80rpx; display: flex; align-items: center; justify-content: center; }
-.reminder-wheel-item-text { font-size: 26rpx; color: #999; }
-.reminder-wheel-item-sel .reminder-wheel-item-text { color: #1A1A2E; font-weight: bold; font-size: 30rpx; }
-.reminder-wheel-unit { font-size: 24rpx; color: #999; margin: 0 8rpx; }
-.reminder-hint-row { min-height: 56rpx; display: flex; align-items: center; justify-content: center; margin: 12rpx 0; }
-.reminder-hint-invalid { background-color: #FFF0F0; border-radius: 12rpx; padding: 10rpx 24rpx; }
-.reminder-hint-text { font-size: 24rpx; color: #FF4444; }
-.reminder-hint-valid { font-size: 24rpx; color: #44AA66; }
 
 /* ============================================================
    删除任务确认弹窗样式已移至 DeleteTaskDialog.vue 组件
