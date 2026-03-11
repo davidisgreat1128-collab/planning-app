@@ -1,30 +1,57 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-11（AddTaskPanel.vue三阶段重构全部完成）
+> **最后更新**: 2026-03-11（category-drawer.vue阶段1重构完成）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 4394f2b（refactor(AddTaskPanel): 阶段2&3 - 简化样式和代码精简优化）
+> **最新commit**: eb35925（refactor(category-drawer): Stage 1 - Fix architecture and extract swipe gesture）
 > **Git状态**: ✅ 所有修改已提交并推送
 
 ---
 
 ## 🎯 当前阶段
 
-**阶段名称**: 🎉 AddTaskPanel.vue 三阶段重构完成
-**进度**: **100%** (阶段1-3全部完成)
+**阶段名称**: 🔧 category-drawer.vue 阶段1重构完成
+**进度**: **33%** (阶段1/3已完成)
 
 **本次会话完成**:
-- ✅ AddTaskPanel阶段1: 替换RepeatPanel和ReminderPanel为新组件
-- ✅ AddTaskPanel阶段2: 简化样式（删除重复CSS类）
-- ✅ AddTaskPanel阶段3: 代码精简优化（删除console.log和冗余注释）
+- ✅ AddTaskPanel三阶段重构全部完成（总收益 -2026行）
+- ✅ category-drawer阶段1: 架构修复 + 提取Composable
 
-**重构成果（三阶段总结）**:
-- 阶段1：2328行 → 2380行（临时+52行）+ 删除旧组件(-1893行) = **净减少 -1841行**
-- 阶段2：2380行 → 2241行（删除139行重复DayPicker样式）
-- 阶段3：2241行 → **2195行**（删除5个console.log + 15行冗余注释）
-- **最终成果**: 2328行 → **2195行**，减少 **-133行** (-5.7%)
-- **实际总收益**: -133行（AddTaskPanel本身）+ -1893行（删除旧组件）= **-2026行** (-86.9%)
-- 🎉 **三阶段重构圆满完成！**
+**category-drawer.vue 阶段1成果**:
+- 修复架构违规：删除 saveCategories() 调用，删除7个console.log
+- 创建 useSwipeGesture.js Composable（145行，可复用）
+- 删除重复的左滑手势代码（95行）
+- **行数变化**: 1239行 → **1138行** (-101行, -8.2%)
+- 🎯 **阶段1目标：减少-150行，实际完成：-101行（67%）**
+
+---
+
+## 🔧 category-drawer.vue 重构详情
+
+### 阶段1：架构修复 + 提取Composable（✅ 已完成）
+
+**优化内容**：
+
+**步骤1.1：修复架构违规**
+- 删除第746行违规的 `saveCategories()` 调用
+- 改为符合三层架构的 `categoryStore.deleteCategory()`
+- 删除所有7个 `console.log` 调试语句
+
+**步骤1.2：创建 useSwipeGesture.js Composable**
+- 提取分类左滑逻辑（`onTouchStart/Move/End`）
+- 提取规划左滑逻辑（`onPlanTouchStart/Move/End`）
+- 合并为统一的左滑状态机（145行）
+- Git commit: ✅ eb35925
+
+**步骤1.3：集成到 category-drawer.vue**
+- 导入 useSwipeGesture，创建两个实例
+- 删除旧的左滑手势函数（95行重复代码）
+- 使用 Composable 的 `closeSwipe()` 方法
+
+**成果总结**：
+- category-drawer.vue: 1239行 → **1138行** (-101行, -8.2%)
+- 新增 useSwipeGesture.js: +145行（可复用）
+- 架构符合性：✅ 无违规调用、✅ 无console.log、✅ 符合四层架构
 
 ---
 
@@ -94,12 +121,17 @@
 |------|--------|----------|------|------|
 | `components/task/AddTaskPanel.vue` | 2328 | **2195** | **-133 (-5.7%)** + 删除旧组件 **-1893** = **总计-2026行** | ✅ **已完成** |
 
+**进行中的重构文件**:
+
+| 文件 | 原行数 | 当前行数 | 阶段进度 | 状态 |
+|------|--------|----------|---------|------|
+| `components/category-drawer.vue` | 1239 | **1138** | 阶段1完成（1/3） | 🔧 重构中 |
+
 **待处理的超标文件**:
 
 | 文件 | 当前行数 | 超标% | 优先级 |
 |------|----------|-------|--------|
 | `pages/planning/plan/detail.vue` | 1392 | 74% | P1 |
-| `components/category-drawer.vue` | 1221 | 53% | P1 |
 | `pages/planning/plan/create.vue` | 1122 | 40% | P2 |
 
 ---
@@ -115,11 +147,14 @@
    - 总收益: **-2026行** (-86.9%)
 
 ### P1级（中度超标，1000-2000行）
-1. 🟡 **plan/detail.vue重构** (1392行 → 目标800行)
-   - 需要先分析功能和职责
-   - 预计工时: 待评估
+1. 🔧 **category-drawer.vue重构** (1239行 → 目标800行，阶段1完成)
+   - ✅ 阶段1：架构修复 + 提取Composable（减少-101行）
+   - 📋 阶段2：提取统计逻辑到工具函数（预计-100行）
+   - 📋 阶段3：组件拆分 + 样式优化（预计-190行）
+   - 当前进度: 33% (1/3阶段)
+   - 预计剩余工时: 2.5小时
 
-2. 🟡 **category-drawer.vue重构** (1221行 → 目标800行)
+2. 🟡 **plan/detail.vue重构** (1392行 → 目标800行)
    - 需要先分析功能和职责
    - 预计工时: 待评估
 
@@ -165,12 +200,30 @@
 - 删除旧组件: RepeatPanel.vue + ReminderPanel.vue = **-1893行**
 - **总收益**: **-2026行** (-86.9%)
 
-**下一步建议**:
-可以继续处理其他超标文件：
-1. 🟡 **plan/detail.vue** (1392行，P1优先级)
-2. 🟡 **category-drawer.vue** (1221行，P1优先级)
-3. 🟢 **plan/create.vue** (1122行，P2优先级)
+**当前任务**: category-drawer.vue重构 - 阶段2/3
+
+**已完成**:
+- ✅ 阶段1：架构修复 + 提取Composable（减少-101行）
+  - Git commit: eb35925
+
+**下一步**:
+1. 📋 **阶段2**: 提取统计逻辑到工具函数（预计1小时）
+   - 创建 `utils/planStats.js`
+   - 提取 `getPlanTotalMilestones`、`getPlanCompletedMilestones`、`getPlanProgressDays`
+   - 提取 `persistDays` 计算逻辑
+   - 预计减少：-100行
+
+2. 📋 **阶段3**: 组件拆分 + 样式优化（预计1.5小时）
+   - 拆分为4个子组件：UserInfoHeader、PlanList、CategoryList、DrawerFooter
+   - 优化样式代码
+   - 预计减少：-190行
+
+**成功标准**:
+- 文件行数 < 800行（当前1138行）
+- 符合四层架构规范
+- 无跨层调用
+- 功能正常运行
 
 ---
 
-**状态**: ✅ 所有阶段已完成，代码已推送到远程仓库（develop分支）
+**状态**: ✅ 阶段1已完成，代码已推送到远程仓库（develop分支）
