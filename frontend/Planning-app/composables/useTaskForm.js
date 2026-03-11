@@ -319,6 +319,9 @@ export function useTaskForm(options = {}) {
       throw new Error(errors[0])
     }
 
+    // 🔥 BUG排查：输出 form.value.planId 的值
+    console.log('%c[useTaskForm.submit] 组装任务数据前，form.value.planId =', 'color: #FF6B00; font-size: 14px; font-weight: bold;', form.value.planId)
+
     // 组装任务数据
     const taskData = {
       title: form.value.title.trim(),
@@ -345,6 +348,7 @@ export function useTaskForm(options = {}) {
     }
 
     console.log('[useTaskForm] 提交任务数据:', taskData)
+    console.log('%c[useTaskForm] ⭐⭐⭐ taskData.planId 的值:', 'color: #FF0000; font-size: 16px; font-weight: bold;', taskData.planId)
 
     // 调用 Store 创建任务
     const newTask = await taskStore.addTask(taskData)
