@@ -1224,6 +1224,10 @@ async function handlePanelSubmit() {
     // ============================================================
     // 面板特有逻辑：同步面板状态到 form
     // ============================================================
+
+    // 🔥 关键修复：同步 resolvedDate 到 form.taskDate（防止日期为空）
+    form.value.taskDate = resolvedDate.value;
+
     // 判断是否有时间段设置
     const hasTimeRange = timeToggle.value && timeStart.value && timeEnd.value;
     const hasDayRange  = !timeToggle.value && endDayCount.value > 1;
