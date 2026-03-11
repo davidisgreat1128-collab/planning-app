@@ -481,13 +481,9 @@ import SubtaskList from './SubtaskList.vue';
 import CustomDatePicker from './CustomDatePicker.vue';
 import QuadrantPicker from './QuadrantPicker.vue';
 import DayPicker from './DayPicker.vue';
-// ✅ 阶段3：引入 useTaskForm 业务逻辑层
 import { useTaskForm } from '@/composables/useTaskForm.js';
-// ✅ 架构重构(2026-03-10): 导入分类管理业务逻辑（从Component层移至Composable层）
 import { useCategoryManager } from '@/composables/useCategoryManager.js';
-// ✅ 阶段4重构：导入工具函数（不再从useTaskForm解构）
 import { formatDate, timeDiffMinutes, formatDuration, formatDateWithWeekday, getRelativeDateLabel } from '@/utils/date.js';
-// ✅ 架构重构(2026-03-10)：导入RRULE构建工具（业务规则移至utils层）
 import { buildRrule } from '@/utils/rruleBuilder.js';
 
 // ============================================================
@@ -552,7 +548,6 @@ const {
   // 四象限方法
   selectQuadrant,
 
-  // ✅ 重复规则管理器（阶段4重构）
   repeatRuleManager,
 
   // 表单提交方法
@@ -560,7 +555,6 @@ const {
   resetForm
 } = taskFormApi;
 
-// ✅ 从 repeatRuleManager 解构重复规则状态和方法
 const {
   repeatMode,
   repeatInterval,
@@ -577,7 +571,7 @@ const {
 } = repeatRuleManager;
 
 // ============================================================
-// ✅ 架构重构(2026-03-10): 使用分类管理Composable
+// 分类管理
 // ============================================================
 const categoryManager = useCategoryManager();
 const {
@@ -634,7 +628,6 @@ function closeCategoryPicker() {
   showCategoryPicker.value = false;
 }
 
-// ⚠️ 旧的 selectCategory 函数已删除，现使用 useCategoryManager 的方法
 // 包装函数处理UI交互逻辑
 function handleCategorySelect(categoryId) {
   selectCategory(categoryId);  // 调用 composable 方法
@@ -643,16 +636,12 @@ function handleCategorySelect(categoryId) {
 
 /** 新建分类 */
 function createNewCategory() {
-  console.log('[AddTaskPanel] 新建分类');
   showCategoryDialog.value = true;
 }
 
-/** 保存新建的分类（调用 composable 的 createCategory 方法） */
+/** 保存新建的分类 */
 function onCategorySave(data) {
-  console.log('[AddTaskPanel] 保存分类:', data);
-  
   try {
-    // ✅ 使用 composable 的 createCategory 方法
     createCategory(data);
     
     // UI 交互逻辑
@@ -673,20 +662,15 @@ function onCategorySave(data) {
 
 /** 新建规划 */
 function createNewPlan() {
-  console.log('[AddTaskPanel] 新建目标');
   showCategoryPicker.value = false;
   uni.navigateTo({
     url: '/pages/planning/template/index'
   });
 }
 
-// ⚠️ loadUserCategories 函数已删除，现使用 useCategoryManager.loadCategories()
-
 // ============================================================
 // 日期 Tab
 // ============================================================
-
-// ✅ 阶段3：formatDate 已从 useTaskForm 中解构，删除重复定义
 
 /** 获取今天、明天的日期字符串 */
 function getTodayStr() {
@@ -698,12 +682,8 @@ function getTomorrowStr() {
   return formatDate(d);
 }
 
-// ✅ 阶段3：activeDateTab 和 customDate 已从 useTaskForm 中解构，删除重复定义
-
 /** 显示自定义日期选择器 */
 const showCustomDatePicker = ref(false);
-
-/** 日期Tab列表 - 已移除，改用 DateTabBar 组件 */
 
 /** 选择日期 Tab */
 /**
@@ -720,8 +700,6 @@ function handleDateTabChange(tabKey) {
   // 调用 useTaskForm 提供的 onDateTab 方法处理日期Tab切换
   onDateTab(tabKey);
 }
-
-// ✅ 阶段3：旧版 selectDateTab 函数已删除，使用 handleDateTabChange
 
 /** 监听 presetDate 变化，自动切换到对应的 tab */
 watch(() => props.presetDate, (newDate) => {
@@ -768,8 +746,6 @@ function onCustomDateConfirm(payload) {
 // 四象限
 // ============================================================
 
-// ✅ UI组件提取：四象限选择器已移至 QuadrantPicker 组件
-
 /** 四象限颜色映射（用于工具栏图标显示） */
 const quadrantColors = {
   q1: '#FF4444',  // 重要且紧急 - 红色
@@ -804,8 +780,6 @@ function toggleSubtasks() {
   showSubtasks.value = !showSubtasks.value;
 }
 
-// ✅ 阶段3：子计划管理方法已从 useTaskForm 中解构
-
 /**
  * 处理添加子计划事件（从 SubtaskList 组件触发）
  * @param {string} title - 子计划标题
@@ -835,9 +809,6 @@ function handleToggleSubtaskDone(index) {
   toggleSubtaskDone(index);  // 使用 useTaskForm 提供的方法
 }
 
-// ✅ 阶段3：旧版 addSubtask 和 removeSubtask 函数已删除
-// 现在直接使用 useTaskForm 提供的 addSubtask 和 removeSubtask
-
 // ============================================================
 // 时间段功能
 // ============================================================
@@ -861,27 +832,23 @@ const endDayCount = ref(0);
 const endDate = ref(null);
 
 // ----- 左卡片显示 -----
-// ✅ 架构重构(2026-03-10): 日期格式化逻辑移至utils/date.js
 const timeCardLeftMain = computed(() => {
   const taskDateStr = resolvedDate.value || getTodayStr();
   return formatDateWithWeekday(taskDateStr);
 });
 
-// ✅ 架构重构(2026-03-10): 相对日期计算逻辑移至utils/date.js
 const timeCardLeftSub = computed(() => {
   const taskDateStr = resolvedDate.value || getTodayStr();
   return getRelativeDateLabel(taskDateStr);
 });
 
 // ----- 右卡片：结束日期显示 -----
-// ✅ 架构重构(2026-03-10): 日期格式化逻辑移至utils/date.js
 const endDateDisplay = computed(() => {
   if (!endDate.value) return '';
   return formatDateWithWeekday(endDate.value);
 });
 
 // ----- 持续时间计算 -----
-// ✅ 架构重构(2026-03-10): 时间计算逻辑移至utils/date.js
 const timeDuration = computed(() => {  if (!timeStart.value || !timeEnd.value) return '';  const totalMin = timeDiffMinutes(timeStart.value, timeEnd.value);  if (totalMin <= 0) return '';  return formatDuration(totalMin);});
 
 /** 点击工具栏时间段按钮 */
@@ -1090,8 +1057,6 @@ const showRepeatEndPicker = ref(false);
 /** 重复日历是否显示农历 */
 const showRepeatLunar = ref(true);
 
-// ⚠️ repeatEndDate 已从 repeatRuleManager 解构（第568行），无需重复声明
-
 /** 重复数据（保留用于兼容旧逻辑） */
 const repeatData = ref({
   mode:     'none',
@@ -1180,21 +1145,14 @@ function onReminderCancel() {
 }
 
 // ============================================================
-// 提交
+// 任务提交逻辑
 // ============================================================
-// ============================================================
-// ⚠️ buildRrule 函数已移至 @/utils/rruleBuilder.js (架构重构 2026-03-10)
-// ============================================================
-
 
 // 防重复提交标志
 let _submitting = false;
 
-// ✅ 阶段3：保留面板特有的提交逻辑（包含时间段、天数范围、重复数据、提醒等面板特有功能）
-// 重命名为 handlePanelSubmit 以避免与 useTaskForm.submit 冲突
 /**
  * 提交面板任务（调用 useTaskForm.submit()）
- * ⭐ 阶段3.1：已迁移到 useTaskForm.submit()
  */
 async function handlePanelSubmit() {
   if (_submitting) return;
@@ -1240,18 +1198,14 @@ async function handlePanelSubmit() {
       form.value.reminderEnabled = false;
     }
 
-    // 同步重复规则字段（✅ 使用 repeatRuleManager）
+    // 同步重复规则字段
     // repeatRuleManager 已经在 useTaskForm 中管理，表单提交时会自动处理 rrule
 
 
     // ============================================================
     // 调用 useTaskForm.submit()
     // ============================================================
-    console.log('[AddTaskPanel] 调用 useTaskForm.submit()...');
-
     await submit();
-
-    console.log('[AddTaskPanel] ✅ useTaskForm.submit() 调用成功');
 
     uni.hideLoading();
     resetPanel();
@@ -1272,7 +1226,6 @@ async function handlePanelSubmit() {
 
 /** 重置所有状态 */
 function resetPanel() {
-  // ✅ 阶段3：使用 useTaskForm 提供的 resetForm 方法重置表单数据
   resetForm();
 
   // 重置面板特有状态
@@ -2130,147 +2083,11 @@ watch(() => props.visible, (newVal) => {
 }
 
 /* ============================================================
-   ⑧ 天数日历弹窗样式
+   ⑧ DayPicker 组件样式已内置在组件中，此处无需重复定义
    ============================================================ */
 
-/* 顶部标题 */
-.dp-title {
-  font-size: 22rpx;
-  color: #333;
-  text-align: center;
-  display: block;
-  padding: 0 24rpx 12rpx;
-}
-
-.dp-days {
-  font-size: 26rpx;
-  font-weight: bold;
-  color: #333;
-  text-decoration: underline;
-  text-underline-offset: 3rpx;
-}
-
-/* 月份导航 */
-.dp-nav {
-  display: flex;
-  flex-direction: row;
-  align-items: center;
-  padding: 0 20rpx 12rpx;
-}
-
-.dp-nav-btn {
-  width: 40rpx;
-  height: 40rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.dp-nav-icon {
-  font-size: 28rpx;
-  color: #333;
-  font-weight: bold;
-}
-
-.dp-nav-title {
-  flex: 1;
-  text-align: center;
-  font-size: 24rpx;
-  color: #333;
-  font-weight: bold;
-}
-
-.dp-lunar-toggle {
-  font-size: 20rpx;
-  color: #999;
-}
-
-/* 星期头 */
-.dp-weekrow {
-  display: flex;
-  flex-direction: row;
-  padding: 0 10rpx;
-  border-bottom: 1rpx solid #F0F0F0;
-  padding-bottom: 6rpx;
-}
-
-.dp-weekcell {
-  flex: 1;
-  text-align: center;
-  font-size: 20rpx;
-  color: #999;
-}
-
-/* 日期格子网格 */
-.dp-grid {
-  display: flex;
-  flex-direction: row;
-  flex-wrap: wrap;
-  padding: 4rpx 10rpx;
-}
-
-.dp-cell {
-  width: calc(100% / 7);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 6rpx 0;
-  border-radius: 50%;
-  position: relative;
-}
-
-.dp-cell-num {
-  font-size: 24rpx;
-  color: #333;
-  width: 46rpx;
-  height: 46rpx;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  line-height: 46rpx;
-  text-align: center;
-}
-
-.dp-cell-lunar {
-  font-size: 14rpx;
-  color: #999;
-  margin-top: 1rpx;
-}
-
-/* 其他月份：灰色 */
-.dp-cell-other .dp-cell-num {
-  color: #CCCCCC;
-}
-
-/* 过去的日期：灰色且不可点 */
-.dp-cell-past .dp-cell-num {
-  color: #CCCCCC;
-}
-
-/* 今天：黑色实心圆圈 */
-.dp-cell-today .dp-cell-num {
-  background-color: #222222;
-  color: #FFFFFF;
-  font-weight: bold;
-}
-
-/* 选中：黑色实心圆 */
-.dp-cell-selected .dp-cell-num {
-  background-color: #222222;
-  color: #FFFFFF;
-  font-weight: bold;
-}
-
-/* 范围内：灰色背景条（矩形） */
-.dp-cell-in-range {
-  background-color: #EEEEEE;
-  border-radius: 0;
-}
-
 /* ============================================================
-   ⑨ 时间滚轮弹窗样式
+   ⑨ 时间滚轮弹窗样式（APP端）
    ============================================================ */
 
 /* 顶部日期标题 */
