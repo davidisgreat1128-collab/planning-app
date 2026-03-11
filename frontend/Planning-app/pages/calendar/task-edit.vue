@@ -271,37 +271,15 @@
     />
 
     <!-- ⑪ 重复规则：结束重复日期选择器弹窗 -->
-    <view v-if="showRepeatEndPicker" class="tep-modal-mask" @tap.self="closeRepeatEndPicker">
-      <view class="tep-modal-sheet">
-        <text class="tep-sheet-title">选择结束日期</text>
-        <view class="cal-header">
-          <text class="cal-nav" @tap="repeatCalPrevMonth">‹</text>
-          <text class="cal-month-title">{{ repeatCalYear }}年{{ repeatCalMonth + 1 }}月</text>
-          <text class="cal-nav" @tap="repeatCalNextMonth">›</text>
-        </view>
-        <view class="cal-week-row">
-          <text v-for="d in weekLabels" :key="d" class="cal-week-cell">{{ d }}</text>
-        </view>
-        <view class="cal-body">
-          <view v-for="(week, wi) in repeatCalRows" :key="wi" class="cal-row">
-            <view
-              v-for="(cell, di) in week"
-              :key="di"
-              class="cal-cell"
-              :class="getRepeatEndCellClass(cell)"
-              @tap="onSelectRepeatEndDate(cell)"
-            >
-              <text class="cal-cell-num">{{ cell.day }}</text>
-            </view>
-          </view>
-        </view>
-        <view class="tep-modal-btns">
-          <text class="tep-modal-cancel" @tap="closeRepeatEndPicker">取消</text>
-          <text class="tep-modal-cancel" @tap="clearRepeatEndDate">清除</text>
-          <text class="tep-modal-confirm" @tap="confirmRepeatEndDate">确定</text>
-        </view>
-      </view>
-    </view>
+    <EndDateCalendar
+      v-model:visible="showRepeatEndPicker"
+      :startDate="form.taskDate"
+      :initialEndDate="repeatEndDate"
+      :showLunar="showRepeatLunar"
+      @confirm="onRepeatEndDateConfirm"
+      @cancel="closeRepeatEndPicker"
+      @clear="clearRepeatEndDate"
+    />
 
     <!-- ⑫ 保存重复任务确认弹窗 -->
     <view v-if="showSaveRecurringDialog" class="tep-modal-mask" @tap="closeSaveRecurringDialog">
@@ -369,6 +347,7 @@ import QuadrantPicker from '@/components/task/QuadrantPicker.vue';
 import DayPicker from '@/components/task/DayPicker.vue';
 import RepeatRuleSheet from '@/components/task/RepeatRuleSheet.vue';
 import ReminderPicker from '@/components/task/ReminderPicker.vue';
+import EndDateCalendar from '@/components/task/EndDateCalendar.vue';
 
 // ============================================================
 // 新增：引入 useTaskForm 业务逻辑层
@@ -832,77 +811,10 @@ function onSelectMonthlySubMode(mode) {
 // ============================================================
 
 const showRepeatEndPicker = ref(false);
-const repeatCalYear  = ref(new Date().getFullYear());
-const repeatCalMonth = ref(new Date().getMonth());
 const showRepeatLunar = ref(true);
-/** 弹窗内临时选中的结束日期 */
-const tempRepeatEndDate = ref('');
-
-/** 结束重复日历格子数据（6×7） */
-const repeatCalRows = computed(() => {
-  const year  = repeatCalYear.value;
-  const month = repeatCalMonth.value;
-  const firstDay = new Date(year, month, 1);
-  const dow = firstDay.getDay();
-  const offset = dow === 0 ? 6 : dow - 1;
-  const daysInMonth = new Date(year, month + 1, 0).getDate();
-  const today = formatDate(new Date());
-
-  const cells = [];
-  // 前补位
-  const prevMonthDays = new Date(year, month, 0).getDate();
-  for (let i = 0; i < offset; i++) {
-    const d = prevMonthDays - offset + 1 + i;
-    const py = month === 0 ? year - 1 : year;
-    const pm = month === 0 ? 11 : month - 1;
-    const dateStr = formatDate(new Date(py, pm, d));
-    cells.push({ day: d, dateStr, otherMonth: true, isPast: dateStr < today });
-  }
-  // 当月
-  for (let d = 1; d <= daysInMonth; d++) {
-    const dateStr = formatDate(new Date(year, month, d));
-    cells.push({
-      day: d, dateStr, otherMonth: false,
-      isToday: dateStr === today,
-      isPast: dateStr < today,
-      lunar: '' // 暂不显示农历（后续可接入 lunar-javascript 库）
-    });
-  }
-  // 后补位
-  const remain = 42 - cells.length;
-  for (let d = 1; d <= remain; d++) {
-    const ny = month === 11 ? year + 1 : year;
-    const nm = month === 11 ? 0 : month + 1;
-    const dateStr = formatDate(new Date(ny, nm, d));
-    cells.push({ day: d, dateStr, otherMonth: true, isPast: dateStr < today });
-  }
-  const rows = [];
-  for (let i = 0; i < 6; i++) rows.push(cells.slice(i * 7, i * 7 + 7));
-  return rows;
-});
-
-function getRepeatEndCellClass(cell) {
-  const cls = [];
-  if (cell.otherMonth) cls.push('other-month');
-  if (cell.isPast)     cls.push('is-past');
-  if (cell.isToday)    cls.push('is-today');
-  if (cell.dateStr === tempRepeatEndDate.value) cls.push('is-end');
-  return cls;
-}
-
-function onSelectRepeatEndDate(cell) {
-  if (cell.isPast || cell.otherMonth) return;
-  tempRepeatEndDate.value = cell.dateStr;
-}
 
 function openEndDatePicker() {
   if (repeatMode.value === 'none') return;
-  const today = formatDate(new Date());
-  const base = repeatEndDate.value || today;
-  const d = new Date(base);
-  repeatCalYear.value  = d.getFullYear();
-  repeatCalMonth.value = d.getMonth();
-  tempRepeatEndDate.value = repeatEndDate.value || '';
   showRepeatEndPicker.value = true;
 }
 
@@ -910,31 +822,20 @@ function closeRepeatEndPicker() {
   showRepeatEndPicker.value = false;
 }
 
-function confirmRepeatEndDate() {
-  if (tempRepeatEndDate.value) {
-    repeatEndDate.value = tempRepeatEndDate.value;
+/**
+ * EndDateCalendar 组件确认回调
+ * @param {object} payload - { date: String }
+ */
+function onRepeatEndDateConfirm(payload) {
+  if (payload.date) {
+    repeatEndDate.value = payload.date;
   }
-  showRepeatEndPicker.value = false;
   repeatRuleManager.loadFromRrule(form.value.rrule || '');
 }
 
 function clearRepeatEndDate() {
   repeatEndDate.value = '';
-  tempRepeatEndDate.value = '';
-  showRepeatEndPicker.value = false;
   repeatRuleManager.loadFromRrule(form.value.rrule || '');
-}
-
-function repeatCalPrevMonth() {
-  const today = new Date();
-  if (repeatCalYear.value === today.getFullYear() && repeatCalMonth.value === today.getMonth()) return;
-  if (repeatCalMonth.value === 0) { repeatCalYear.value--; repeatCalMonth.value = 11; }
-  else { repeatCalMonth.value--; }
-}
-
-function repeatCalNextMonth() {
-  if (repeatCalMonth.value === 11) { repeatCalYear.value++; repeatCalMonth.value = 0; }
-  else { repeatCalMonth.value++; }
 }
 
 /** 选择重复模式（切换时设置合理默认值） */
