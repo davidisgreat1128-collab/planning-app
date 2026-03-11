@@ -1248,24 +1248,59 @@ async function handlePanelSubmit() {
     console.group('%c📦 同步分类字段到表单', 'color: #EC4899; font-size: 14px; font-weight: bold;')
     console.log('%c[handlePanelSubmit] selectedCategoryId.value', 'color: #3B82F6; font-weight: bold;', selectedCategoryId.value)
     console.log('%c[handlePanelSubmit] props.categoryId', 'color: #3B82F6; font-weight: bold;', props.categoryId)
+    console.log('%c[handlePanelSubmit] form.value.categoryId 同步前', 'color: #F59E0B; font-weight: bold;', form.value.categoryId)
     console.log('%c[handlePanelSubmit] form.value.planId 同步前', 'color: #F59E0B; font-weight: bold;', form.value.planId)
+
+    // 🔥 核心逻辑：区分"分类"和"规划"
+    // selectedCategoryId 可能是：
+    //   - 分类ID（category.type === 'category'）→ 设置给 categoryId
+    //   - 规划ID（category.type === 'plan'）→ 设置给 planId
+    //   - null（"无分类"或"全部"）→ categoryId 和 planId 都设为 null
 
     // 优先使用用户在AddTaskPanel中选择的分类（selectedCategoryId）
     // 如果用户没选择，则使用从父组件传入的 categoryId
     if (selectedCategoryId.value) {
       // 用户选择了具体的分类/规划
-      form.value.planId = selectedCategoryId.value;
-      console.log('%c[handlePanelSubmit] ✅ 使用 selectedCategoryId', 'color: #10B981; font-weight: bold;', selectedCategoryId.value)
+      // 🔥 关键：判断是分类还是规划
+      const selectedItem = userCategories.value.find(c => c.id === selectedCategoryId.value)
+      if (selectedItem) {
+        if (selectedItem.type === 'plan') {
+          // 规划类型 → 设置给 planId
+          form.value.categoryId = null
+          form.value.planId = selectedCategoryId.value
+          console.log('%c[handlePanelSubmit] ✅ 选择的是规划，设置 planId', 'color: #10B981; font-weight: bold;', selectedCategoryId.value)
+        } else {
+          // 分类类型 → 设置给 categoryId
+          form.value.categoryId = selectedCategoryId.value
+          form.value.planId = null
+          console.log('%c[handlePanelSubmit] ✅ 选择的是分类，设置 categoryId', 'color: #10B981; font-weight: bold;', selectedCategoryId.value)
+        }
+      } else {
+        // 找不到该ID，可能是数据不一致
+        form.value.categoryId = selectedCategoryId.value
+        form.value.planId = null
+        console.log('%c[handlePanelSubmit] ⚠️ 找不到对应的分类/规划，默认设置为 categoryId', 'color: #F59E0B; font-weight: bold;', selectedCategoryId.value)
+      }
     } else if (props.categoryId && typeof props.categoryId === 'string') {
       // 从父组件传入的分类ID（如从日历页点击某个分类下的"+"按钮）
-      form.value.planId = props.categoryId;
-      console.log('%c[handlePanelSubmit] ✅ 使用 props.categoryId', 'color: #10B981; font-weight: bold;', props.categoryId)
+      const selectedItem = userCategories.value.find(c => c.id === props.categoryId)
+      if (selectedItem && selectedItem.type === 'plan') {
+        form.value.categoryId = null
+        form.value.planId = props.categoryId
+        console.log('%c[handlePanelSubmit] ✅ props传入的是规划，设置 planId', 'color: #10B981; font-weight: bold;', props.categoryId)
+      } else {
+        form.value.categoryId = props.categoryId
+        form.value.planId = null
+        console.log('%c[handlePanelSubmit] ✅ props传入的是分类，设置 categoryId', 'color: #10B981; font-weight: bold;', props.categoryId)
+      }
     } else {
       // 用户选择了"无分类"或"全部"，或没有选择任何分类
-      form.value.planId = null;
+      form.value.categoryId = null
+      form.value.planId = null
       console.log('%c[handlePanelSubmit] ✅ 设置为 null（无分类）', 'color: #10B981; font-weight: bold;')
     }
 
+    console.log('%c[handlePanelSubmit] form.value.categoryId 同步后', 'color: #10B981; font-weight: bold;', form.value.categoryId)
     console.log('%c[handlePanelSubmit] form.value.planId 同步后', 'color: #10B981; font-weight: bold;', form.value.planId)
     console.groupEnd()
 

@@ -73,7 +73,8 @@ export function useTaskForm(options = {}) {
     startTime: '',         // 开始时间 HH:mm（hasTimeRange=true 时使用）
     endTime: '',           // 结束时间 HH:mm（hasTimeRange=true 时使用）
     rrule: '',             // 重复规则 RRULE 字符串
-    planId: null,
+    categoryId: null,      // 🔥 新增：任务所属分类ID
+    planId: null,          // 任务所属规划ID
     reminderEnabled: false,    // 是否开启提醒
     reminderOffset: null,      // 提醒偏移分钟数（负=提前，0=当天当时）
     reminderAdvanceMode: 'day', // 'day' | 'week'
@@ -319,7 +320,8 @@ export function useTaskForm(options = {}) {
       throw new Error(errors[0])
     }
 
-    // 🔥 BUG排查：输出 form.value.planId 的值
+    // 🔥 BUG排查：输出 form.value 的 categoryId 和 planId
+    console.log('%c[useTaskForm.submit] 组装任务数据前，form.value.categoryId =', 'color: #FF6B00; font-size: 14px; font-weight: bold;', form.value.categoryId)
     console.log('%c[useTaskForm.submit] 组装任务数据前，form.value.planId =', 'color: #FF6B00; font-size: 14px; font-weight: bold;', form.value.planId)
 
     // 组装任务数据
@@ -335,7 +337,8 @@ export function useTaskForm(options = {}) {
       startTime: form.value.startTime || null,
       endTime: form.value.endTime || null,
       rrule: repeatRuleManager.generateRrule() || null,
-      planId: form.value.planId || null,
+      categoryId: form.value.categoryId || null,  // 🔥 新增：分类ID
+      planId: form.value.planId || null,          // 规划ID
       reminderEnabled: form.value.reminderEnabled,
       reminderOffset: form.value.reminderOffset,
       reminderAdvanceMode: form.value.reminderAdvanceMode,
@@ -348,6 +351,7 @@ export function useTaskForm(options = {}) {
     }
 
     console.log('[useTaskForm] 提交任务数据:', taskData)
+    console.log('%c[useTaskForm] ⭐⭐⭐ taskData.categoryId 的值:', 'color: #FF0000; font-size: 16px; font-weight: bold;', taskData.categoryId)
     console.log('%c[useTaskForm] ⭐⭐⭐ taskData.planId 的值:', 'color: #FF0000; font-size: 16px; font-weight: bold;', taskData.planId)
 
     // 调用 Store 创建任务
@@ -394,7 +398,8 @@ export function useTaskForm(options = {}) {
       startTime: form.value.startTime || null,
       endTime: form.value.endTime || null,
       rrule: repeatRuleManager.generateRrule() || null,
-      planId: form.value.planId || null,
+      categoryId: form.value.categoryId || null,  // 🔥 新增：分类ID
+      planId: form.value.planId || null,          // 规划ID
       reminderEnabled: form.value.reminderEnabled,
       reminderOffset: form.value.reminderOffset,
       reminderAdvanceMode: form.value.reminderAdvanceMode,
@@ -524,7 +529,8 @@ export function useTaskForm(options = {}) {
       startTime: '',
       endTime: '',
       rrule: '',
-      planId: null,
+      categoryId: null,  // 🔥 新增：分类ID
+      planId: null,      // 规划ID
       reminderEnabled: false,
       reminderOffset: null,
       reminderAdvanceMode: 'day',
