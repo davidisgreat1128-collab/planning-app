@@ -175,6 +175,11 @@ function handleDelete(category) {
   border: 2rpx dashed #ccc;
 }
 
+.category-item.uncategorized.active {
+  background-color: #7CA1FF;
+  border-color: #7CA1FF;
+}
+
 .category-name-wrapper {
   display: flex;
   align-items: center;
