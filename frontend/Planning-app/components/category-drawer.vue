@@ -186,6 +186,7 @@ import { ref, computed, watch, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
 import { useCategoryStore } from '@/store/category.js';
 import { usePlanStore } from '@/store/plan.js';
+import { useSwipeGesture } from '@/composables/useSwipeGesture.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
 import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
@@ -222,15 +223,20 @@ const deletingCategory = ref(null); // 正在删除的分类
 // 新代码：从 categoryStore 获取 ✅
 const userCategories = computed(() => categoryStore.categories);
 
-// 左滑相关状态（分类）
-const swipeOpenId = ref(null); // 当前左滑打开的分类 ID
-const touchStartX = ref(0); // 触摸开始的 X 坐标
-const touchStartY = ref(0); // 触摸开始的 Y 坐标
+// ============================================================
+// 左滑手势 Composable（阶段1.2：提取到Composable层）
+// ============================================================
+const categorySwipe = useSwipeGesture(); // 分类左滑
+const planSwipe = useSwipeGesture(); // 规划左滑
 
-// 左滑相关状态（规划）
-const swipeOpenPlanId = ref(null); // 当前左滑打开的规划 ID
-const planTouchStartX = ref(0); // 规划触摸开始的 X 坐标
-const planTouchStartY = ref(0); // 规划触摸开始的 Y 坐标
+// 解构出需要的状态和方法
+const { swipeOpenId, onTouchStart, onTouchMove, onTouchEnd } = categorySwipe;
+const {
+  swipeOpenId: swipeOpenPlanId,
+  onTouchStart: onPlanTouchStart,
+  onTouchMove: onPlanTouchMove,
+  onTouchEnd: onPlanTouchEnd
+} = planSwipe;
 
 // 删除规划相关状态
 const showDeletePlanDialog = ref(false); // 删除规划确认弹窗
@@ -331,9 +337,9 @@ watch(() => props.visible, async (newVal) => {
     // 加载选中状态
     loadContainerSelection();
   } else {
-    // 关闭所有左滑
-    swipeOpenId.value = null;
-    swipeOpenPlanId.value = null;
+    // 关闭所有左滑（使用Composable方法）
+    categorySwipe.closeSwipe();
+    planSwipe.closeSwipe();
   }
 });
 
@@ -537,9 +543,7 @@ async function onSaveCategory(data) {
  * 编辑分类
  */
 function editCategory(category) {
-  console.log('[CategoryDrawer] 编辑分类:', category.name);
-
-  swipeOpenId.value = null;
+  categorySwipe.closeSwipe();
   isEditMode.value = true;
   editingCategory.value = category;
   showCategoryDialog.value = true;
@@ -549,9 +553,7 @@ function editCategory(category) {
  * 删除分类（打开确认弹窗）
  */
 function deleteCategory(category) {
-  console.log('[CategoryDrawer] 删除分类:', category.name);
-
-  swipeOpenId.value = null;
+  categorySwipe.closeSwipe();
   deletingCategory.value = category;
   showDeleteDialog.value = true;
 }
@@ -576,7 +578,6 @@ async function onDeleteConfirm(deleteMode) {
 
     // 如果删除的是当前选中的分类，自动切换到"全部"
     if (isDeletingSelected) {
-      console.log('[category-drawer] 删除了当前选中的分类，自动切换到"全部"');
       selectCategory('all');
     }
 
@@ -600,108 +601,14 @@ async function onDeleteConfirm(deleteMode) {
 }
 
 // ============================================================
-// 左滑手势
+// ✅ 左滑手势逻辑已提取到 useSwipeGesture.js Composable（阶段1.2）
 // ============================================================
-
-/**
- * 触摸开始
- */
-function onTouchStart(event, categoryId) {
-  touchStartX.value = event.touches[0].pageX;
-  touchStartY.value = event.touches[0].pageY;
-}
-
-/**
- * 触摸移动
- */
-function onTouchMove(event, categoryId) {
-  const touchX = event.touches[0].pageX;
-  const touchY = event.touches[0].pageY;
-  const deltaX = touchX - touchStartX.value;
-  const deltaY = touchY - touchStartY.value;
-
-  // 判断是否是横向滑动
-  if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-    // 阻止默认滚动行为
-    event.preventDefault?.();
-  }
-}
-
-/**
- * 触摸结束
- */
-function onTouchEnd(event, categoryId) {
-  const touchX = event.changedTouches[0].pageX;
-  const deltaX = touchX - touchStartX.value;
-
-  // 左滑阈值：滑动距离超过 50px
-  if (deltaX < -50) {
-    // 左滑，打开操作按钮
-    swipeOpenId.value = categoryId;
-  } else if (deltaX > 50) {
-    // 右滑，关闭操作按钮
-    swipeOpenId.value = null;
-  } else if (swipeOpenId.value === categoryId && Math.abs(deltaX) < 10) {
-    // 点击已打开的项，关闭
-    swipeOpenId.value = null;
-  }
-}
-
-// ============================================================
-// 规划左滑手势
-// ============================================================
-
-/**
- * 规划触摸开始
- */
-function onPlanTouchStart(event, planId) {
-  planTouchStartX.value = event.touches[0].pageX;
-  planTouchStartY.value = event.touches[0].pageY;
-}
-
-/**
- * 规划触摸移动
- */
-function onPlanTouchMove(event, planId) {
-  const touchX = event.touches[0].pageX;
-  const touchY = event.touches[0].pageY;
-  const deltaX = touchX - planTouchStartX.value;
-  const deltaY = touchY - planTouchStartY.value;
-
-  // 判断是否是横向滑动
-  if (Math.abs(deltaX) > Math.abs(deltaY) && Math.abs(deltaX) > 10) {
-    // 阻止默认滚动行为
-    event.preventDefault?.();
-  }
-}
-
-/**
- * 规划触摸结束
- */
-function onPlanTouchEnd(event, planId) {
-  const touchX = event.changedTouches[0].pageX;
-  const deltaX = touchX - planTouchStartX.value;
-
-  // 左滑阈值：滑动距离超过 50px
-  if (deltaX < -50) {
-    // 左滑，打开操作按钮
-    swipeOpenPlanId.value = planId;
-  } else if (deltaX > 50) {
-    // 右滑，关闭操作按钮
-    swipeOpenPlanId.value = null;
-  } else if (swipeOpenPlanId.value === planId && Math.abs(deltaX) < 10) {
-    // 点击已打开的项，关闭
-    swipeOpenPlanId.value = null;
-  }
-}
 
 /**
  * 编辑规划
  */
 function editPlan(plan) {
-  console.log('[CategoryDrawer] 编辑规划:', plan.title);
-
-  swipeOpenPlanId.value = null;
+  planSwipe.closeSwipe();
 
   // 关闭抽屉
   emit('update:visible', false);
@@ -716,9 +623,7 @@ function editPlan(plan) {
  * 删除规划（打开确认弹窗）
  */
 function deletePlan(plan) {
-  console.log('[CategoryDrawer] 删除规划:', plan.title);
-
-  swipeOpenPlanId.value = null;
+  planSwipe.closeSwipe();
   deletingPlan.value = plan;
   showDeletePlanDialog.value = true;
 }
@@ -729,8 +634,6 @@ function deletePlan(plan) {
 async function onDeletePlanConfirm(deleteWithTasks) {
   if (!deletingPlan.value) return;
 
-  console.log('[CategoryDrawer] 确认删除规划:', deletingPlan.value.name, '是否同时删除任务:', deleteWithTasks);
-
   const planId = deletingPlan.value.id;
 
   // 检查是否删除的是当前选中的规划
@@ -739,12 +642,9 @@ async function onDeletePlanConfirm(deleteWithTasks) {
   try {
     uni.showLoading({ title: '删除中...' });
 
-    // 从 userCategories 中删除规划
-    const index = userCategories.value.findIndex(c => c.id === planId);
-    if (index !== -1) {
-      userCategories.value.splice(index, 1);
-      saveCategories();
-    }
+    // ✅ 三层架构：Component → Store → Repository
+    // 调用 categoryStore 删除规划（规划也是分类的一种）
+    await categoryStore.deleteCategory(planId);
 
     // 调用 planStore 删除规划及其关联任务
     const planStore = usePlanStore();
@@ -752,7 +652,6 @@ async function onDeletePlanConfirm(deleteWithTasks) {
 
     // 如果删除的是当前选中的规划，自动切换到"全部"
     if (isDeletingSelected) {
-      console.log('[CategoryDrawer] 删除了当前选中的规划，自动切换到"全部"');
       selectCategory('all');
     }
 
