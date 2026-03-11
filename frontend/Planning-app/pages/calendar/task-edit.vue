@@ -353,6 +353,7 @@ import EndDateCalendar from '@/components/task/EndDateCalendar.vue';
 // 新增：引入 useTaskForm 业务逻辑层
 // ============================================================
 import { useTaskForm } from '@/composables/useTaskForm.js';
+import { useDateTimePickers } from '@/composables/useDateTimePickers.js';
 import { formatDate, getWeekdayName, calcDays, timeDiffMinutes, formatDuration, formatDateWithWeekday, formatDateTimeDot, formatMonthDay, getToday, getTomorrow, getDateAfterDays } from '@/utils/date.js';
 import { parseRrule } from '@/utils/rruleBuilder.js';
 
@@ -555,6 +556,50 @@ const {
   toggleWeekDay,
   toggleMonthlyDay
 } = repeatRuleManager;
+
+// ============================================================
+// 新增：初始化 useDateTimePickers Composable（方案G）
+// ============================================================
+const dateTimePickers = useDateTimePickers({ form: form.value });
+
+// 解构日期/时间选择器状态和方法
+const {
+  // 日历选择器状态
+  showDaysPicker,
+  showLunar,
+  tempEndDate,
+  // 时间选择器状态
+  showTimePicker,
+  hours,
+  minutes,
+  tempStartHour,
+  tempStartMin,
+  tempEndHour,
+  tempEndMin,
+  // 计算属性
+  startHourScrollTop,
+  startMinScrollTop,
+  endHourScrollTop,
+  endMinScrollTop,
+  // 日历选择器方法
+  openDaysPicker,
+  closeDaysPicker,
+  onDayPickerConfirm,
+  // 时间选择器方法
+  openTimePicker,
+  closeTimePicker,
+  confirmTime,
+  selectStartHour,
+  selectStartMin,
+  selectEndHour,
+  selectEndMin,
+  autoAdjustEndTime,
+  // 滚动事件
+  onStartHourScroll,
+  onStartMinScroll,
+  onEndHourScroll,
+  onEndMinScroll
+} = dateTimePickers;
 
 // ============================================================
 // 计算属性：显示逻辑
@@ -917,16 +962,8 @@ function onTapWechatReminder() {
 // ============================================================
 
 // ============================================================
-// 日历选择器（DayPicker组件）
-// ============================================================
-
-const showDaysPicker = ref(false);
-
-/** 是否显示农历 */
-const showLunar = ref(true);
-
-/** 临时选中的结束日期（传递给DayPicker组件） */
-const tempEndDate = ref('');
+// ✅ 日历/时间选择器逻辑已提取到 useDateTimePickers Composable（方案G完成）
+// 原代码（965-1081行，共117行）已删除，功能由 Composable 提供
 
 // ============================================================
 // 自定义日期选择器（用于选择 taskDate）
@@ -936,121 +973,13 @@ const tempEndDate = ref('');
 const showCustomDatePicker = ref(false);
 
 // ============================================================
-// DayPicker 组件回调
-// ============================================================
-
-/**
-/**
- * DayPicker 组件确认回调
- * @param {object} payload - { date: string, daysCount: number }
- */
-function onDayPickerConfirm(payload) {
-  form.value.endDate = payload.date;
-  // 多天任务，isAllDay=true
-  form.value.isAllDay = true;
-  form.value.startTime = '';
-  form.value.endTime = '';
-  tempEndDate.value = payload.date;
-  showDaysPicker.value = false;
-}
-
-function closeDaysPicker() {
-  showDaysPicker.value = false;
-}
-
-// ============================================================
-// 弹窗2：滚轮选时间（当日时间段）
-// ============================================================
-
-const showTimePicker = ref(false);
-
-const hours   = Array.from({ length: 24 }, (_, i) => i);
-const minutes = Array.from({ length: 60 }, (_, i) => i);
-
-/** 滚轮选择：临时值 */
-const tempStartHour = ref(9);
-const tempStartMin  = ref(0);
-const tempEndHour   = ref(10);
-const tempEndMin    = ref(0);
-
-/** 滚轮 scroll-top 计算（每格72rpx ≈ 48px，需在 onMounted 后确定，这里用像素近似） */
-const ITEM_HEIGHT = 48; // rpx->px 近似值（设计稿750rpx=375px，1rpx≈0.5px，72rpx≈36px）
-// 实际上在 scroll-view 里用 scroll-top 控制较难精确，改用 tap 选择 + 高亮显示
-const startHourScrollTop = computed(() => tempStartHour.value * ITEM_HEIGHT);
-const startMinScrollTop  = computed(() => tempStartMin.value  * ITEM_HEIGHT);
-const endHourScrollTop   = computed(() => tempEndHour.value   * ITEM_HEIGHT);
-const endMinScrollTop    = computed(() => tempEndMin.value    * ITEM_HEIGHT);
-
-function selectStartHour(h) { tempStartHour.value = h; autoAdjustEndTime(); }
-function selectStartMin(m)  { tempStartMin.value  = m; autoAdjustEndTime(); }
-function selectEndHour(h)   { tempEndHour.value   = h; }
-function selectEndMin(m)    { tempEndMin.value    = m; }
-
-/** 自动让结束时间 = 开始时间 + 30min */
-function autoAdjustEndTime() {
-  const totalMins = tempStartHour.value * 60 + tempStartMin.value + 30;
-  tempEndHour.value = Math.min(23, Math.floor(totalMins / 60));
-  tempEndMin.value  = totalMins % 60;
-}
-
-function onStartHourScroll() {}
-function onStartMinScroll()  {}
-function onEndHourScroll()   {}
-function onEndMinScroll()    {}
-
-/** 打开时间选择弹窗，初始化临时值 */
-function openTimePicker() {
-  // 初始化：若已有值则读取，否则用当前时间
-  if (form.value.startTime) {
-    const [sh, sm] = form.value.startTime.split(':').map(Number);
-    tempStartHour.value = sh;
-    tempStartMin.value  = sm;
-  } else {
-    const now = new Date();
-    tempStartHour.value = now.getHours();
-    tempStartMin.value  = now.getMinutes();
-  }
-  if (form.value.endTime) {
-    const [eh, em] = form.value.endTime.split(':').map(Number);
-    tempEndHour.value = eh;
-    tempEndMin.value  = em;
-  } else {
-    autoAdjustEndTime();
-  }
-  showTimePicker.value = true;
-}
-
-function closeTimePicker() {
-  showTimePicker.value = false;
-}
-
-function confirmTime() {
-  const sh = String(tempStartHour.value).padStart(2, '0');
-  const sm = String(tempStartMin.value).padStart(2, '0');
-  const eh = String(tempEndHour.value).padStart(2, '0');
-  const em = String(tempEndMin.value).padStart(2, '0');
-  form.value.startTime = `${sh}:${sm}`;
-  form.value.endTime   = `${eh}:${em}`;
-  form.value.isAllDay  = false;
-  showTimePicker.value = false;
-}
-
-// ============================================================
 // 右卡片点击路由
 // ============================================================
 function onClickEndCard() {
   if (form.value.hasTimeRange) {
-    openTimePicker();
+    openTimePicker(); // ✅ 调用 Composable 方法
   } else {
-    // 打开日历弹窗
-    const startDate = form.value.taskDate || formatDate(new Date());
-    // 初始化日历显示月份为开始日期所在月
-    const d = new Date(startDate);
-    calYear.value  = d.getFullYear();
-    calMonth.value = d.getMonth();
-    // 初始化临时结束日期
-    tempEndDate.value = form.value.endDate || startDate;
-    showDaysPicker.value = true;
+    openDaysPicker(); // ✅ 调用 Composable 方法（已封装初始化逻辑）
   }
 }
 
