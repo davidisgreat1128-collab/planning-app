@@ -107,7 +107,7 @@ class CategoryRepository {
   /**
    * 创建分类
    *
-   * @param {object} data - 分类数据 { name, color, sortOrder }
+   * @param {object} data - 分类数据 { name, color, icon, iconEmoji, type, sortOrder }
    * @returns {Promise<object>} 创建的分类对象
    */
   async create(data) {
@@ -116,6 +116,9 @@ class CategoryRepository {
       id: this._generateId(),  // 生成唯一 ID
       name: data.name || '',
       color: data.color || '#000000',
+      icon: data.icon || '',               // 图标ID
+      iconEmoji: data.iconEmoji || '',     // 图标Emoji
+      type: data.type || 'category',       // 类型：category（普通分类）或 plan（规划）
       sortOrder: data.sortOrder ?? this.memoryCache.size,  // 默认排在最后
       version: 1,              // 初始版本号
       createdAt: Date.now(),
