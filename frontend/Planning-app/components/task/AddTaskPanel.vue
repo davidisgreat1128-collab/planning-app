@@ -701,11 +701,23 @@ function handleDateTabChange(tabKey) {
   onDateTab(tabKey);
 }
 
-/** 监听 presetDate 变化，自动切换到对应的 tab */
+/** 监听 presetDate 变化，智能切换到对应的 tab */
 watch(() => props.presetDate, (newDate) => {
   if (newDate && !customDate.value) {
-    // 如果有presetDate且没有自定义日期，切换到preset tab
-    activeDateTab.value = 'preset';
+    // 智能判断：根据 presetDate 的值决定激活哪个 tab
+    const today = getTodayStr();
+    const tomorrow = getTomorrowStr();
+
+    if (newDate === today) {
+      // presetDate 是今天 → 激活"今天" tab，不显示第3个动态tab
+      activeDateTab.value = 'today';
+    } else if (newDate === tomorrow) {
+      // presetDate 是明天 → 激活"明天" tab，不显示第3个动态tab
+      activeDateTab.value = 'tomorrow';
+    } else {
+      // presetDate 是其他日期 → 激活"preset" tab，显示第3个动态tab（如"3.11"）
+      activeDateTab.value = 'preset';
+    }
   }
 }, { immediate: true });
 
