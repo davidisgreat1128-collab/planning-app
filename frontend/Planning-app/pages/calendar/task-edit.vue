@@ -339,6 +339,7 @@
 import { ref, computed, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
 import { usePlanStore } from '@/store/plan.js';
+import { useCategoryStore } from '@/store/category.js';
 import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 import DateTabBar from '@/components/task/DateTabBar.vue';
 import SubtaskList from '@/components/task/SubtaskList.vue';
@@ -362,6 +363,7 @@ import { parseRrule } from '@/utils/rruleBuilder.js';
 // ============================================================
 const taskStore = useTaskStore();
 const planStore = usePlanStore();
+const categoryStore = useCategoryStore();
 
 // ============================================================
 // 初始化 useTaskForm（阶段1：基础功能）
@@ -608,8 +610,31 @@ const {
 // minDate 保留供后续 picker 扩展使用（当前日历弹窗通过 isPast 逻辑控制）
 // const minDate = computed(() => formatDate(new Date()));
 
-/** 选中的规划名称（显示用） */
-const selectedPlanName = ref('');
+/**
+ * 任务所属容器的名称（显示用）
+ * 优先级：规划 > 分类 > "无分类"
+ * 符合四层架构：使用 planStore 和 categoryStore
+ */
+const selectedPlanName = computed(() => {
+  // 优先检查规划
+  if (form.value.planId) {
+    const plan = planStore.plans.find(p => p.id === String(form.value.planId));
+    if (plan) {
+      return plan.title;
+    }
+  }
+
+  // 其次检查分类
+  if (form.value.categoryId) {
+    const category = categoryStore.categories.find(c => c.id === String(form.value.categoryId));
+    if (category) {
+      return category.name;
+    }
+  }
+
+  // 都没有时显示"无分类"
+  return '无分类';
+});
 
 /** 左卡片：开始日期显示 */
 const startDateDisplay = computed(() => {
@@ -1304,33 +1329,8 @@ onMounted(() => {
         subtasks.value = task.subtasks.map(s => ({ title: s.title || s, done: s.done || false }));
       }
 
-      // 规划名称：优先使用 planName，否则根据 planId/categoryId 查找
-      if (task.planName) {
-        selectedPlanName.value = task.planName;
-      } else {
-        const planId = task.planId || task.categoryId;
-        if (planId) {
-          // 从 planStore 查找规划
-          const plan = planStore.plans.find(p => p.id === String(planId));
-          if (plan) {
-            selectedPlanName.value = plan.title;
-          } else {
-            // 从 user_categories 查找（可能是规划存储为分类）
-            try {
-              const categories = uni.getStorageSync('user_categories');
-              if (categories) {
-                const cats = JSON.parse(categories);
-                const cat = cats.find(c => c.id === String(planId));
-                if (cat) {
-                  selectedPlanName.value = cat.name;
-                }
-              }
-            } catch (e) {
-              console.error('[TaskEdit] 查找分类失败:', e);
-            }
-          }
-        }
-      }
+      // ✅ selectedPlanName 已改为 computed 属性（618-637行），无需手动赋值
+      // 会自动根据 form.value.planId 和 form.value.categoryId 计算容器名称
     }
   }
 
