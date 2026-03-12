@@ -18,7 +18,8 @@
       "Bash(rm:*)",
       "Bash(git fetch:*)",
       "Read(//d//**)",
-      "Bash(git tag:*)"
+      "Bash(git tag:*)",
+      "Bash(xargs:*)"
     ],
     "deny": [],
     "ask": []
