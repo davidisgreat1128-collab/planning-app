@@ -100,6 +100,7 @@ class TemplateRepository {
    */
   _loadDefaultTemplates() {
     const defaultTemplates = [
+      // 模板 1：一个科学的攒钱模式
       {
         id: 'tpl_1',
         title: '一个科学的攒钱模式',
@@ -143,6 +144,150 @@ class TemplateRepository {
           3: [
             { title: '记录今日收支情况', isRepeat: true, priority: 'high' },
             { title: '制定每周储蓄计划', isRepeat: false, priority: 'medium' }
+          ]
+        }
+      },
+
+      // 模板 2：循序渐进养成良好作息
+      {
+        id: 'tpl_2',
+        title: '循序渐进养成良好作息',
+        coverImage: '/static/images/template-sleep.jpg',
+        tags: ['作息改善', '健康生活'],
+        users: 9504,
+        userAvatars: [
+          '/static/images/avatar1.png',
+          '/static/images/avatar2.png',
+          '/static/images/avatar3.png'
+        ],
+        buff: '早睡早起，健康生活',
+        duration: 21,
+        milestones: [
+          {
+            title: '调整作息时间',
+            description: '逐步将睡眠时间提前30分钟，养成规律作息。',
+            days: '第7天'
+          },
+          {
+            title: '稳定睡眠周期',
+            description: '保持固定的睡眠和起床时间，形成生物钟。',
+            days: '第14天'
+          },
+          {
+            title: '养成良好习惯',
+            description: '睡前避免使用电子设备，提高睡眠质量。',
+            days: '第21天'
+          }
+        ],
+        days: Array.from({ length: 21 }, (_, i) => i + 1),
+        tasksByDay: {
+          1: [
+            { title: '晚上11点前上床', isRepeat: true, priority: 'high' },
+            { title: '早上7点前起床', isRepeat: true, priority: 'high' }
+          ],
+          2: [
+            { title: '晚上11点前上床', isRepeat: true, priority: 'high' },
+            { title: '早上7点前起床', isRepeat: true, priority: 'high' }
+          ],
+          3: [
+            { title: '晚上11点前上床', isRepeat: true, priority: 'high' },
+            { title: '睡前阅读15分钟', isRepeat: true, priority: 'medium' }
+          ]
+        }
+      },
+
+      // 模板 3：晨跑打卡计划
+      {
+        id: 'tpl_3',
+        title: '晨跑打卡计划',
+        coverImage: '/static/images/template-running.jpg',
+        tags: ['健康生活', '运动健身'],
+        users: 5623,
+        userAvatars: [
+          '/static/images/avatar1.png',
+          '/static/images/avatar2.png',
+          '/static/images/avatar3.png'
+        ],
+        buff: '坚持晨跑，拥抱健康',
+        duration: 30,
+        milestones: [
+          {
+            title: '开始晨跑',
+            description: '每天早晨坚持跑步30分钟，养成运动习惯。',
+            days: '第7天'
+          },
+          {
+            title: '提升跑量',
+            description: '逐步增加跑步距离，从3公里提升到5公里。',
+            days: '第15天'
+          },
+          {
+            title: '形成习惯',
+            description: '晨跑已成为生活的一部分，体能明显提升。',
+            days: '第30天'
+          }
+        ],
+        days: Array.from({ length: 30 }, (_, i) => i + 1),
+        tasksByDay: {
+          1: [
+            { title: '晨跑30分钟', isRepeat: true, priority: 'high' },
+            { title: '跑步后拉伸10分钟', isRepeat: true, priority: 'medium' }
+          ],
+          2: [
+            { title: '晨跑30分钟', isRepeat: true, priority: 'high' },
+            { title: '记录跑步距离和时间', isRepeat: true, priority: 'medium' }
+          ],
+          3: [
+            { title: '晨跑30分钟', isRepeat: true, priority: 'high' },
+            { title: '补充水分和能量', isRepeat: true, priority: 'medium' }
+          ]
+        }
+      },
+
+      // 模板 4：每日任务清单
+      {
+        id: 'tpl_4',
+        title: '每日任务清单',
+        coverImage: '/static/images/template-checklist.jpg',
+        tags: ['效率提升', '时间管理'],
+        users: 7234,
+        userAvatars: [
+          '/static/images/avatar1.png',
+          '/static/images/avatar2.png',
+          '/static/images/avatar3.png'
+        ],
+        buff: '高效管理，提升效率',
+        duration: 30,
+        milestones: [
+          {
+            title: '建立任务清单习惯',
+            description: '每天制定任务清单，养成计划习惯。',
+            days: '第7天'
+          },
+          {
+            title: '优化任务优先级',
+            description: '学会区分任务优先级，提高执行效率。',
+            days: '第15天'
+          },
+          {
+            title: '掌握时间管理',
+            description: '完全掌握任务清单方法，时间利用率显著提升。',
+            days: '第30天'
+          }
+        ],
+        days: Array.from({ length: 30 }, (_, i) => i + 1),
+        tasksByDay: {
+          1: [
+            { title: '制定今日任务清单', isRepeat: true, priority: 'high' },
+            { title: '完成3个重要任务', isRepeat: true, priority: 'high' }
+          ],
+          2: [
+            { title: '制定今日任务清单', isRepeat: true, priority: 'high' },
+            { title: '回顾昨日完成情况', isRepeat: true, priority: 'medium' }
+          ],
+          3: [
+            { title: '制定今日任务清单', isRepeat: true, priority: 'high' },
+            { title: '优化任务执行流程', isRepeat: true, priority: 'medium' }
           ]
         }
       }
