@@ -37,7 +37,7 @@
 
     <!-- 底部按钮 -->
     <view class="bottom-action">
-      <view class="action-btn" @tap="addGoal">
+      <view class="action-btn" @tap="handleAddGoal">
         <text class="btn-text">+ 添加规划</text>
       </view>
     </view>
@@ -54,39 +54,27 @@
 
 <script setup>
 /**
- * 模板详情页（重构版）
- * 职责：协调各子组件，管理模板详情展示逻辑
- * 
+ * 模板详情页（重构版 - Stage 2）
+ * 职责：协调各子组件展示模板详情（仅UI协调）
+ *
  * SRP重构成果：
- * - 原文件：912行，11个职责，健康度42/100
- * - 重构后：~250行，1个职责（页面协调），健康度90/100
- * - 拆分子组件：6个（TemplateHeader、UserPersistInfo、MilestoneList、DayTabBar、TaskList、MilestoneDialog）
+ * - Stage 1（UI拆分）：912行 → 289行（-68%），11个职责 → 1个职责
+ * - Stage 2（提取Composable）：业务逻辑移到 useTemplateDetail.js
+ * - 子组件：6个（TemplateHeader、UserPersistInfo、MilestoneList、DayTabBar、TaskList、MilestoneDialog）
+ * - Composable：1个（useTemplateDetail.js - 业务流程层）
  */
-import { ref, computed, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import TemplateHeader from '@/components/planning/template/TemplateHeader.vue'
 import UserPersistInfo from '@/components/planning/template/UserPersistInfo.vue'
 import MilestoneList from '@/components/planning/template/MilestoneList.vue'
 import DayTabBar from '@/components/planning/template/DayTabBar.vue'
 import TaskList from '@/components/planning/template/TaskList.vue'
 import MilestoneDialog from '@/components/planning/template/MilestoneDialog.vue'
+import { useTemplateDetail } from '@/composables/useTemplateDetail'
 
 // ============================================================
-// 状态管理
+// 模板数据（临时硬编码，Stage 3 将移到 TemplateRepository）
 // ============================================================
-
-/** 当前选中的Day */
-const currentDay = ref(1)
-
-/** 是否显示里程碑弹窗 */
-const showMilestoneModal = ref(false)
-
-/** 当前里程碑数据 */
-const currentMilestone = ref({
-  title: '',
-  description: '',
-  days: '',
-  index: 0
-})
 
 /** 模板数据（临时硬编码，Stage 3将移到TemplateRepository） */
 const templateData = ref({
@@ -137,62 +125,38 @@ const templateData = ref({
 })
 
 // ============================================================
-// 计算属性
+// 使用 Composable（业务流程层）
 // ============================================================
 
 /**
- * 当前选中天数的任务列表
+ * 使用模板详情业务逻辑
+ * 提供：状态、计算属性、业务方法
  */
-const currentDayTasks = computed(() => {
-  return templateData.value.tasksByDay[currentDay.value] || []
-})
+const {
+  // 状态
+  currentDay,
+  showMilestoneModal,
+  currentMilestone,
+  // 计算属性
+  currentDayTasks,
+  // 方法
+  switchDay,
+  handleMilestoneSelect,
+  closeMilestoneDetail,
+  addGoal,
+  goBack,
+  loadTemplateIdFromUrl
+} = useTemplateDetail(templateData)
 
 // ============================================================
-// 事件处理
+// UI 事件处理（仅UI相关逻辑，业务逻辑在 Composable）
 // ============================================================
 
 /**
- * 切换Day
- * @param {number} day - 目标Day
+ * 处理添加规划按钮点击
  */
-function switchDay(day) {
-  currentDay.value = day
-}
-
-/**
- * 处理里程碑选中
- * @param {object} payload - { milestone, index }
- */
-function handleMilestoneSelect({ milestone, index }) {
-  currentMilestone.value = {
-    ...milestone,
-    index
-  }
-  showMilestoneModal.value = true
-}
-
-/**
- * 关闭里程碑详情弹窗
- */
-function closeMilestoneDetail() {
-  showMilestoneModal.value = false
-}
-
-/**
- * 添加规划（跳转到创建页面）
- */
-function addGoal() {
-  console.log('[TemplateDetail] 添加规划到个人计划，模板ID:', templateData.value.id)
-  uni.navigateTo({
-    url: `/pages/planning/plan/create?templateId=${templateData.value.id}`
-  })
-}
-
-/**
- * 返回上一页
- */
-function goBack() {
-  uni.navigateBack()
+function handleAddGoal() {
+  addGoal(templateData.value.id)
 }
 
 // ============================================================
@@ -201,19 +165,17 @@ function goBack() {
 
 /**
  * 页面加载时初始化数据
- * TODO Stage 3: 从 TemplateRepository 加载数据
+ * Stage 3 TODO: 从 TemplateRepository 加载数据
  */
 onMounted(() => {
-  const pages = getCurrentPages()
-  const currentPage = pages[pages.length - 1]
-  const options = currentPage.options || {}
+  const templateId = loadTemplateIdFromUrl()
 
-  if (options.id) {
-    console.log('[TemplateDetail] 加载模板ID:', options.id)
-    // TODO Stage 3: const template = await TemplateRepository.getById(options.id)
+  if (templateId) {
+    console.log('[TemplateDetail] 加载模板ID:', templateId)
+    // Stage 3 TODO: const template = await TemplateRepository.getById(templateId)
     // templateData.value = template
   } else {
-    console.log('[TemplateDetail] 未指定模板ID，使用默认模板')
+    console.log('[TemplateDetail] 未指定模板ID，使用默认硬编码模板')
   }
 })
 </script>
