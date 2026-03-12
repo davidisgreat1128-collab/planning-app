@@ -4,6 +4,7 @@ import { useCategoryStore } from '@/store/category.js';
 import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
 import { usePlanningStore } from '@/store/planning.js';
+import { useTemplateStore } from '@/store/template.js';
 
 export default {
   async onLaunch() {
@@ -24,12 +25,13 @@ export default {
       console.log('[App] 首次安装日期已记录:', today);
     }
 
-    // 【三层架构】从 Repository 加载所有数据到 Store
+    // 【四层架构】从 Repository 加载所有数据到 Store
     const userStore = useUserStore();
     const categoryStore = useCategoryStore();
     const taskStore = useTaskStore();
     const logStore = useLogStore();
     const planningStore = usePlanningStore();
+    const templateStore = useTemplateStore();
 
     try {
       // 并行加载所有 Store 数据
@@ -38,7 +40,8 @@ export default {
         categoryStore.hydrate(),  // 加载分类数据
         taskStore.hydrate(),      // 加载任务数据
         logStore.hydrate(),       // 加载日志数据
-        planningStore.hydrate()   // 加载规划数据
+        planningStore.hydrate(),  // 加载规划数据
+        templateStore.hydrate()   // 加载模板数据
       ]);
       console.log('[App] 所有 Repository 数据加载完成');
     } catch (err) {
