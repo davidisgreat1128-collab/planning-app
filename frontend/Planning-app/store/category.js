@@ -33,7 +33,6 @@ import CategoryRepository from '@/repositories/CategoryRepository'
 export const useCategoryStore = defineStore('category', () => {
   // ========== 状态（State）==========
 
-  /**
    * 所有分类（响应式数组）
    *
    * ⚠️ 重要：必须用 ref 维护响应式副本
@@ -51,14 +50,12 @@ export const useCategoryStore = defineStore('category', () => {
 
   // ========== 计算属性（Getters）==========
 
-  /**
    * 激活的分类数量
    */
   const activeCategoriesCount = computed(() => {
     return categories.value.length
   })
 
-  /**
    * 按名称查找分类（模糊匹配）
    * @param {string} name - 搜索关键词
    * @returns {Array<object>}
@@ -70,7 +67,6 @@ export const useCategoryStore = defineStore('category', () => {
     return categories.value.filter(cat => cat.name.includes(name.trim()))
   }
 
-  /**
    * 按颜色获取分类
    * @param {string} color - 颜色代码（如 '#FF0000'）
    * @returns {Array<object>}
@@ -81,7 +77,6 @@ export const useCategoryStore = defineStore('category', () => {
 
   // ========== 内部方法 ==========
 
-  /**
    * 从 Repository 同步数据到 Store（响应式更新）
    *
    * @private
@@ -93,7 +88,6 @@ export const useCategoryStore = defineStore('category', () => {
 
   // ========== 操作（Actions）==========
 
-  /**
    * 启动时加载数据
    *
    * 必须在 App.vue 的 onLaunch 中调用：
@@ -116,7 +110,6 @@ export const useCategoryStore = defineStore('category', () => {
     _syncFromRepository()  // ✅ 同步到响应式副本
   }
 
-  /**
    * 创建分类
    *
    * @param {object} data - 分类数据 { name, color, sortOrder }
@@ -134,7 +127,6 @@ export const useCategoryStore = defineStore('category', () => {
     return newCategory
   }
 
-  /**
    * 更新分类
    *
    * @param {string} id - 分类 ID
@@ -150,7 +142,6 @@ export const useCategoryStore = defineStore('category', () => {
     return updated
   }
 
-  /**
    * 删除分类（软删除）
    *
    * @param {string} id - 分类 ID
@@ -164,7 +155,6 @@ export const useCategoryStore = defineStore('category', () => {
     _syncFromRepository()  // ✅ 同步到响应式副本，触发UI更新
   }
 
-  /**
    * 重新排序分类（拖拽后调用）
    *
    * @param {Array<object>} newOrder - 新的排序数组
@@ -187,7 +177,6 @@ export const useCategoryStore = defineStore('category', () => {
     _syncFromRepository()  // ✅ 批量更新后同步
   }
 
-  /**
    * 按 ID 获取分类
    *
    * @param {string} id - 分类 ID
@@ -200,7 +189,6 @@ export const useCategoryStore = defineStore('category', () => {
     return CategoryRepository.getById(id)
   }
 
-  /**
    * 手动同步到服务器
    *
    * 通常不需要手动调用，Repository 会自动同步。
@@ -213,7 +201,61 @@ export const useCategoryStore = defineStore('category', () => {
     _syncFromRepository()  // ✅ 同步后刷新Store
   }
 
+
   /**
+   * 从规划创建分类（规划同步到分类列表）
+   */
+  async function addCategoryFromPlan(planData) {
+    const categoryData = {
+      id: planData.id,
+      type: 'plan',
+      name: planData.name,
+      iconEmoji: planData.iconEmoji || '🔔',
+      buff: planData.buff,
+      startDate: planData.startDate,
+      endDate: planData.endDate,
+      milestones: planData.milestones || []
+    }
+    const savedCategories = uni.getStorageSync('user_categories')
+    let categoriesList = []
+    if (savedCategories) {
+      try {
+        categoriesList = JSON.parse(savedCategories)
+      } catch (e) {
+        console.error('[CategoryStore] 解析分类失败:', e)
+      }
+    }
+    categoriesList.push({ ...categoryData, createTime: new Date().toISOString() })
+    uni.setStorageSync('user_categories', JSON.stringify(categoriesList))
+    console.log('[CategoryStore] 规划已同步到分类列表')
+    return categoryData
+  }
+
+  function updateCategoryFromPlan(planId, planData) {
+    const savedCategories = uni.getStorageSync('user_categories')
+    let categoriesList = []
+    if (savedCategories) {
+      try {
+        categoriesList = JSON.parse(savedCategories)
+        const index = categoriesList.findIndex(cat => cat.id === planId)
+        if (index !== -1) {
+          categoriesList[index] = {
+            ...categoriesList[index],
+            name: planData.name,
+            iconEmoji: planData.iconEmoji || '🔔',
+            buff: planData.buff,
+            startDate: planData.startDate,
+            endDate: planData.endDate,
+            milestones: planData.milestones || []
+          }
+          uni.setStorageSync('user_categories', JSON.stringify(categoriesList))
+        }
+      } catch (e) {
+        console.error('[CategoryStore] 更新分类失败:', e)
+      }
+    }
+  }
+
    * 清除所有分类（仅用于测试，慎用！）
    *
    * @returns {Promise<void>}
@@ -243,6 +285,8 @@ export const useCategoryStore = defineStore('category', () => {
     getCategoriesByName,
     getCategoriesByColor,
     sync,
-    clearAll
+    clearAll,
+    addCategoryFromPlan,
+    updateCategoryFromPlan
   }
 })
