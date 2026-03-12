@@ -19,48 +19,6 @@
 import { ref, computed } from 'vue'
 import CategoryRepository from '@/repositories/CategoryRepository'
 
-// ============================================================
-// 调试日志工具（2026-03-11新增）
-// ============================================================
-
-/**
- * 创建带颜色的控制台日志
- * @param {string} tag - 日志标签
- * @param {string} message - 日志消息
- * @param {any} data - 数据对象
- * @param {string} type - 日志类型 'info' | 'warn' | 'error' | 'success'
- */
-function log(tag, message, data = null, type = 'info') {
-  const timestamp = new Date().toLocaleTimeString('zh-CN', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit', fractionalSecondDigits: 3 })
-  const colors = {
-    info: '#3B82F6',    // 蓝色
-    warn: '#F59E0B',    // 橙色
-    error: '#EF4444',   // 红色
-    success: '#10B981'  // 绿色
-  }
-  const color = colors[type] || colors.info
-
-  console.log(
-    `%c[${timestamp}] [${tag}] ${message}`,
-    `color: ${color}; font-weight: bold;`,
-    data !== null ? data : ''
-  )
-}
-
-/**
- * 日志分组开始
- */
-function logGroup(title) {
-  console.group(`%c${title}`, 'color: #8B5CF6; font-size: 14px; font-weight: bold;')
-}
-
-/**
- * 日志分组结束
- */
-function logGroupEnd() {
-  console.groupEnd()
-}
-
 /**
  * 分类管理 Composable
  * @returns {Object} 分类管理状态和方法
@@ -86,49 +44,27 @@ export function useCategoryManager() {
    * @returns {string} 图标emoji或首字母
    */
   function getCurrentCategoryIcon(fallbackCategoryId = null) {
-    logGroup('📍 getCurrentCategoryIcon 执行追踪')
-
-    log('getCurrentCategoryIcon', '入参 fallbackCategoryId', fallbackCategoryId, 'info')
-    log('getCurrentCategoryIcon', '当前 selectedCategoryId.value', selectedCategoryId.value, 'info')
-    log('getCurrentCategoryIcon', '当前 userCategories 数量', userCategories.value.length, 'info')
-
     // 优先使用用户手动选择的分类
     if (selectedCategoryId.value) {
-      log('getCurrentCategoryIcon', '✅ 优先路径：使用 selectedCategoryId', selectedCategoryId.value, 'success')
       const category = userCategories.value.find(c => c.id === selectedCategoryId.value)
-
       if (category) {
-        const icon = category.iconEmoji || category.name.charAt(0)
-        log('getCurrentCategoryIcon', '找到分类对象', { id: category.id, name: category.name, iconEmoji: category.iconEmoji, icon }, 'success')
-        logGroupEnd()
-        return icon
+        return category.iconEmoji || category.name.charAt(0)
       } else {
-        log('getCurrentCategoryIcon', '⚠️ selectedCategoryId 指向的分类不存在！返回"无"', { selectedCategoryId: selectedCategoryId.value, userCategories: userCategories.value.map(c => ({ id: c.id, name: c.name })) }, 'warn')
-        logGroupEnd()
         return '无'
       }
     }
 
     // 其次使用备用分类ID(如props传入的categoryId)
     if (fallbackCategoryId) {
-      log('getCurrentCategoryIcon', '🔄 备用路径：使用 fallbackCategoryId', fallbackCategoryId, 'info')
       const category = userCategories.value.find(c => c.id === fallbackCategoryId)
-
       if (category) {
-        const icon = category.iconEmoji || category.name.charAt(0)
-        log('getCurrentCategoryIcon', '找到备用分类对象', { id: category.id, name: category.name, iconEmoji: category.iconEmoji, icon }, 'success')
-        logGroupEnd()
-        return icon
+        return category.iconEmoji || category.name.charAt(0)
       } else {
-        log('getCurrentCategoryIcon', '⚠️ fallbackCategoryId 指向的分类不存在！返回"无"', { fallbackCategoryId, userCategories: userCategories.value.map(c => ({ id: c.id, name: c.name })) }, 'warn')
-        logGroupEnd()
         return '无'
       }
     }
 
     // 都没有时显示"无"
-    log('getCurrentCategoryIcon', '❌ 两个ID都为空，返回"无"', null, 'info')
-    logGroupEnd()
     return '无'
   }
 
@@ -146,24 +82,14 @@ export function useCategoryManager() {
    * - 新逻辑：统一从CategoryRepository.getAll()加载，确保数据一致性
    */
   function loadCategories() {
-    logGroup('📂 loadCategories 执行追踪')
-
     try {
-      // ✅ 从 CategoryRepository 加载（统一数据源）
+      // 从 CategoryRepository 加载（统一数据源）
       const categories = CategoryRepository.getAll()
       userCategories.value = categories
-
-      log('loadCategories', '✅ 从 CategoryRepository 加载分类数据', {
-        count: categories.length,
-        categories: categories.map(c => ({ id: c.id, name: c.name, iconEmoji: c.iconEmoji, type: c.type }))
-      }, 'success')
     } catch (e) {
       console.error('[useCategoryManager] 加载分类失败:', e)
       userCategories.value = []
-      log('loadCategories', '❌ 从 CategoryRepository 加载失败', e, 'error')
     }
-
-    logGroupEnd()
   }
 
   /**
@@ -177,40 +103,16 @@ export function useCategoryManager() {
    * - 空值 → 设置为 null（默认"无"）
    */
   function loadSelectedCategory() {
-    logGroup('📌 loadSelectedCategory 执行追踪')
-
     const savedCategoryId = uni.getStorageSync('selected_category_id')
-    log('loadSelectedCategory', 'localStorage 中的 selected_category_id', savedCategoryId, 'info')
 
     // 处理特殊值："all"（全部容器） 和 "none"（无分类容器） → 都对应图标"无"
     if (!savedCategoryId || savedCategoryId === 'all' || savedCategoryId === 'none') {
       selectedCategoryId.value = null
-      log('loadSelectedCategory', '✅ 容器为"全部"或"无分类"，图标显示"无"', { savedCategoryId }, 'success')
-      logGroupEnd()
       return
     }
 
     // 处理具体分类ID
     selectedCategoryId.value = savedCategoryId
-    log('loadSelectedCategory', '✅ 加载选中分类ID', savedCategoryId, 'success')
-
-    // 验证该ID是否存在于分类列表中
-    const category = userCategories.value.find(c => c.id === savedCategoryId)
-    if (category) {
-      log('loadSelectedCategory', '✅ 找到对应分类/规划', {
-        id: category.id,
-        name: category.name,
-        iconEmoji: category.iconEmoji,
-        type: category.type
-      }, 'success')
-    } else {
-      log('loadSelectedCategory', '⚠️ 警告：选中的分类ID在分类列表中不存在！将显示"无"图标', {
-        savedCategoryId,
-        availableCategories: userCategories.value.map(c => ({ id: c.id, name: c.name }))
-      }, 'warn')
-    }
-
-    logGroupEnd()
   }
 
   /**
@@ -260,35 +162,7 @@ export function useCategoryManager() {
    * @param {string} categoryId - 分类ID (null表示"无分类")
    */
   function selectCategory(categoryId) {
-    logGroup('🎯 selectCategory 执行追踪')
-
-    log('selectCategory', '用户点击选择分类', categoryId, 'info')
-    log('selectCategory', '选择前 selectedCategoryId.value', selectedCategoryId.value, 'info')
-
     selectedCategoryId.value = categoryId
-
-    log('selectCategory', '选择后 selectedCategoryId.value', selectedCategoryId.value, 'success')
-
-    if (categoryId === null) {
-      log('selectCategory', '✅ 选择"无分类"', null, 'success')
-    } else {
-      const category = userCategories.value.find(c => c.id === categoryId)
-      if (category) {
-        log('selectCategory', '✅ 选择分类成功', {
-          id: category.id,
-          name: category.name,
-          iconEmoji: category.iconEmoji,
-          type: category.type
-        }, 'success')
-      } else {
-        log('selectCategory', '⚠️ 警告：选择的分类ID在列表中不存在！', {
-          categoryId,
-          availableCategories: userCategories.value.map(c => ({ id: c.id, name: c.name }))
-        }, 'warn')
-      }
-    }
-
-    logGroupEnd()
   }
 
   /**
