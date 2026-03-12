@@ -62,6 +62,7 @@ class TemplateRepository {
   async hydrate() {
     if (this.isHydrated) {
       console.log('[TemplateRepository] 已初始化，跳过重复 hydrate')
+      console.log('[TemplateRepository] 当前缓存的模板ID列表:', Array.from(this.memoryCache.keys()))
       return
     }
 
@@ -70,14 +71,17 @@ class TemplateRepository {
     try {
       // 从 localStorage 加载
       const cachedData = uni.getStorageSync(this.storageKey)
+      console.log('[TemplateRepository] localStorage 原始数据:', cachedData ? `${cachedData.substring(0, 100)}...` : 'null')
 
       if (cachedData) {
         const templates = JSON.parse(cachedData)
         console.log(`[TemplateRepository] 从 localStorage 加载了 ${templates.length} 个模板`)
+        console.log('[TemplateRepository] 模板ID列表:', templates.map(t => t.id))
 
         // 写入内存缓存
         templates.forEach((template) => {
           this.memoryCache.set(template.id, template)
+          console.log(`[TemplateRepository] 缓存模板: ${template.id} - ${template.title}`)
         })
       } else {
         console.log('[TemplateRepository] localStorage 无缓存，使用默认模板数据')
@@ -86,6 +90,8 @@ class TemplateRepository {
 
       this.isHydrated = true
       console.log('[TemplateRepository] hydrate 完成')
+      console.log('[TemplateRepository] 最终缓存的模板数量:', this.memoryCache.size)
+      console.log('[TemplateRepository] 最终缓存的模板ID列表:', Array.from(this.memoryCache.keys()))
     } catch (error) {
       console.error('[TemplateRepository] hydrate 失败:', error)
       // 降级：加载默认模板
@@ -295,9 +301,11 @@ class TemplateRepository {
 
     defaultTemplates.forEach((template) => {
       this.memoryCache.set(template.id, template)
+      console.log(`[TemplateRepository] 默认模板缓存: ${template.id} - ${template.title}`)
     })
 
     console.log(`[TemplateRepository] 加载了 ${defaultTemplates.length} 个默认模板`)
+    console.log('[TemplateRepository] 默认模板ID列表:', defaultTemplates.map(t => t.id))
 
     // 保存到 localStorage
     this._saveToLocalStorage()
@@ -330,18 +338,26 @@ class TemplateRepository {
    * @returns {object|null} 模板对象，不存在时返回 null
    */
   getById(id) {
+    console.log(`[TemplateRepository] getById 调用: 查找模板 ${id}`)
+    console.log('[TemplateRepository] 当前 isHydrated 状态:', this.isHydrated)
+    console.log('[TemplateRepository] 当前缓存大小:', this.memoryCache.size)
+    console.log('[TemplateRepository] 当前缓存的所有ID:', Array.from(this.memoryCache.keys()))
+
     if (!this.isHydrated) {
-      console.warn('[TemplateRepository] 未初始化，请先调用 hydrate()')
-      return null
+      console.warn('[TemplateRepository] ⚠️ 未初始化，请先调用 hydrate()')
+      console.warn('[TemplateRepository] ⚠️ 缓存状态异常，尝试强制加载默认模板')
+      this._loadDefaultTemplates()
+      this.isHydrated = true
     }
 
     const template = this.memoryCache.get(id)
 
     if (template) {
-      console.log(`[TemplateRepository] getById: 找到模板 ${id}`)
+      console.log(`[TemplateRepository] ✅ getById: 找到模板 ${id} - ${template.title}`)
       return { ...template } // 返回副本，避免外部修改缓存
     } else {
-      console.warn(`[TemplateRepository] getById: 模板 ${id} 不存在`)
+      console.error(`[TemplateRepository] ❌ getById: 模板 ${id} 不存在`)
+      console.error('[TemplateRepository] ❌ 可用的模板ID列表:', Array.from(this.memoryCache.keys()))
       return null
     }
   }

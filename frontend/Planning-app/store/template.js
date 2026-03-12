@@ -120,21 +120,26 @@ export const useTemplateStore = defineStore('template', () => {
    * @returns {Promise<object|null>} 模板对象
    */
   async function loadTemplateById(id) {
-    console.log(`[TemplateStore] 加载模板 ${id}`)
+    console.log(`[TemplateStore] 🔍 开始加载模板: ${id}`)
+    console.log('[TemplateStore] Store isHydrated 状态:', isHydrated.value)
+    console.log('[TemplateStore] 当前 templates 数量:', templates.value.length)
 
     if (!isHydrated.value) {
-      console.warn('[TemplateStore] 未初始化，先执行 hydrate')
+      console.warn('[TemplateStore] ⚠️ Store 未初始化，先执行 hydrate')
       await hydrate()
     }
 
+    console.log(`[TemplateStore] 调用 templateRepository.getById(${id})`)
     const template = templateRepository.getById(id)
 
     if (template) {
       currentTemplate.value = template
-      console.log(`[TemplateStore] 成功加载模板 ${id}`)
+      console.log(`[TemplateStore] ✅ 成功加载模板 ${id} - ${template.title}`)
+      console.log('[TemplateStore] currentTemplate.value 已更新:', currentTemplate.value.id)
       return template
     } else {
-      console.error(`[TemplateStore] 模板 ${id} 不存在`)
+      console.error(`[TemplateStore] ❌ 模板 ${id} 不存在`)
+      console.error('[TemplateStore] ❌ Repository 返回 null')
       currentTemplate.value = null
       return null
     }
