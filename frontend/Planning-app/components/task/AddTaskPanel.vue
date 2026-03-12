@@ -1411,6 +1411,18 @@ watch(() => props.visible, (newVal) => {
 
     console.log('%c[watch visible] 数据加载完成后 selectedCategoryId.value', 'color: #10B981; font-weight: bold;', selectedCategoryId.value)
     console.log('%c[watch visible] 数据加载完成后 userCategories 数量', 'color: #10B981; font-weight: bold;', userCategories.value.length)
+    console.log('%c[watch visible] 数据加载完成后 userCategories 列表:', 'color: #10B981; font-weight: bold;', userCategories.value.map(c => ({ id: c.id, name: c.name, type: c.type, iconEmoji: c.iconEmoji })))
+
+    // 🔥 新增：检查 selectedCategoryId 是否在 userCategories 中
+    if (selectedCategoryId.value) {
+      const found = userCategories.value.find(c => c.id === selectedCategoryId.value)
+      if (found) {
+        console.log('%c[watch visible] ✅ selectedCategoryId 在 userCategories 中找到', 'color: #10B981; font-weight: bold;', { id: found.id, name: found.name, type: found.type, iconEmoji: found.iconEmoji })
+      } else {
+        console.log('%c[watch visible] ❌ selectedCategoryId 在 userCategories 中未找到！', 'color: #FF0000; font-weight: bold;', selectedCategoryId.value)
+      }
+    }
+
     console.groupEnd()
   }
 });
