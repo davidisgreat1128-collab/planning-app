@@ -98,7 +98,16 @@ function handleBack() {
   color: #ffffff;
   margin-bottom: 20rpx;
   display: block;
-  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.3);
+  text-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.6),
+               0 4rpx 16rpx rgba(0, 0, 0, 0.4),
+               0 0 4rpx rgba(0, 0, 0, 0.8);
+  /* 添加半透明背景提高可读性 */
+  padding: 8rpx 16rpx;
+  background: linear-gradient(to bottom,
+              rgba(0, 0, 0, 0.4),
+              rgba(0, 0, 0, 0.3));
+  border-radius: 8rpx;
+  backdrop-filter: blur(4rpx);
 }
 
 .tag-list {
@@ -109,7 +118,8 @@ function handleBack() {
 
 .tag-item {
   padding: 8rpx 20rpx;
-  background-color: rgba(255, 255, 255, 0.25);
+  background-color: rgba(0, 0, 0, 0.45);
+  border: 1rpx solid rgba(255, 255, 255, 0.3);
   border-radius: 30rpx;
   backdrop-filter: blur(10rpx);
 }
@@ -117,5 +127,6 @@ function handleBack() {
 .tag-text {
   font-size: 24rpx;
   color: #ffffff;
+  text-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.6);
 }
 </style>

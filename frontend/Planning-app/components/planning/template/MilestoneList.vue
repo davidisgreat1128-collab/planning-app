@@ -82,7 +82,8 @@ function handleMilestoneClick(milestone, index) {
 .milestone-card {
   width: 280rpx;
   padding: 24rpx;
-  background-color: rgba(255, 255, 255, 0.15);
+  background-color: rgba(0, 0, 0, 0.4);
+  border: 1rpx solid rgba(255, 255, 255, 0.2);
   backdrop-filter: blur(10rpx);
   border-radius: 20rpx;
   display: flex;
@@ -92,6 +93,7 @@ function handleMilestoneClick(milestone, index) {
 
 .milestone-flag {
   font-size: 32rpx;
+  filter: drop-shadow(0 1rpx 2rpx rgba(0, 0, 0, 0.5));
 }
 
 .milestone-info {
@@ -103,18 +105,22 @@ function handleMilestoneClick(milestone, index) {
 
 .milestone-num {
   font-size: 20rpx;
-  color: rgba(255, 255, 255, 0.7);
+  color: #ffffff;
+  opacity: 0.8;
+  text-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.5);
 }
 
 .milestone-title {
   font-size: 26rpx;
   color: #ffffff;
   font-weight: 500;
+  text-shadow: 0 1rpx 4rpx rgba(0, 0, 0, 0.6);
 }
 
 .milestone-arrow {
   font-size: 36rpx;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1rpx 3rpx rgba(0, 0, 0, 0.5);
 }
 
 .milestone-connector {
@@ -127,13 +133,15 @@ function handleMilestoneClick(milestone, index) {
   width: 16rpx;
   height: 16rpx;
   border-radius: 50%;
-  background-color: rgba(255, 255, 255, 0.8);
+  background-color: #ffffff;
+  box-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.4);
 }
 
 .milestone-line {
   width: 80rpx;
-  height: 2rpx;
-  background-color: rgba(255, 255, 255, 0.3);
+  height: 3rpx;
+  background-color: rgba(255, 255, 255, 0.6);
   margin-left: 8rpx;
+  box-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.3);
 }
 </style>

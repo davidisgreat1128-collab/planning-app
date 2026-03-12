@@ -72,10 +72,19 @@ const props = defineProps({
 .more-text {
   font-size: 20rpx;
   color: #ffffff;
+  font-weight: bold;
+  text-shadow: 0 1rpx 2rpx rgba(0, 0, 0, 0.5);
 }
 
 .users-count {
-  font-size: 24rpx;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: 26rpx;
+  font-weight: 500;
+  color: #ffffff;
+  text-shadow: 0 2rpx 6rpx rgba(0, 0, 0, 0.6),
+               0 0 4rpx rgba(0, 0, 0, 0.8);
+  padding: 4rpx 12rpx;
+  background-color: rgba(0, 0, 0, 0.35);
+  border-radius: 20rpx;
+  backdrop-filter: blur(4rpx);
 }
 </style>
