@@ -17,19 +17,19 @@
       <!-- 激励语卡片 -->
       <view class="motivation-card">
         <view class="motivation-bubble">
-          <text class="motivation-text">{{ motivationText }}</text>
+          <text class="motivation-text">想象一下瘦下10斤后的模样，你会感谢今天的自己</text>
         </view>
         <image class="motivation-img" src="/static/images/motivation-character.png" mode="aspectFit" />
       </view>
 
       <!-- 推荐卡片 -->
-      <view v-if="recommendedTemplate" class="recommend-section">
+      <view class="recommend-section">
         <view class="recommend-tag">推荐</view>
         <view class="recommend-card" @tap="selectTemplate(recommendedTemplate)">
           <view class="recommend-info">
             <text class="recommend-title">{{ recommendedTemplate.title }}</text>
             <text class="recommend-users">{{ recommendedTemplate.users }}人坚持</text>
-            <text class="recommend-desc">{{ recommendedTemplate.buff || '开始你的规划之旅' }}</text>
+            <text class="recommend-desc">{{ recommendedTemplate.desc }}</text>
           </view>
           <image class="recommend-img" :src="recommendedTemplate.coverImage" mode="aspectFill" />
         </view>
@@ -60,7 +60,7 @@
           <view class="template-info">
             <text class="template-title"># {{ template.title }}</text>
             <text class="template-users">{{ template.users }}人坚持</text>
-            <text class="template-tag">{{ getTemplateTag(template) }}</text>
+            <text class="template-tag">{{ template.tag }}</text>
           </view>
         </view>
       </view>
@@ -72,193 +72,99 @@
 </template>
 
 <script setup>
-/**
- * 模板列表页（Template Index）
- *
- * 职责：
- * - 展示所有可用的规划模板
- * - 提供分类筛选功能
- * - 支持推荐模板展示
- * - 跳转到模板详情页
- *
- * 架构层级：
- * Component（本层）→ Store → Repository
- *
- * 数据流：
- * - 读取：从 TemplateStore 获取模板列表
- * - 写入：无（只读页面）
- *
- * 创建时间：2026-03-12
- * 重构原因：接入 TemplateStore，移除硬编码数据，遵循四层架构
- */
-import { ref, computed, onMounted } from 'vue'
-import { useTemplateStore } from '@/store/template'
+import { ref, computed } from 'vue';
 
-// ============================================================
-// Store（状态管理层）
-// ============================================================
-
-const templateStore = useTemplateStore()
-
-// ============================================================
-// 响应式状态
-// ============================================================
-
-/**
- * 当前选中的分类
- * @type {Ref<string>}
- */
-const currentCategory = ref('all')
-
-/**
- * 激励语文本（可配置）
- * @type {Ref<string>}
- */
-const motivationText = ref('想象一下瘦下10斤后的模样，你会感谢今天的自己')
-
-// ============================================================
-// 计算属性
-// ============================================================
-
-/**
- * 分类标签列表（固定配置）
- */
-const categoryTabs = computed(() => [
+// 分类标签
+const categoryTabs = ref([
   { key: 'all', label: '全部' },
-  { key: 'health', label: '健康' },
-  { key: 'work', label: '工作' },
   { key: 'study', label: '学习' },
-  { key: 'hobby', label: '兴趣' }
-])
+  { key: 'work', label: '工作' },
+  { key: 'hobby', label: '兴趣' },
+  { key: 'health', label: '健康' }
+]);
 
-/**
- * 推荐模板（从Store中获取第一个模板）
- */
-const recommendedTemplate = computed(() => {
-  const templates = templateStore.activeTemplates
-  return templates.length > 0 ? templates[0] : null
-})
+const currentCategory = ref('all');
 
-/**
- * 所有模板列表（从Store获取，排除推荐模板）
- */
-const allTemplates = computed(() => {
-  const templates = templateStore.activeTemplates
-  const recommended = recommendedTemplate.value
+// 推荐模板
+const recommendedTemplate = ref({
+  id: 'rec_1',
+  title: '30天懒人式蜕变维密身材',
+  users: 6392,
+  desc: '无器械/宅家可练',
+  coverImage: '/static/images/template-fitness.jpg',
+  category: 'health'
+});
 
-  // 排除推荐模板
-  if (recommended) {
-    return templates.filter((t) => t.id !== recommended.id)
+// 规划模板列表
+const templates = ref([
+  {
+    id: 'tpl_1',
+    title: '一个科学的攒钱模式',
+    users: 8141,
+    tag: '培养理财能力',
+    coverImage: '/static/images/template-money.jpg',
+    category: 'work'
+  },
+  {
+    id: 'tpl_2',
+    title: '循序渐进养成良好作息',
+    users: 9504,
+    tag: '作息改善',
+    coverImage: '/static/images/template-sleep.jpg',
+    category: 'health'
+  },
+  {
+    id: 'tpl_3',
+    title: '晨跑打卡计划',
+    users: 5623,
+    tag: '健康生活',
+    coverImage: '/static/images/template-running.jpg',
+    category: 'health'
+  },
+  {
+    id: 'tpl_4',
+    title: '每日任务清单',
+    users: 7234,
+    tag: '效率提升',
+    coverImage: '/static/images/template-checklist.jpg',
+    category: 'work'
   }
+]);
 
-  return templates
-})
-
-/**
- * 筛选后的模板列表（根据当前分类）
- */
+// 筛选后的模板
 const filteredTemplates = computed(() => {
   if (currentCategory.value === 'all') {
-    return allTemplates.value
+    return templates.value;
   }
+  return templates.value.filter(t => t.category === currentCategory.value);
+});
 
-  // 根据 tags 字段筛选（模板的 tags 是数组，包含多个标签）
-  return allTemplates.value.filter((template) => {
-    const tags = template.tags || []
-    return tags.some((tag) => {
-      // 根据tag内容判断分类
-      if (currentCategory.value === 'health') {
-        return tag.includes('健康') || tag.includes('作息') || tag.includes('运动')
-      }
-      if (currentCategory.value === 'work') {
-        return tag.includes('工作') || tag.includes('效率') || tag.includes('理财') || tag.includes('财务')
-      }
-      if (currentCategory.value === 'study') {
-        return tag.includes('学习') || tag.includes('阅读')
-      }
-      if (currentCategory.value === 'hobby') {
-        return tag.includes('兴趣') || tag.includes('爱好')
-      }
-      return false
-    })
-  })
-})
-
-// ============================================================
-// 业务方法
-// ============================================================
-
-/**
- * 切换分类
- * @param {string} category - 分类key
- */
+// 切换分类
 function switchCategory(category) {
-  currentCategory.value = category
+  currentCategory.value = category;
 }
 
-/**
- * 选择模板（跳转到详情页）
- * @param {object} template - 模板对象
- */
+// 选择模板
 function selectTemplate(template) {
-  if (!template || !template.id) {
-    uni.showToast({
-      title: '模板数据异常',
-      icon: 'none'
-    })
-    return
-  }
-
+  //console.log('[Template] 选择模板:', template);
   uni.navigateTo({
     url: `/pages/planning/template/detail?id=${template.id}`
-  })
+  });
 }
 
-/**
- * 创建自定义规划（空白规划）
- */
+// 创建自定义规划（空白规划）
 function createCustomGoal() {
+  console.log('[Template] 创建自定义规划（空白规划）');
+  // 跳转到"新规划"页面，不传递templateId参数，使用默认空白值
   uni.navigateTo({
     url: '/pages/planning/plan/create'
-  })
+  });
 }
 
-/**
- * 返回上一页
- */
+// 返回
 function goBack() {
-  uni.navigateBack()
+  uni.navigateBack();
 }
-
-/**
- * 获取模板标签（用于显示）
- * @param {object} template - 模板对象
- * @returns {string} 第一个标签或默认文本
- */
-function getTemplateTag(template) {
-  const tags = template.tags || []
-  return tags.length > 0 ? tags[0] : '规划模板'
-}
-
-// ============================================================
-// 生命周期
-// ============================================================
-
-/**
- * 页面加载时初始化数据
- * 从 Store 加载模板列表（三层架构）
- */
-onMounted(async () => {
-  // 确保 Store 已初始化
-  if (!templateStore.isHydrated) {
-    await templateStore.hydrate()
-  }
-
-  // 检查是否有模板数据
-  if (templateStore.templates.length === 0) {
-    console.warn('[TemplateIndex] 模板数据为空')
-  }
-})
 </script>
 
 <style scoped>
@@ -321,7 +227,7 @@ onMounted(async () => {
    ============================================================ */
 .scroll-content {
   flex: 1;
-  padding: 30rpx 20rpx;
+  padding: 30rpx 20rpx; /* 减少左右内边距,避免边框被裁剪 */
   box-sizing: border-box;
 }
 
@@ -369,7 +275,7 @@ onMounted(async () => {
   position: absolute;
   top: -10rpx;
   left: 20rpx;
-  background: linear-gradient(135deg, #ff6b6b 0%, #ff8e53 100%);
+  background: linear-gradient(135deg, #FF6B6B 0%, #FF8E53 100%);
   color: #fff;
   font-size: 24rpx;
   padding: 8rpx 20rpx;
@@ -464,7 +370,7 @@ onMounted(async () => {
   gap: 20rpx;
   width: 100%;
   box-sizing: border-box;
-  padding: 0 10rpx;
+  padding: 0 10rpx; /* 左右各留10rpx,确保边框完整 */
 }
 
 .template-card {
@@ -475,7 +381,7 @@ onMounted(async () => {
   cursor: pointer;
   transition: all 0.2s;
   box-sizing: border-box;
-  width: 100%;
+  width: 100%; /* 让卡片填充网格单元 */
 }
 
 .template-card:active {
@@ -499,7 +405,7 @@ onMounted(async () => {
 .template-title {
   font-size: 28rpx;
   font-weight: 600;
-  color: #ff8e53;
+  color: #FF8E53;
 }
 
 .template-users {
