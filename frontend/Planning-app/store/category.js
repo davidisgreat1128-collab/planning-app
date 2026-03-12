@@ -33,7 +33,7 @@ import CategoryRepository from '@/repositories/CategoryRepository'
 export const useCategoryStore = defineStore('category', () => {
   // ========== 状态（State）==========
 
-   * 所有分类（响应式数组）
+  /** 所有分类（响应式数组）
    *
    * ⚠️ 重要：必须用 ref 维护响应式副本
    *
