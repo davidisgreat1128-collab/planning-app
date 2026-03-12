@@ -234,7 +234,7 @@ onMounted(() => {
 
 .persist-info-wrapper {
   position: absolute;
-  bottom: 20rpx;
+  bottom: 30rpx;
   left: 30rpx;
   right: 30rpx;
   z-index: 20;

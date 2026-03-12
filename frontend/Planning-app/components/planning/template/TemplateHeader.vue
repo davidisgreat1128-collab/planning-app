@@ -87,7 +87,7 @@ function handleBack() {
 
 .header-content {
   position: absolute;
-  bottom: 40rpx;
+  bottom: 90rpx;
   left: 30rpx;
   right: 30rpx;
 }
