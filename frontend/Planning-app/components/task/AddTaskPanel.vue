@@ -486,6 +486,7 @@ import { useTaskForm } from '@/composables/useTaskForm.js';
 import { useCategoryManager } from '@/composables/useCategoryManager.js';
 import { formatDate, timeDiffMinutes, formatDuration, formatDateWithWeekday, getRelativeDateLabel } from '@/utils/date.js';
 import { buildRrule } from '@/utils/rruleBuilder.js';
+import { syncCategoryFields } from '@/utils/categorySync.js';
 
 // ============================================================
 // Props & Emits
@@ -1206,49 +1207,15 @@ async function handlePanelSubmit() {
       form.value.endDate = endDate.value ? formatDate(endDate.value) : form.value.taskDate;
     }
 
-    // 🔥 关键修复：同步分类字段（修复BUG-003）
-    // 核心逻辑：区分"分类"和"规划"
-    // selectedCategoryId 可能是：
-    //   - 分类ID（category.type === 'category'）→ 设置给 categoryId
-    //   - 规划ID（category.type === 'plan'）→ 设置给 planId
-    //   - null（"无分类"或"全部"）→ categoryId 和 planId 都设为 null
-
-    // 优先使用用户在AddTaskPanel中选择的分类（selectedCategoryId）
-    // 如果用户没选择，则使用从父组件传入的 categoryId
-    if (selectedCategoryId.value) {
-      // 用户选择了具体的分类/规划
-      // 🔥 关键：判断是分类还是规划
-      const selectedItem = userCategories.value.find(c => c.id === selectedCategoryId.value)
-      if (selectedItem) {
-        if (selectedItem.type === 'plan') {
-          // 规划类型 → 设置给 planId
-          form.value.categoryId = null
-          form.value.planId = selectedCategoryId.value
-        } else {
-          // 分类类型 → 设置给 categoryId
-          form.value.categoryId = selectedCategoryId.value
-          form.value.planId = null
-        }
-      } else {
-        // 找不到该ID，可能是数据不一致
-        form.value.categoryId = selectedCategoryId.value
-        form.value.planId = null
-      }
-    } else if (props.categoryId && typeof props.categoryId === 'string') {
-      // 从父组件传入的分类ID（如从日历页点击某个分类下的"+"按钮）
-      const selectedItem = userCategories.value.find(c => c.id === props.categoryId)
-      if (selectedItem && selectedItem.type === 'plan') {
-        form.value.categoryId = null
-        form.value.planId = props.categoryId
-      } else {
-        form.value.categoryId = props.categoryId
-        form.value.planId = null
-      }
-    } else {
-      // 用户选择了"无分类"或"全部"，或没有选择任何分类
-      form.value.categoryId = null
-      form.value.planId = null
-    }
+    // 同步分类字段（修复BUG-003）
+    // 使用 categorySync 工具函数根据type区分category和plan
+    const { categoryId, planId } = syncCategoryFields({
+      selectedId: selectedCategoryId.value,
+      fallbackId: props.categoryId,
+      categories: userCategories.value
+    })
+    form.value.categoryId = categoryId
+    form.value.planId = planId
 
     // 同步提醒字段（适配新的 ReminderPicker 数据格式）
     if (reminderData.value.enabled) {
