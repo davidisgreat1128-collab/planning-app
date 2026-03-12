@@ -54,16 +54,22 @@
 
 <script setup>
 /**
- * 模板详情页（重构版 - Stage 2）
+ * 模板详情页（重构版 - Stage 3）
  * 职责：协调各子组件展示模板详情（仅UI协调）
  *
  * SRP重构成果：
  * - Stage 1（UI拆分）：912行 → 289行（-68%），11个职责 → 1个职责
  * - Stage 2（提取Composable）：业务逻辑移到 useTemplateDetail.js
+ * - Stage 3（数据访问层）：移除硬编码数据，使用 Store + Repository
  * - 子组件：6个（TemplateHeader、UserPersistInfo、MilestoneList、DayTabBar、TaskList、MilestoneDialog）
  * - Composable：1个（useTemplateDetail.js - 业务流程层）
+ * - Store：1个（template.js - 状态管理层）
+ * - Repository：1个（TemplateRepository.js - 数据访问层）
+ *
+ * 四层架构完整实现：
+ * Component（detail.vue）→ Composable（useTemplateDetail.js）→ Store（template.js）→ Repository（TemplateRepository.js）
  */
-import { ref, onMounted } from 'vue'
+import { computed, onMounted } from 'vue'
 import TemplateHeader from '@/components/planning/template/TemplateHeader.vue'
 import UserPersistInfo from '@/components/planning/template/UserPersistInfo.vue'
 import MilestoneList from '@/components/planning/template/MilestoneList.vue'
@@ -71,56 +77,34 @@ import DayTabBar from '@/components/planning/template/DayTabBar.vue'
 import TaskList from '@/components/planning/template/TaskList.vue'
 import MilestoneDialog from '@/components/planning/template/MilestoneDialog.vue'
 import { useTemplateDetail } from '@/composables/useTemplateDetail'
+import { useTemplateStore } from '@/store/template'
 
 // ============================================================
-// 模板数据（临时硬编码，Stage 3 将移到 TemplateRepository）
+// Store（状态管理层）
 // ============================================================
 
-/** 模板数据（临时硬编码，Stage 3将移到TemplateRepository） */
-const templateData = ref({
-  id: 'tpl_1',
-  title: '一个科学的攒钱模式',
-  coverImage: '/static/images/template-money.jpg',
-  tags: ['培养理财能力', '财务管理'],
-  users: 8141,
-  userAvatars: [
-    '/static/images/avatar1.png',
-    '/static/images/avatar2.png',
-    '/static/images/avatar3.png'
-  ],
-  buff: '财富自由，从今天开始',
-  duration: 30,
-  milestones: [
-    {
-      title: '建立理财意识',
-      description: '认识到理财的重要性，了解复利的力量。',
-      days: '第7天'
-    },
-    {
-      title: '制定储蓄计划',
-      description: '根据收入和支出，制定合理的储蓄目标和计划。',
-      days: '第15天'
-    },
-    {
-      title: '养成记账习惯',
-      description: '坚持每日记账，了解自己的消费习惯和资金流向。',
-      days: '第30天'
-    }
-  ],
-  days: Array.from({ length: 30 }, (_, i) => i + 1),
-  tasksByDay: {
-    1: [
-      { title: '记录今日收支情况', isRepeat: true, priority: 'high' },
-      { title: '设定月度储蓄目标', isRepeat: false, priority: 'high' }
-    ],
-    2: [
-      { title: '记录今日收支情况', isRepeat: true, priority: 'high' },
-      { title: '分析昨日消费习惯', isRepeat: false, priority: 'medium' }
-    ],
-    3: [
-      { title: '记录今日收支情况', isRepeat: true, priority: 'high' },
-      { title: '制定每周储蓄计划', isRepeat: false, priority: 'medium' }
-    ]
+/**
+ * 使用模板 Store
+ * 提供：currentTemplate（当前模板数据）、loadTemplateById（加载方法）
+ */
+const templateStore = useTemplateStore()
+
+/**
+ * 当前模板数据（从 Store 获取，响应式）
+ */
+const templateData = computed(() => {
+  return templateStore.currentTemplate || {
+    id: '',
+    title: '',
+    coverImage: '',
+    tags: [],
+    users: 0,
+    userAvatars: [],
+    buff: '',
+    duration: 0,
+    milestones: [],
+    days: [],
+    tasksByDay: {}
   }
 })
 
@@ -165,17 +149,31 @@ function handleAddGoal() {
 
 /**
  * 页面加载时初始化数据
- * Stage 3 TODO: 从 TemplateRepository 加载数据
+ * 从 Store 加载模板数据（四层架构完整实现）
  */
-onMounted(() => {
+onMounted(async () => {
   const templateId = loadTemplateIdFromUrl()
 
   if (templateId) {
     console.log('[TemplateDetail] 加载模板ID:', templateId)
-    // Stage 3 TODO: const template = await TemplateRepository.getById(templateId)
-    // templateData.value = template
+
+    // 从 Store 加载模板数据
+    // Store → Repository → localStorage → memoryCache
+    const template = await templateStore.loadTemplateById(templateId)
+
+    if (!template) {
+      uni.showToast({
+        title: '模板不存在',
+        icon: 'none'
+      })
+      setTimeout(() => {
+        uni.navigateBack()
+      }, 1500)
+    }
   } else {
-    console.log('[TemplateDetail] 未指定模板ID，使用默认硬编码模板')
+    console.log('[TemplateDetail] 未指定模板ID，加载默认模板 tpl_1')
+    // 加载默认模板
+    await templateStore.loadTemplateById('tpl_1')
   }
 })
 </script>
