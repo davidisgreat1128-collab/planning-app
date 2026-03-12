@@ -152,23 +152,14 @@ function handleAddGoal() {
  * 从 Store 加载模板数据（四层架构完整实现）
  */
 onMounted(async () => {
-  console.log('[TemplateDetail] 🚀 页面 onMounted 开始')
-  console.log('[TemplateDetail] templateStore 对象:', templateStore)
-  console.log('[TemplateDetail] templateStore.isHydrated:', templateStore.isHydrated)
-
   const templateId = loadTemplateIdFromUrl()
-  console.log('[TemplateDetail] 📋 从URL获取的模板ID:', templateId)
 
   if (templateId) {
-    console.log(`[TemplateDetail] ✅ 有模板ID，加载模板: ${templateId}`)
-
     // 从 Store 加载模板数据
     // Store → Repository → localStorage → memoryCache
     const template = await templateStore.loadTemplateById(templateId)
-    console.log('[TemplateDetail] Store 返回的 template:', template)
 
     if (!template) {
-      console.error('[TemplateDetail] ❌ 模板加载失败，准备返回')
       uni.showToast({
         title: '模板不存在',
         icon: 'none'
@@ -176,17 +167,11 @@ onMounted(async () => {
       setTimeout(() => {
         uni.navigateBack()
       }, 1500)
-    } else {
-      console.log(`[TemplateDetail] ✅ 模板加载成功: ${template.id} - ${template.title}`)
     }
   } else {
-    console.log('[TemplateDetail] ⚠️ 未指定模板ID，加载默认模板 tpl_1')
     // 加载默认模板
-    const template = await templateStore.loadTemplateById('tpl_1')
-    console.log('[TemplateDetail] 默认模板加载结果:', template)
+    await templateStore.loadTemplateById('tpl_1')
   }
-
-  console.log('[TemplateDetail] 🏁 页面 onMounted 完成')
 })
 </script>
 

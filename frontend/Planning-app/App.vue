@@ -34,7 +34,6 @@ export default {
     const templateStore = useTemplateStore();
 
     try {
-      console.log('[App] 🚀 开始并行加载所有 Store 数据...')
       // 并行加载所有 Store 数据
       await Promise.all([
         userStore.hydrate(),      // 加载用户数据（token + userInfo）
@@ -44,11 +43,8 @@ export default {
         planningStore.hydrate(),  // 加载规划数据
         templateStore.hydrate()   // 加载模板数据
       ]);
-      console.log('[App] ✅ 所有 Repository 数据加载完成');
-      console.log('[App] templateStore.isHydrated:', templateStore.isHydrated);
-      console.log('[App] templateStore.templates.length:', templateStore.templates.length);
     } catch (err) {
-      console.error('[App] ❌ Repository 数据加载失败:', err);
+      console.error('[App] Repository 数据加载失败:', err);
     }
 
     // 根据登录状态决定跳转

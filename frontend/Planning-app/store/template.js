@@ -90,11 +90,9 @@ export const useTemplateStore = defineStore('template', () => {
    */
   async function hydrate() {
     if (isHydrated.value) {
-      console.log('[TemplateStore] 已初始化，跳过重复 hydrate')
       return
     }
 
-    console.log('[TemplateStore] 开始 hydrate：从 Repository 加载数据')
     isLoading.value = true
 
     try {
@@ -105,7 +103,6 @@ export const useTemplateStore = defineStore('template', () => {
       templates.value = templateRepository.getAll()
 
       isHydrated.value = true
-      console.log(`[TemplateStore] hydrate 完成：加载了 ${templates.value.length} 个模板`)
     } catch (error) {
       console.error('[TemplateStore] hydrate 失败:', error)
     } finally {
@@ -120,26 +117,17 @@ export const useTemplateStore = defineStore('template', () => {
    * @returns {Promise<object|null>} 模板对象
    */
   async function loadTemplateById(id) {
-    console.log(`[TemplateStore] 🔍 开始加载模板: ${id}`)
-    console.log('[TemplateStore] Store isHydrated 状态:', isHydrated.value)
-    console.log('[TemplateStore] 当前 templates 数量:', templates.value.length)
-
     if (!isHydrated.value) {
-      console.warn('[TemplateStore] ⚠️ Store 未初始化，先执行 hydrate')
       await hydrate()
     }
 
-    console.log(`[TemplateStore] 调用 templateRepository.getById(${id})`)
     const template = templateRepository.getById(id)
 
     if (template) {
       currentTemplate.value = template
-      console.log(`[TemplateStore] ✅ 成功加载模板 ${id} - ${template.title}`)
-      console.log('[TemplateStore] currentTemplate.value 已更新:', currentTemplate.value.id)
       return template
     } else {
-      console.error(`[TemplateStore] ❌ 模板 ${id} 不存在`)
-      console.error('[TemplateStore] ❌ Repository 返回 null')
+      console.error(`[TemplateStore] 模板 ${id} 不存在`)
       currentTemplate.value = null
       return null
     }
@@ -152,14 +140,11 @@ export const useTemplateStore = defineStore('template', () => {
    * @returns {Promise<object>} 创建后的模板对象
    */
   async function createTemplate(templateData) {
-    console.log('[TemplateStore] 创建新模板:', templateData)
-
     const newTemplate = await templateRepository.create(templateData)
 
     // 更新本地状态
     templates.value.push(newTemplate)
 
-    console.log(`[TemplateStore] 创建成功，模板 ID: ${newTemplate.id}`)
     return newTemplate
   }
 
@@ -171,8 +156,6 @@ export const useTemplateStore = defineStore('template', () => {
    * @returns {Promise<object|null>} 更新后的模板对象
    */
   async function updateTemplate(id, updates) {
-    console.log(`[TemplateStore] 更新模板 ${id}:`, updates)
-
     const updatedTemplate = await templateRepository.update(id, updates)
 
     if (updatedTemplate) {
@@ -187,7 +170,6 @@ export const useTemplateStore = defineStore('template', () => {
         currentTemplate.value = updatedTemplate
       }
 
-      console.log(`[TemplateStore] 更新成功，模板 ID: ${id}`)
       return updatedTemplate
     } else {
       console.error(`[TemplateStore] 更新失败，模板 ${id} 不存在`)
@@ -202,8 +184,6 @@ export const useTemplateStore = defineStore('template', () => {
    * @returns {Promise<boolean>} 是否删除成功
    */
   async function deleteTemplate(id) {
-    console.log(`[TemplateStore] 删除模板 ${id}`)
-
     const success = await templateRepository.delete(id)
 
     if (success) {
@@ -213,7 +193,6 @@ export const useTemplateStore = defineStore('template', () => {
         templates.value[index].deletedAt = Date.now()
       }
 
-      console.log(`[TemplateStore] 删除成功，模板 ID: ${id}`)
       return true
     } else {
       console.error(`[TemplateStore] 删除失败，模板 ${id} 不存在`)
@@ -227,10 +206,7 @@ export const useTemplateStore = defineStore('template', () => {
    * @returns {Promise<void>}
    */
   async function refreshTemplates() {
-    console.log('[TemplateStore] 刷新模板列表')
-
     templates.value = templateRepository.getAll()
-    console.log(`[TemplateStore] 刷新完成：${templates.value.length} 个模板`)
   }
 
   /**
@@ -238,7 +214,6 @@ export const useTemplateStore = defineStore('template', () => {
    */
   function clearCurrentTemplate() {
     currentTemplate.value = null
-    console.log('[TemplateStore] 清空当前模板')
   }
 
   // ============================================================
