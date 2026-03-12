@@ -49,13 +49,13 @@ export const useCategoryStore = defineStore('category', () => {
   const categories = ref([])
 
   // ========== 计算属性（Getters）==========
-
+	/**
    * 激活的分类数量
    */
   const activeCategoriesCount = computed(() => {
     return categories.value.length
   })
-
+	/**
    * 按名称查找分类（模糊匹配）
    * @param {string} name - 搜索关键词
    * @returns {Array<object>}
@@ -67,6 +67,7 @@ export const useCategoryStore = defineStore('category', () => {
     return categories.value.filter(cat => cat.name.includes(name.trim()))
   }
 
+	/**
    * 按颜色获取分类
    * @param {string} color - 颜色代码（如 '#FF0000'）
    * @returns {Array<object>}
@@ -76,7 +77,7 @@ export const useCategoryStore = defineStore('category', () => {
   }
 
   // ========== 内部方法 ==========
-
+	/**
    * 从 Repository 同步数据到 Store（响应式更新）
    *
    * @private
@@ -87,7 +88,7 @@ export const useCategoryStore = defineStore('category', () => {
   }
 
   // ========== 操作（Actions）==========
-
+	/*
    * 启动时加载数据
    *
    * 必须在 App.vue 的 onLaunch 中调用：
@@ -109,7 +110,8 @@ export const useCategoryStore = defineStore('category', () => {
     await CategoryRepository.hydrate()
     _syncFromRepository()  // ✅ 同步到响应式副本
   }
-
+	
+	/**
    * 创建分类
    *
    * @param {object} data - 分类数据 { name, color, sortOrder }
@@ -126,7 +128,8 @@ export const useCategoryStore = defineStore('category', () => {
     _syncFromRepository()  // ✅ 同步到响应式副本，触发UI更新
     return newCategory
   }
-
+	
+	/**
    * 更新分类
    *
    * @param {string} id - 分类 ID
@@ -141,7 +144,8 @@ export const useCategoryStore = defineStore('category', () => {
     _syncFromRepository()  // ✅ 同步到响应式副本，触发UI更新
     return updated
   }
-
+	
+	/**
    * 删除分类（软删除）
    *
    * @param {string} id - 分类 ID
@@ -154,7 +158,8 @@ export const useCategoryStore = defineStore('category', () => {
     await CategoryRepository.delete(id)
     _syncFromRepository()  // ✅ 同步到响应式副本，触发UI更新
   }
-
+  
+	/**
    * 重新排序分类（拖拽后调用）
    *
    * @param {Array<object>} newOrder - 新的排序数组
@@ -177,6 +182,7 @@ export const useCategoryStore = defineStore('category', () => {
     _syncFromRepository()  // ✅ 批量更新后同步
   }
 
+	/**
    * 按 ID 获取分类
    *
    * @param {string} id - 分类 ID
@@ -189,6 +195,7 @@ export const useCategoryStore = defineStore('category', () => {
     return CategoryRepository.getById(id)
   }
 
+	/**
    * 手动同步到服务器
    *
    * 通常不需要手动调用，Repository 会自动同步。
@@ -256,6 +263,7 @@ export const useCategoryStore = defineStore('category', () => {
     }
   }
 
+	/**
    * 清除所有分类（仅用于测试，慎用！）
    *
    * @returns {Promise<void>}

@@ -200,7 +200,7 @@
           <view
             class="abandon-confirm-btn"
             :class="{ 'abandon-confirm-disabled': abandonCountdown > 0 }"
-            @tap="handleConfirmAbandon"
+            @tap="confirmAbandon"
           >
             <text class="abandon-confirm-text">
               {{ abandonCountdown > 0 ? `确定（${abandonCountdown}）` : '确定' }}
@@ -228,8 +228,6 @@ import { getTasks } from '@/api/task.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
-import { useTaskGrouping } from '@/composables/useTaskGrouping.js';
-import { useAbandonConfirm } from '@/composables/useAbandonConfirm.js';
 
 // 获取 stores
 const planStore = usePlanStore();
@@ -250,25 +248,17 @@ const showTaskPanel = ref(false);
 // 菜单弹窗显示状态
 const showMenuPopup = ref(false);
 
+// 放弃规划确认弹窗显示状态
+const showAbandonDialog = ref(false);
+
+// 放弃规划倒计时（秒）
+const abandonCountdown = ref(0);
+
+// 倒计时定时器
+let abandonTimer = null;
+
 // 删除规划确认弹窗显示状态
 const showDeleteDialog = ref(false);
-
-/**
- * 使用放弃确认Composable
- * 管理放弃规划弹窗显示、3秒倒计时、确认逻辑
- */
-const {
-  showAbandonDialog,
-  abandonCountdown,
-  showDialog: showAbandonConfirmDialog,
-  closeDialog: closeAbandonDialog,
-  confirmAbandon: handleConfirmAbandon
-} = useAbandonConfirm(async () => {
-  // 确认放弃规划后的回调
-  goalData.value.isAbandoned = true;
-  uni.showToast({ title: '规划已放弃', icon: 'success' });
-  // TODO: 调用API更新规划状态
-});
 
 // 目标数据
 const goalData = ref({
@@ -345,11 +335,58 @@ const completedTasks = computed(() => {
   return planTasks.value.filter(task => task.status === 'completed');
 });
 
-/**
- * 使用任务分组Composable
- * 自动按日期分组未完成任务，按日期和时间排序
- */
-const { tasksByDate } = useTaskGrouping(incompleteTasks);
+// 计算属性：按日期分组的未完成任务
+const tasksByDate = computed(() => {
+  const grouped = {};
+
+  incompleteTasks.value.forEach(task => {
+    // 兼容多种日期字段: taskDate(API) / occurDate(重复任务) / date(localStorage)
+    const date = task.taskDate || task.occurDate || task.date;
+    if (!date) return;
+
+    // 日期格式统一转换为 yyyy-MM-dd
+    const normalizedDate = date.replace(/\//g, '-');
+
+    if (!grouped[normalizedDate]) {
+      grouped[normalizedDate] = [];
+    }
+    grouped[normalizedDate].push(task);
+  });
+
+  // 转换为数组并按日期排序
+  return Object.keys(grouped)
+    .sort() // 日期升序排序
+    .map(date => ({
+      date,
+      dateDisplay: formatDateDisplay(date),
+      // 每个日期内的任务也按时间排序（有startTime的在前，按时间升序；无时间的在后）
+      tasks: grouped[date].sort((a, b) => {
+        const aHasTime = !!a.startTime;
+        const bHasTime = !!b.startTime;
+
+        // 都有时间：按时间排序
+        if (aHasTime && bHasTime) {
+          return a.startTime.localeCompare(b.startTime);
+        }
+        // 有时间的排在前面
+        if (aHasTime) return -1;
+        if (bHasTime) return 1;
+        // 都没有时间：保持原顺序（或按创建时间）
+        return 0;
+      })
+    }));
+});
+
+// 格式化日期显示
+function formatDateDisplay(dateStr) {
+  // 兼容格式: 2026/02/27 或 2026-02-27
+  const parts = dateStr.includes('/') ? dateStr.split('/') : dateStr.split('-');
+  if (parts.length !== 3) return dateStr;
+
+  const month = parseInt(parts[1]);
+  const day = parseInt(parts[2]);
+  return `${month}月${day}日`;
+}
 
 // 切换里程碑展开/折叠
 function toggleMilestone(index) {
@@ -430,13 +467,52 @@ function handleAdjustGoal() {
   });
 }
 
-/**
- * 处理放弃规划
- * 使用 useAbandonConfirm 提供的 showDialog 方法
- */
+// 处理放弃规划 - 显示二次确认弹窗
 function handleAbandonGoal() {
   closeMenu();
-  showAbandonConfirmDialog();
+  showAbandonDialog.value = true;
+  // 启动3秒倒计时
+  abandonCountdown.value = 3;
+  startAbandonCountdown();
+}
+
+// 关闭放弃规划弹窗
+function closeAbandonDialog() {
+  showAbandonDialog.value = false;
+  abandonCountdown.value = 0;
+  if (abandonTimer) {
+    clearInterval(abandonTimer);
+    abandonTimer = null;
+  }
+}
+
+// 开始放弃规划倒计时
+function startAbandonCountdown() {
+  if (abandonTimer) {
+    clearInterval(abandonTimer);
+  }
+  abandonTimer = setInterval(() => {
+    if (abandonCountdown.value > 0) {
+      abandonCountdown.value--;
+    } else {
+      clearInterval(abandonTimer);
+      abandonTimer = null;
+    }
+  }, 1000);
+}
+
+// 确认放弃规划
+function confirmAbandon() {
+  // 倒计时未结束，不允许点击
+  if (abandonCountdown.value > 0) {
+    return;
+  }
+
+  // 设置规划为已放弃
+  goalData.value.isAbandoned = true;
+  uni.showToast({ title: '规划已放弃', icon: 'success' });
+  closeAbandonDialog();
+  // TODO: 调用API更新规划状态
 }
 
 // 处理删除规划
