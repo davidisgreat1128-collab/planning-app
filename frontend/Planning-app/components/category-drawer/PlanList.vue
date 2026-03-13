@@ -19,16 +19,19 @@
         >
           <!-- 规划卡片内容 -->
           <view class="plan-card" :class="{ active: selectedId === plan.id }" @tap="handleSelect(plan.id)">
-            <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
-            <view class="plan-content">
-              <text class="plan-title">{{ plan.name }}</text>
-              <text class="plan-buff">{{ plan.buff }}</text>
-              <text class="plan-stats">
-                里程碑：{{ getCompletedMilestones(plan) }}/{{ getTotalMilestones(plan) }}
-                已进行{{ getProgressDays(plan) }}天
-              </text>
+            <!-- 左侧区域：图标 + 规划信息 -->
+            <view class="plan-left">
+              <text class="plan-icon">{{ plan.iconEmoji || '🔔' }}</text>
+              <view class="plan-content">
+                <text class="plan-title">{{ plan.title || plan.name || '未命名规划' }}</text>
+                <text class="plan-buff">{{ plan.buff || '暂无激励语' }}</text>
+                <text class="plan-stats">
+                  里程碑：{{ getCompletedMilestones(plan) }}/{{ getTotalMilestones(plan) }} 已进行{{ getProgressDays(plan) }}天
+                </text>
+              </view>
             </view>
-            <!-- 右侧操作按钮：垂直排列 -->
+
+            <!-- 右侧区域：操作按钮垂直排列 -->
             <view class="plan-actions-vertical">
               <view class="plan-action-btn" @tap.stop="handleEdit(plan)">
                 <text class="action-icon">✏️</text>
@@ -175,6 +178,7 @@ function handleCreate() {
 .plan-card {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 15rpx;
   background-color: #fff;
   border: 2rpx solid #e0e0e0;
@@ -185,12 +189,20 @@ function handleCreate() {
   transition: all 0.2s;
   height: auto;
   min-height: auto;
-  justify-content: space-between;
 }
 
 .plan-card.active {
   background-color: #7CA1FF;
   border-color: #7CA1FF;
+}
+
+/* 左侧区域：图标 + 规划信息 */
+.plan-left {
+  flex: 1;
+  display: flex;
+  align-items: flex-start;
+  gap: 15rpx;
+  min-width: 0;
 }
 
 .plan-icon {
@@ -248,7 +260,7 @@ function handleCreate() {
   color: rgba(255, 255, 255, 0.8);
 }
 
-/* 规划卡片右侧操作按钮：垂直排列 */
+/* 右侧区域：操作按钮垂直排列 */
 .plan-actions-vertical {
   display: flex;
   flex-direction: column;
