@@ -208,6 +208,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
+import { onShow } from '@dcloudio/uni-app';
 import { useTaskStore } from '@/store/task';
 import { useCalendar } from '@/composables/useCalendar';
 import { useDragDrop } from '@/composables/useDragDrop';
@@ -567,6 +568,16 @@ onMounted(async () => {
   } catch (error) {
     console.error('[index.vue] onMounted 执行出错:', error);
     console.error('[index.vue] 错误堆栈:', error.stack);
+  }
+});
+
+// ⭐ 每次页面显示时刷新任务（包括从其他页面返回）
+onShow(async () => {
+  console.log('[index.vue] onShow - 刷新任务列表');
+
+  // 重新从 Repository 加载当前日期的任务
+  if (calendarComposable.selectedDate.value) {
+    await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
   }
 });
 </script>
