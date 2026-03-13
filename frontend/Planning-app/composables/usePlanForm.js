@@ -4,7 +4,6 @@
  */
 
 import { ref, computed, watch } from 'vue'
-import { usePlanStore } from '@/store/plan.js'
 import { useCategoryStore } from '@/store/category.js'
 import { calculateDateInfo } from '@/utils/planDate.js'
 
@@ -21,7 +20,7 @@ export function usePlanForm(options = {}) {
   // ============================================================
   // 1. 引入 Store
   // ============================================================
-  const planStore = usePlanStore()
+  // ⭐ 统一使用 categoryStore，规划存储为 type='plan' 的分类
   const categoryStore = useCategoryStore()
 
   // ============================================================
@@ -137,8 +136,8 @@ export function usePlanForm(options = {}) {
       return null
     }
 
-    // 使用planStore创建规划
-    const newPlan = planStore.addPlan({
+    // ⭐ 统一使用 categoryStore.createPlan()（内部调用 Repository）
+    const newPlan = await categoryStore.createPlan({
       title: planForm.value.title,
       buff: planForm.value.buff,
       icon: planForm.value.icon,
@@ -146,25 +145,16 @@ export function usePlanForm(options = {}) {
       startDate: planForm.value.startDate,
       endDate: planForm.value.endDate,
       duration: planForm.value.duration,
-      milestones: planForm.value.milestones || []
+      milestones: planForm.value.milestones || [],
+      stats: {
+        totalMilestones: planForm.value.milestones?.length || 0,
+        completedMilestones: 0,
+        totalDays: 0,
+        progressDays: 0
+      }
     })
 
-    const newPlanId = newPlan.id
-
-    console.log('[usePlanForm] 规划已创建:', newPlan)
-
-    // 同时将规划作为分类保存到categoryStore（用于分类选择器）
-    categoryStore.addCategoryFromPlan({
-      id: newPlanId,
-      name: planForm.value.title,
-      iconEmoji: planForm.value.iconEmoji || '🔔',
-      buff: planForm.value.buff,
-      startDate: planForm.value.startDate,
-      endDate: planForm.value.endDate,
-      milestones: planForm.value.milestones || []
-    })
-
-    console.log('[usePlanForm] 规划已同步到分类列表')
+    console.log('[usePlanForm] 规划已创建（通过Repository）:', newPlan)
 
     uni.showToast({
       title: '创建成功',
@@ -186,30 +176,20 @@ export function usePlanForm(options = {}) {
       return false
     }
 
-    // 使用planStore更新规划
-    const success = planStore.updatePlan(editingPlanId.value, {
-      title: planForm.value.title,
-      buff: planForm.value.buff,
-      icon: planForm.value.icon,
-      iconEmoji: planForm.value.iconEmoji || '🔔',
-      startDate: planForm.value.startDate,
-      endDate: planForm.value.endDate,
-      duration: planForm.value.duration,
-      milestones: planForm.value.milestones || []
-    })
-
-    if (success) {
-      console.log('[usePlanForm] 规划已更新')
-
-      // 同步更新分类列表中的规划信息
-      categoryStore.updateCategoryFromPlan(editingPlanId.value, {
-        name: planForm.value.title,
-        iconEmoji: planForm.value.iconEmoji || '🔔',
+    try {
+      // ⭐ 统一使用 categoryStore.updatePlan()（内部调用 Repository）
+      await categoryStore.updatePlan(editingPlanId.value, {
+        title: planForm.value.title,
         buff: planForm.value.buff,
+        icon: planForm.value.icon,
+        iconEmoji: planForm.value.iconEmoji || '🔔',
         startDate: planForm.value.startDate,
         endDate: planForm.value.endDate,
+        duration: planForm.value.duration,
         milestones: planForm.value.milestones || []
       })
+
+      console.log('[usePlanForm] 规划已更新（通过Repository）')
 
       uni.showToast({
         title: '规划已更新',
@@ -218,7 +198,8 @@ export function usePlanForm(options = {}) {
       })
 
       return true
-    } else {
+    } catch (error) {
+      console.error('[usePlanForm] 更新失败:', error)
       uni.showToast({
         title: '更新失败',
         icon: 'error'
@@ -234,8 +215,8 @@ export function usePlanForm(options = {}) {
   function loadPlanData(planId) {
     console.log('[usePlanForm] 加载规划数据，ID:', planId)
 
-    // 从planStore中获取规划数据
-    const plan = planStore.getPlanById(planId)
+    // ⭐ 统一从 categoryStore 中获取规划数据（type='plan'）
+    const plan = categoryStore.getCategoryById(planId)
 
     if (!plan) {
       uni.showToast({
@@ -250,7 +231,7 @@ export function usePlanForm(options = {}) {
 
     // 填充表单数据
     planForm.value = {
-      title: plan.title || '',
+      title: plan.title || plan.name || '',
       buff: plan.buff || '',
       icon: plan.icon || '',
       iconEmoji: plan.iconEmoji || '🔔',
@@ -266,7 +247,7 @@ export function usePlanForm(options = {}) {
     // 保存原始数据（用于检测变化）
     originalFormData.value = JSON.parse(JSON.stringify(planForm.value))
 
-    console.log('[usePlanForm] 规划数据已加载')
+    console.log('[usePlanForm] 规划数据已加载（来自CategoryRepository）')
   }
 
   /**

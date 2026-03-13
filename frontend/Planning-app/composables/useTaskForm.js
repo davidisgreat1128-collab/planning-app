@@ -12,7 +12,7 @@
 
 import { ref, computed } from 'vue'
 import { useTaskStore } from '@/store/task.js'
-import { usePlanStore } from '@/store/plan.js'
+import { useCategoryStore } from '@/store/category.js'
 import { useRepeatRuleManager } from './useRepeatRuleManager.js'
 import { formatDate, getWeekdayName, calcDays, timeDiffMinutes, formatDuration } from '@/utils/date.js'
 import { validateTaskForm } from '@/utils/taskFormValidator.js'
@@ -32,7 +32,7 @@ export function useTaskForm(options = {}) {
   // Store 引用
   // ============================================================
   const taskStore = useTaskStore()
-  const planStore = usePlanStore()
+  const categoryStore = useCategoryStore()
 
   // ============================================================
   // 重复规则管理器
@@ -477,10 +477,10 @@ export function useTaskForm(options = {}) {
     originalForm.value = JSON.parse(JSON.stringify(form.value))
     originalSubtasks.value = JSON.parse(JSON.stringify(subtasks.value))
 
-    // 根据 planId 设置分类名称
+    // ⭐ 架构统一：从 categoryStore.plans 获取规划（type='plan'）
     if (task.planId) {
-      const plan = planStore.plans.find(p => p.id === task.planId)
-      selectedPlanName.value = plan ? plan.name : '无分类'
+      const plan = categoryStore.plans.find(p => p.id === task.planId)
+      selectedPlanName.value = plan ? (plan.title || plan.name) : '无分类'
     } else {
       selectedPlanName.value = '无分类'
     }

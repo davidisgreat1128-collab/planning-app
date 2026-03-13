@@ -73,7 +73,8 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
 import { useCategoryStore } from '@/store/category.js';
-import { usePlanStore } from '@/store/plan.js';
+// ⭐ 已废弃：规划现在统一存储在 CategoryRepository（type='plan'）
+// import { usePlanStore } from '@/store/plan.js';
 import { calculatePersistDays } from '@/utils/planStats.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
@@ -97,7 +98,8 @@ const emit = defineEmits(['update:visible', 'create-goal', 'container-changed'])
 // ============================================================
 const userStore = useUserStore();
 const categoryStore = useCategoryStore();
-const planStore = usePlanStore();
+// ⭐ 已废弃：规划现在统一存储在 CategoryRepository（type='plan'）
+// const planStore = usePlanStore();
 
 // ============================================================
 // 状态变量
@@ -126,12 +128,11 @@ const userNickname = computed(() => userStore.userInfo?.nickname || userStore.us
 const userAvatar = computed(() => userStore.userInfo?.avatar || '🐣');
 
 /**
- * 获取所有规划
- * ⚠️ 临时方案：从 planStore 读取（planStore 和 categoryStore 未统一）
- * TODO: 长期方案是让 planStore 也使用 CategoryRepository，type='plan'
+ * 获取所有规划（从 CategoryRepository，type='plan'）
+ * ⭐ 架构统一：规划现在存储在 CategoryRepository，通过 categoryStore.plans 获取
  */
 const activePlans = computed(() => {
-  return planStore.activePlans || [];
+  return categoryStore.plans || [];
 });
 
 /**
@@ -467,13 +468,11 @@ async function onDeletePlanConfirm(deleteWithTasks) {
   try {
     uni.showLoading({ title: '删除中...' });
 
-    // ⭐ 修复BUG：规划存储在planStore，不在categoryStore
-    // 只需调用 planStore.deletePlan() 即可
-    const planStore = usePlanStore();
-    await planStore.deletePlan(planId, deleteWithTasks);
+    // ⭐ 架构统一：规划存储在 CategoryRepository（type='plan'）
+    await categoryStore.deletePlan(planId);
 
-    // TODO: 未来统一架构时，规划应该存储在 CategoryRepository（type='plan'）
-    // 届时可以只调用 categoryStore.deleteCategory()
+    // 如果需要同时删除关联任务，由后端处理（未来功能）
+    // TODO: 后端实现级联删除逻辑（deleteWithTasks参数）
 
     // 如果删除的是当前选中的规划，自动切换到"全部"
     if (isDeletingSelected) {

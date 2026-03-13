@@ -222,7 +222,8 @@
 <script setup>
 import { ref, reactive, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
-import { usePlanStore } from '@/store/plan.js';
+// ⭐ 架构统一：规划现在存储在 CategoryRepository（type='plan'）
+import { useCategoryStore } from '@/store/category.js';
 import { useTaskStore } from '@/store/task.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
@@ -232,7 +233,7 @@ import { useAbandonConfirm } from '@/composables/useAbandonConfirm.js';
 import { usePlanTasks } from '@/composables/usePlanTasks.js';
 
 // 获取 stores
-const planStore = usePlanStore();
+const categoryStore = useCategoryStore();
 const taskStore = useTaskStore();
 
 // 使用任务加载Composable
@@ -484,15 +485,12 @@ function goBack() {
 }
 
 /**
- * 从 planStore 加载规划数据
+ * 从 CategoryRepository 加载规划数据（type='plan'）
  * 使用 usePlanTasks Composable 加载任务
  */
 async function loadPlanData(planId) {
-  // 先加载所有规划
-  planStore.loadPlans()
-
-  // 从 store 获取规划
-  const plan = planStore.getPlanById(planId)
+  // ⭐ 架构统一：从 categoryStore 获取规划（内部从 Repository 加载）
+  const plan = categoryStore.getCategoryById(planId)
 
   if (!plan) {
     console.error('[GoalDetail] 未找到规划:', planId)

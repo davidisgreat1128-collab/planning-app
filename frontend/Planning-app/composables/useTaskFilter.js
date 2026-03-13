@@ -16,7 +16,8 @@
 
 import { ref, computed } from 'vue';
 import { useCategoryStore } from '@/store/category';
-import { usePlanStore } from '@/store/plan';
+// ⭐ 架构统一：规划现在存储在 CategoryRepository（type='plan'），不再需要 usePlanStore
+// import { usePlanStore } from '@/store/plan';
 
 /**
  * 任务过滤 Composable
@@ -27,7 +28,8 @@ export function useTaskFilter() {
   // Store
   // ============================================================
   const categoryStore = useCategoryStore();
-  const planStore = usePlanStore();
+  // ⭐ 架构统一：规划现在存储在 CategoryRepository（type='plan'）
+  // const planStore = usePlanStore();
 
   // ============================================================
   // 状态变量
@@ -54,7 +56,7 @@ export function useTaskFilter() {
    * 规则：
    * - id === 'all' → '规划和分类'
    * - id === 'none' → '无分类'
-   * - 其他 → 从 categoryStore 或 planStore 查找名称
+   * - 其他 → 从 categoryStore.categories 查找（包括规划type='plan'和普通分类）
    */
   const containerName = computed(() => {
     const { type, id } = selectedContainer.value;
@@ -67,16 +69,11 @@ export function useTaskFilter() {
       return '无分类';
     }
 
-    // 先尝试从 categoryStore 查找
-    const category = categoryStore.categories.find(cat => cat.id === id);
-    if (category) {
-      return category.name;
-    }
-
-    // 再尝试从 planStore 查找
-    const plan = planStore.plans.find(p => p.id === id);
-    if (plan) {
-      return plan.title;
+    // ⭐ 架构统一：规划和分类都存储在 categoryStore.categories
+    // 规划是 type='plan'，普通分类是 type='category'
+    const item = categoryStore.categories.find(cat => cat.id === id);
+    if (item) {
+      return item.title || item.name;
     }
 
     // 找不到，返回默认值
@@ -88,7 +85,7 @@ export function useTaskFilter() {
    *
    * 规则：
    * - 'all' 和 'none' → 空字符串（不显示图标）
-   * - 其他 → 从 categoryStore 或 planStore 查找 iconEmoji
+   * - 其他 → 从 categoryStore.categories 查找 iconEmoji（包括规划type='plan'和普通分类）
    */
   const containerIcon = computed(() => {
     const { type, id } = selectedContainer.value;
@@ -98,16 +95,10 @@ export function useTaskFilter() {
       return '';
     }
 
-    // 先尝试从 categoryStore 查找
-    const category = categoryStore.categories.find(cat => cat.id === id);
-    if (category) {
-      return category.iconEmoji || '';
-    }
-
-    // 再尝试从 planStore 查找
-    const plan = planStore.plans.find(p => p.id === id);
-    if (plan) {
-      return plan.iconEmoji || plan.icon || '';
+    // ⭐ 架构统一：规划和分类都存储在 categoryStore.categories
+    const item = categoryStore.categories.find(cat => cat.id === id);
+    if (item) {
+      return item.iconEmoji || item.icon || '';
     }
 
     return '';

@@ -55,6 +55,21 @@ export const useCategoryStore = defineStore('category', () => {
   const activeCategoriesCount = computed(() => {
     return categories.value.length
   })
+
+  /**
+   * ⭐ 获取所有规划（type='plan'）
+   */
+  const plans = computed(() => {
+    return categories.value.filter(cat => cat.type === 'plan')
+  })
+
+  /**
+   * ⭐ 获取所有普通分类（type='category'）
+   */
+  const normalCategories = computed(() => {
+    return categories.value.filter(cat => cat.type === 'category' || !cat.type)
+  })
+
 	/**
    * 按名称查找分类（模糊匹配）
    * @param {string} name - 搜索关键词
@@ -74,6 +89,15 @@ export const useCategoryStore = defineStore('category', () => {
    */
   function getCategoriesByColor(color) {
     return categories.value.filter(cat => cat.color === color)
+  }
+
+  /**
+   * ⭐ 按 ID 获取分类（包括规划）
+   * @param {string} id - 分类/规划 ID
+   * @returns {object|null}
+   */
+  function getCategoryById(id) {
+    return categories.value.find(cat => cat.id === id) || null
   }
 
   // ========== 内部方法 ==========
@@ -210,57 +234,87 @@ export const useCategoryStore = defineStore('category', () => {
 
 
   /**
-   * 从规划创建分类（规划同步到分类列表）
+   * ⭐ 创建规划（使用 Repository）
+   * 规划本质上是特殊类型的分类（type='plan'）
+   *
+   * @param {object} planData - 规划数据
+   * @returns {Promise<object>} 创建的规划对象
    */
-  async function addCategoryFromPlan(planData) {
-    const categoryData = {
-      id: planData.id,
+  async function createPlan(planData) {
+    const plan = await CategoryRepository.create({
       type: 'plan',
-      name: planData.name,
+      name: planData.title || planData.name,  // 兼容 title 和 name
       iconEmoji: planData.iconEmoji || '🔔',
+      buff: planData.buff || '',
+      startDate: planData.startDate || '',
+      endDate: planData.endDate || '',
+      duration: planData.duration || '',
+      milestones: planData.milestones || [],
+      stats: planData.stats || {
+        totalMilestones: planData.milestones?.length || 0,
+        completedMilestones: 0,
+        totalDays: 0,
+        progressDays: 0
+      }
+    })
+
+    _syncFromRepository()  // ✅ 同步后刷新Store
+    console.log('[CategoryStore] 规划已创建（通过Repository）')
+    return plan
+  }
+
+  /**
+   * ⭐ 更新规划（使用 Repository）
+   *
+   * @param {string} planId - 规划 ID
+   * @param {object} planData - 要更新的规划数据
+   * @returns {Promise<object>} 更新后的规划对象
+   */
+  async function updatePlan(planId, planData) {
+    const updated = await CategoryRepository.update(planId, {
+      name: planData.title || planData.name,  // 兼容 title 和 name
+      iconEmoji: planData.iconEmoji,
       buff: planData.buff,
       startDate: planData.startDate,
       endDate: planData.endDate,
-      milestones: planData.milestones || []
-    }
-    const savedCategories = uni.getStorageSync('user_categories')
-    let categoriesList = []
-    if (savedCategories) {
-      try {
-        categoriesList = JSON.parse(savedCategories)
-      } catch (e) {
-        console.error('[CategoryStore] 解析分类失败:', e)
-      }
-    }
-    categoriesList.push({ ...categoryData, createTime: new Date().toISOString() })
-    uni.setStorageSync('user_categories', JSON.stringify(categoriesList))
-    console.log('[CategoryStore] 规划已同步到分类列表')
-    return categoryData
+      duration: planData.duration,
+      milestones: planData.milestones,
+      stats: planData.stats
+    })
+
+    _syncFromRepository()  // ✅ 同步后刷新Store
+    console.log('[CategoryStore] 规划已更新（通过Repository）')
+    return updated
   }
 
-  function updateCategoryFromPlan(planId, planData) {
-    const savedCategories = uni.getStorageSync('user_categories')
-    let categoriesList = []
-    if (savedCategories) {
-      try {
-        categoriesList = JSON.parse(savedCategories)
-        const index = categoriesList.findIndex(cat => cat.id === planId)
-        if (index !== -1) {
-          categoriesList[index] = {
-            ...categoriesList[index],
-            name: planData.name,
-            iconEmoji: planData.iconEmoji || '🔔',
-            buff: planData.buff,
-            startDate: planData.startDate,
-            endDate: planData.endDate,
-            milestones: planData.milestones || []
-          }
-          uni.setStorageSync('user_categories', JSON.stringify(categoriesList))
-        }
-      } catch (e) {
-        console.error('[CategoryStore] 更新分类失败:', e)
-      }
-    }
+  /**
+   * ⭐ 删除规划（使用 Repository）
+   *
+   * @param {string} planId - 规划 ID
+   * @returns {Promise<void>}
+   */
+  async function deletePlan(planId) {
+    await CategoryRepository.delete(planId)
+    _syncFromRepository()  // ✅ 同步后刷新Store
+    console.log('[CategoryStore] 规划已删除（通过Repository）')
+  }
+
+  /**
+   * 【已废弃】从规划创建分类（旧方法，保留向后兼容）
+   * @deprecated 请使用 createPlan() 方法
+   */
+  async function addCategoryFromPlan(planData) {
+    console.warn('[CategoryStore] addCategoryFromPlan 已废弃，请使用 createPlan')
+    return await createPlan(planData)
+  }
+
+  /**
+   * 【已废弃】更新规划分类（旧方法，保留向后兼容）
+   * @deprecated 请使用 updatePlan() 方法
+   */
+  async function updateCategoryFromPlan(planId, planData) {
+    console.warn('[CategoryStore] updateCategoryFromPlan 已废弃，请使用 updatePlan')
+    return await updatePlan(planId, planData)
   }
 
 	/**
@@ -283,7 +337,11 @@ export const useCategoryStore = defineStore('category', () => {
     categories,
     activeCategoriesCount,
 
-    // 方法
+    // ⭐ 计算属性
+    plans,              // 所有规划（type='plan'）
+    normalCategories,   // 所有普通分类（type='category'）
+
+    // 分类方法
     hydrate,
     createCategory,
     updateCategory,
@@ -294,6 +352,13 @@ export const useCategoryStore = defineStore('category', () => {
     getCategoriesByColor,
     sync,
     clearAll,
+
+    // ⭐ 规划方法（新增）
+    createPlan,
+    updatePlan,
+    deletePlan,
+
+    // 兼容旧方法（已废弃）
     addCategoryFromPlan,
     updateCategoryFromPlan
   }

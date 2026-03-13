@@ -616,11 +616,11 @@ const {
  * 符合四层架构：使用 planStore 和 categoryStore
  */
 const selectedPlanName = computed(() => {
-  // 优先检查规划
+  // ⭐ 架构统一：从 categoryStore.plans 获取规划（type='plan'）
   if (form.value.planId) {
-    const plan = planStore.plans.find(p => p.id === String(form.value.planId));
+    const plan = categoryStore.plans.find(p => p.id === String(form.value.planId));
     if (plan) {
-      return plan.title;
+      return plan.title || plan.name;
     }
   }
 
@@ -1265,10 +1265,8 @@ function goBack() {
 // 生命周期
 // ============================================================
 onMounted(() => {
-  // 确保 planStore 已加载数据
-  if (planStore.plans.length === 0) {
-    planStore.loadPlans();
-  }
+  // ⭐ 架构统一：规划数据已在 App.vue 通过 categoryStore.hydrate() 加载
+  // 不再需要单独调用 planStore.loadPlans()
 
   const pages = getCurrentPages();
   const currentPage = pages[pages.length - 1];

@@ -123,7 +123,20 @@ class CategoryRepository {
       version: 1,              // 初始版本号
       createdAt: Date.now(),
       updatedAt: Date.now(),
-      deletedAt: null
+      deletedAt: null,
+
+      // ⭐ 规划特有字段（type='plan'时使用）
+      buff: data.buff || '',               // Buff激励语
+      startDate: data.startDate || '',     // 开始日期（yyyy/MM/dd）
+      endDate: data.endDate || '',         // 结束日期（yyyy/MM/dd）
+      duration: data.duration || '',       // 持续时间描述
+      milestones: data.milestones || [],   // 里程碑数组
+      stats: data.stats || {               // 统计数据
+        totalMilestones: 0,
+        completedMilestones: 0,
+        totalDays: 0,
+        progressDays: 0
+      }
     }
 
     console.log('[CategoryRepository] 创建分类:', category.name)
