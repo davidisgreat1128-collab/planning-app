@@ -303,10 +303,22 @@ class CategoryRepository {
     if (cached) {
       try {
         const categories = JSON.parse(cached)
-        categories.forEach(cat => {
+
+        // ⭐ 自动清理垃圾数据：过滤掉 deletedAt 不为 null 的数据
+        const beforeCount = categories.length
+        const cleaned = categories.filter(cat => !cat.deletedAt)
+        const garbageCount = beforeCount - cleaned.length
+
+        if (garbageCount > 0) {
+          console.warn(`[CategoryRepository] 检测到 ${garbageCount} 个垃圾分类（deletedAt 不为 null），已自动清理`)
+          // 立即保存清理后的数据到 localStorage
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned))
+        }
+
+        cleaned.forEach(cat => {
           this.memoryCache.set(cat.id, cat)
         })
-        console.log('[CategoryRepository] 从缓存加载', categories.length, '个分类')
+        console.log('[CategoryRepository] 从缓存加载', cleaned.length, '个分类（清理后）')
       } catch (err) {
         console.error('[CategoryRepository] 缓存数据损坏，清除缓存', err)
         localStorage.removeItem(STORAGE_KEY)

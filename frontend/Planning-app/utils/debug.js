@@ -194,11 +194,99 @@ export function printLocalStorage() {
   console.log('\n========================================')
 }
 
+/**
+ * ⭐ 清理 localStorage 中的垃圾数据（已标记删除的数据）
+ *
+ * 问题：
+ * - localStorage 中保存了大量 deletedAt 不为 null 的垃圾数据
+ * - 每次 hydrate() 都会重新加载这些垃圾数据
+ * - 导致页面显示 39 个任务但实际可见 0 个
+ *
+ * 解决：
+ * - 清理 tasks 和 categories 中 deletedAt 不为 null 的数据
+ * - 保留未删除的数据
+ */
+export function cleanLocalStorageGarbage() {
+  console.log('========================================')
+  console.log('🧹 清理 localStorage 垃圾数据')
+  console.log('========================================')
+
+  // 清理任务数据
+  const tasksKey = 'planning_app_tasks'
+  const tasksData = localStorage.getItem(tasksKey)
+  if (tasksData) {
+    try {
+      const tasks = JSON.parse(tasksData)
+      const beforeCount = tasks.length
+      const cleaned = tasks.filter(t => !t.deletedAt)
+      const afterCount = cleaned.length
+
+      console.log(`\n[任务数据]`)
+      console.log(`  清理前: ${beforeCount} 个任务`)
+      console.log(`  清理后: ${afterCount} 个任务`)
+      console.log(`  已删除: ${beforeCount - afterCount} 个垃圾任务`)
+
+      localStorage.setItem(tasksKey, JSON.stringify(cleaned))
+    } catch (e) {
+      console.error(`  解析任务数据失败:`, e)
+    }
+  } else {
+    console.log(`\n[任务数据] 无数据`)
+  }
+
+  // 清理分类数据
+  const categoriesKey = 'planning_app_categories'
+  const categoriesData = localStorage.getItem(categoriesKey)
+  if (categoriesData) {
+    try {
+      const categories = JSON.parse(categoriesData)
+      const beforeCount = categories.length
+      const cleaned = categories.filter(c => !c.deletedAt)
+      const afterCount = cleaned.length
+
+      console.log(`\n[分类数据]`)
+      console.log(`  清理前: ${beforeCount} 个分类`)
+      console.log(`  清理后: ${afterCount} 个分类`)
+      console.log(`  已删除: ${beforeCount - afterCount} 个垃圾分类`)
+
+      localStorage.setItem(categoriesKey, JSON.stringify(cleaned))
+    } catch (e) {
+      console.error(`  解析分类数据失败:`, e)
+    }
+  } else {
+    console.log(`\n[分类数据] 无数据`)
+  }
+
+  console.log('\n✅ 清理完成！请刷新页面查看效果。')
+  console.log('========================================')
+}
+
+/**
+ * ⭐ 完全清空 localStorage（慎用！会删除所有数据）
+ */
+export function clearAllLocalStorage() {
+  console.log('========================================')
+  console.log('⚠️  完全清空 localStorage')
+  console.log('========================================')
+
+  const keys = ['planning_app_tasks', 'planning_app_categories', 'planning_app_task_queue', 'planning_app_category_queue']
+
+  keys.forEach(key => {
+    localStorage.removeItem(key)
+    console.log(`✅ 已删除: ${key}`)
+  })
+
+  console.log('\n✅ 清空完成！请刷新页面。')
+  console.log('========================================')
+}
+
 // 导出所有调试函数
 export default {
   diagnoseOrphanTasks,
   printAllTasks,
   printAllCategories,
   cleanOrphanTasks,
-  printLocalStorage
+  printLocalStorage,
+  cleanLocalStorageGarbage,
+  clearAllLocalStorage
 }

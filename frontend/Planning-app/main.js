@@ -29,11 +29,13 @@ export function createApp() {
     window.$debug = debugUtils
     console.log('[Debug] 调试工具已注册到 window.$debug')
     console.log('  可用命令:')
-    console.log('    window.$debug.diagnoseOrphanTasks()  - 诊断孤儿任务')
-    console.log('    window.$debug.printAllTasks()        - 打印所有任务')
-    console.log('    window.$debug.printAllCategories()   - 打印所有分类')
-    console.log('    window.$debug.cleanOrphanTasks()     - 清理孤儿任务')
-    console.log('    window.$debug.printLocalStorage()    - 打印 localStorage')
+    console.log('    window.$debug.diagnoseOrphanTasks()       - 诊断孤儿任务')
+    console.log('    window.$debug.printAllTasks()             - 打印所有任务')
+    console.log('    window.$debug.printAllCategories()        - 打印所有分类')
+    console.log('    window.$debug.cleanOrphanTasks()          - 清理孤儿任务')
+    console.log('    window.$debug.printLocalStorage()         - 打印 localStorage')
+    console.log('    window.$debug.cleanLocalStorageGarbage()  - ⭐ 清理 localStorage 垃圾数据')
+    console.log('    window.$debug.clearAllLocalStorage()      - ⚠️  完全清空 localStorage')
   }
   // #endif
 

@@ -282,10 +282,22 @@ class TaskRepository {
     if (cached) {
       try {
         const tasks = JSON.parse(cached)
-        tasks.forEach(task => {
+
+        // ⭐ 自动清理垃圾数据：过滤掉 deletedAt 不为 null 的数据
+        const beforeCount = tasks.length
+        const cleaned = tasks.filter(task => !task.deletedAt)
+        const garbageCount = beforeCount - cleaned.length
+
+        if (garbageCount > 0) {
+          console.warn(`[TaskRepository] 检测到 ${garbageCount} 个垃圾任务（deletedAt 不为 null），已自动清理`)
+          // 立即保存清理后的数据到 localStorage
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned))
+        }
+
+        cleaned.forEach(task => {
           this.memoryCache.set(task.id, task)
         })
-        console.log('[TaskRepository] 从缓存加载', tasks.length, '个任务')
+        console.log('[TaskRepository] 从缓存加载', cleaned.length, '个任务（清理后）')
       } catch (err) {
         console.error('[TaskRepository] 缓存数据损坏，清除缓存', err)
         localStorage.removeItem(STORAGE_KEY)
