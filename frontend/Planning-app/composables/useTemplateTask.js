@@ -1,7 +1,11 @@
 /**
  * 模板任务创建业务逻辑
  * 职责：从模板创建任务，处理任务批量生成逻辑
+ *
+ * ⭐ 2026-03-14 重构：使用 Repository 模式替代旧系统（uni.getStorageSync('tasks')）
  */
+
+import TaskRepository from '@/repositories/TaskRepository'
 
 /**
  * 模板任务创建Composable
@@ -17,17 +21,6 @@ export function useTemplateTask() {
    */
   async function createTasksFromTemplate(planId, planForm, templateData) {
     console.log('[useTemplateTask] 开始从模板创建任务')
-
-    // 加载现有任务
-    const savedTasks = uni.getStorageSync('tasks')
-    let tasks = []
-    if (savedTasks) {
-      try {
-        tasks = JSON.parse(savedTasks)
-      } catch (e) {
-        console.error('[useTemplateTask] 解析任务失败:', e)
-      }
-    }
 
     const startDate = new Date(planForm.startDate.replace(/\//g, '-'))
     const endDate = new Date(planForm.endDate.replace(/\//g, '-'))
@@ -53,32 +46,31 @@ export function useTemplateTask() {
       // 计算该天的实际日期
       const taskDate = new Date(startDate)
       taskDate.setDate(taskDate.getDate() + (dayIndex - 1))
-      const taskDateStr = formatDate(taskDate)
+      const taskDateStr = formatDateToYYYYMMDD(taskDate)  // ⭐ 改为YYYY-MM-DD格式
 
       // 为该天创建任务
-      currentDayTasks.forEach((taskTemplate, index) => {
+      for (const taskTemplate of currentDayTasks) {
+        // ⭐ 使用 Repository 创建任务（自动生成ID，格式为 cat_xxx）
         const newTask = {
-          id: `task_${Date.now()}_${dayIndex}_${index}_${Math.random().toString(36).substr(2, 9)}`,
           title: taskTemplate.title,
-          date: taskDateStr,
-          occurDate: taskDateStr,
-          categoryId: planId, // 关联到规划
-          iconEmoji: planForm.iconEmoji || '🔔',
+          taskDate: taskDateStr,  // ⭐ 使用taskDate字段
+          categoryId: planId,      // 关联到规划
+          planId: null,            // 如果规划是plan类型，这里应该用planId
           status: 'pending',
           isUrgent: taskTemplate.isUrgent !== undefined ? taskTemplate.isUrgent : false,
           isImportant: taskTemplate.isImportant !== undefined ? taskTemplate.isImportant : true,
-          isRecurring: taskTemplate.isRepeat || false,
-          createTime: new Date().toISOString(),
-          updateTime: new Date().toISOString()
+          isAllDay: true,          // 从模板创建的任务默认为全天任务
+          startTime: null,
+          endTime: null,
+          description: taskTemplate.description || '',
+          tags: []
         }
 
-        tasks.push(newTask)
+        await TaskRepository.create(newTask)
         createdTaskCount++
-      })
+      }
     }
 
-    // 保存任务
-    uni.setStorageSync('tasks', JSON.stringify(tasks))
     console.log(`[useTemplateTask] 成功创建 ${createdTaskCount} 个任务，共 ${totalDays} 天`)
 
     uni.showToast({
@@ -91,15 +83,15 @@ export function useTemplateTask() {
   }
 
   /**
-   * 格式化日期为 yyyy/MM/dd
+   * 格式化日期为 YYYY-MM-DD（Repository标准格式）
    * @param {Date} date - 日期对象
    * @returns {string} 格式化后的日期字符串
    */
-  function formatDate(date) {
+  function formatDateToYYYYMMDD(date) {
     const year = date.getFullYear()
     const month = String(date.getMonth() + 1).padStart(2, '0')
     const day = String(date.getDate()).padStart(2, '0')
-    return `${year}/${month}/${day}`
+    return `${year}-${month}-${day}`
   }
 
   return {

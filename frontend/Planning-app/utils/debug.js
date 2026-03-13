@@ -295,6 +295,40 @@ export function cleanLocalStorageGarbage() {
 }
 
 /**
+ * ⭐ 清理旧系统数据（删除 localStorage('tasks')、localStorage('categories')、localStorage('plans')）
+ */
+export function clearLegacyData() {
+  console.log('========================================')
+  console.log('🗑️  清理旧系统数据')
+  console.log('========================================')
+
+  const legacyKeys = ['tasks', 'categories', 'plans']
+  let totalCleared = 0
+
+  legacyKeys.forEach(key => {
+    const data = localStorage.getItem(key)
+    if (data) {
+      try {
+        const parsed = JSON.parse(data)
+        const count = Array.isArray(parsed) ? parsed.length : 1
+        totalCleared += count
+        localStorage.removeItem(key)
+        console.log(`✅ 已删除 [${key}]: ${count} 条数据`)
+      } catch (e) {
+        localStorage.removeItem(key)
+        console.log(`✅ 已删除 [${key}]: 数据损坏，已清理`)
+      }
+    } else {
+      console.log(`ℹ️  [${key}]: 无数据`)
+    }
+  })
+
+  console.log(`\n✅ 清理完成！共清理 ${totalCleared} 条旧数据`)
+  console.log('⚠️  请刷新页面查看效果')
+  console.log('========================================')
+}
+
+/**
  * ⭐ 完全清空 localStorage（慎用！会删除所有数据）
  */
 export function clearAllLocalStorage() {
@@ -321,5 +355,6 @@ export default {
   cleanOrphanTasks,
   printLocalStorage,
   cleanLocalStorageGarbage,
+  clearLegacyData,
   clearAllLocalStorage
 }

@@ -35,6 +35,7 @@ export function createApp() {
     console.log('    window.$debug.cleanOrphanTasks()          - 清理孤儿任务')
     console.log('    window.$debug.printLocalStorage()         - 打印 localStorage')
     console.log('    window.$debug.cleanLocalStorageGarbage()  - ⭐ 清理 localStorage 垃圾数据')
+    console.log('    window.$debug.clearLegacyData()           - 🗑️  清理旧系统数据（tasks/categories/plans）')
     console.log('    window.$debug.clearAllLocalStorage()      - ⚠️  完全清空 localStorage')
   }
   // #endif
