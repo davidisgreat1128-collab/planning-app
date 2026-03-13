@@ -224,16 +224,19 @@ import { ref, reactive, onMounted, computed } from 'vue';
 import { onShow } from '@dcloudio/uni-app';
 import { usePlanStore } from '@/store/plan.js';
 import { useTaskStore } from '@/store/task.js';
-import { getTasks } from '@/api/task.js';
 import MilestoneModal from '@/components/milestone-modal.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
 import { useTaskGrouping } from '@/composables/useTaskGrouping.js';
 import { useAbandonConfirm } from '@/composables/useAbandonConfirm.js';
+import { usePlanTasks } from '@/composables/usePlanTasks.js';
 
 // 获取 stores
 const planStore = usePlanStore();
 const taskStore = useTaskStore();
+
+// 使用任务加载Composable
+const { loadTasks } = usePlanTasks();
 
 // 当前规划ID
 const currentPlanId = ref(null);
@@ -270,58 +273,21 @@ const {
   // TODO: 调用API更新规划状态
 });
 
-// 目标数据
+/**
+ * 规划详情数据
+ * 从 planStore 和 API 加载，不使用示例数据
+ */
 const goalData = ref({
-  title: '循序渐进养成良好作息',
-  buff: '月亮不睡你得睡，不当秃头小宝贝。',
-  endDate: '2026年3月23日',
-  totalDays: 30,
+  title: '',
+  buff: '',
+  endDate: '',
+  totalDays: 0,
   completionRate: 0,
   completedCount: 0,
   focusTime: 0,
-  completedPlans: 0,
-  uncompletedPlans: 5,
-  isCompleted: false,  // 规划是否完成
-  isAbandoned: false,  // 规划是否放弃
-  milestones: [
-    {
-      title: '建立健康观念，健康永远是第一位的',
-      description: '注意是要时刻记得。如果你希望养成良好作息，那么你先要做到的事，做任何选择时都不应该以牺牲健康为代价。',
-      date: '2026/03/02',
-      days: '第10天'
-    },
-    {
-      title: '锚定一日三餐的时间点',
-      description: '根据个人的实际生活和工作情况，确定每天的一日三餐时间点。一日三餐的时间往往是休息的时间，保持它尽可能不被客观环境所打破，在休息日吃早饭会帮助你完成早起，按时晚饭也可以让你拒绝夜宵。',
-      date: '2026/03/12',
-      days: '第20天'
-    },
-    {
-      title: '养成自己的助眠习惯',
-      description: '喝牛奶、保持一定的运动量、睡前阅读都有助于提升睡眠质量，选择最适合你的方式养成这个习惯。注意运动不要在睡前半个小时内进行。',
-      date: '2026/02/21',
-      days: '第0天'
-    },
-    {
-      title: '养成按时上床的习惯',
-      description: '这意味着你需要将每天的计划尽可能早的完成，以免挤占睡眠前的时间。如果当日有计划没有完成，你也需要坚持按时上床睡觉。健康睡眠的前提是不要打破属于自己的睡眠规律。',
-      date: '2026/03/18',
-      days: '第25天'
-    },
-    {
-      title: '保持每晚至少7小时睡眠',
-      description: '科学研究表明，睡得太少和太多都不好，保持7~8个小时的睡眠最有利于健康。结合前面按时上床的习惯，只要拥有充足的睡眠，规律早起的习惯会轻松的保持下来。',
-      date: '2026/03/23',
-      days: '第30天'
-    }
-  ],
-  plans: [
-    { title: '查资料，了解缺少睡眠的危害', emoji: '🔔', priority: 'high', isRepeat: true },
-    { title: '22:00按时上床', emoji: '🔔', priority: 'high', isRepeat: true },
-    { title: '每天按时吃三餐', emoji: '🔔', priority: 'medium', isRepeat: true },
-    { title: '完成助眠活动，喝牛奶或看书', emoji: '🔔', priority: 'medium', isRepeat: true },
-    { title: '完成今日的累积7小时睡眠', emoji: '🔔', priority: 'medium', isRepeat: true }
-  ]
+  isCompleted: false,
+  isAbandoned: false,
+  milestones: []
 });
 
 // 计算属性：获取属于当前规划的任务
@@ -519,103 +485,47 @@ function goBack() {
 
 /**
  * 从 planStore 加载规划数据
+ * 使用 usePlanTasks Composable 加载任务
  */
 async function loadPlanData(planId) {
   // 先加载所有规划
-  planStore.loadPlans();
+  planStore.loadPlans()
 
   // 从 store 获取规划
-  const plan = planStore.getPlanById(planId);
+  const plan = planStore.getPlanById(planId)
 
   if (!plan) {
-    console.error('[GoalDetail] 未找到规划:', planId);
+    console.error('[GoalDetail] 未找到规划:', planId)
     uni.showToast({
       title: '规划不存在',
       icon: 'none'
-    });
+    })
     setTimeout(() => {
-      uni.navigateBack();
-    }, 1500);
-    return;
+      uni.navigateBack()
+    }, 1500)
+    return
   }
 
   // 更新目标数据
-  goalData.value.title = plan.title;
-  goalData.value.buff = plan.buff;
+  goalData.value.title = plan.title
+  goalData.value.buff = plan.buff
 
   // 格式化结束日期：从 2026/07/16 转为 2026年7月16日
   if (plan.endDate) {
-    const dateParts = plan.endDate.split('/');
-    goalData.value.endDate = `${dateParts[0]}年${parseInt(dateParts[1])}月${parseInt(dateParts[2])}日`;
+    const dateParts = plan.endDate.split('/')
+    goalData.value.endDate = `${dateParts[0]}年${parseInt(dateParts[1])}月${parseInt(dateParts[2])}日`
   }
 
   // 使用 store 中的统计数据
-  goalData.value.totalDays = plan.stats.totalDays;
+  goalData.value.totalDays = plan.stats.totalDays
 
   // 更新里程碑
   if (plan.milestones && plan.milestones.length > 0) {
-    goalData.value.milestones = plan.milestones;
+    goalData.value.milestones = plan.milestones
   }
 
-  // 加载任务数据：从localStorage和后端API两个来源
-  try {
-    // 1. 从localStorage加载模板生成的任务
-    let localTasks = [];
-    const savedTasks = uni.getStorageSync('tasks');
-    if (savedTasks) {
-      localTasks = JSON.parse(savedTasks);
-    }
-
-    // 2. 从后端API加载用户创建的任务（查询规划的日期范围）
-    let apiTasks = [];
-    if (plan.startDate && plan.endDate) {
-      // 将日期格式从 yyyy/MM/dd 转为 yyyy-MM-dd
-      const startStr = plan.startDate.replace(/\//g, '-');
-      const endStr = plan.endDate.replace(/\//g, '-');
-
-      // 验证日期顺序：start 不能晚于 end
-      const startDate = new Date(startStr);
-      const endDate = new Date(endStr);
-      if (startDate > endDate) {
-        console.warn('[GoalDetail] 日期顺序错误，startDate晚于endDate，跳过API加载:', { startStr, endStr });
-        // 日期顺序错误时，只使用localStorage的任务，不调用API
-      } else {
-        try {
-          const result = await getTasks({ start: startStr, end: endStr });
-
-          if (result && result.taskMap) {
-            // 后端返回格式: taskMap[date] = [task1, task2, ...] (每个task带_type字段)
-            // 需要提取所有日期的所有任务
-            apiTasks = Object.values(result.taskMap).flatMap(dayTasks => {
-              if (Array.isArray(dayTasks) && dayTasks.length > 0) {
-                return dayTasks;
-              }
-              return [];
-            });
-          }
-        } catch (apiError) {
-          console.error('[GoalDetail] API加载任务失败:', apiError);
-          // 继续执行，只使用localStorage的任务
-        }
-      }
-    }
-
-    // 3. 合并两个来源的任务（避免重复）
-    const allTasks = [...localTasks];
-    const localIds = new Set(localTasks.map(t => String(t.id)));
-
-    for (const apiTask of apiTasks) {
-      const taskId = String(apiTask.id);
-      if (!localIds.has(taskId)) {
-        allTasks.push(apiTask);
-      }
-    }
-
-    // 更新taskStore
-    taskStore.tasks = allTasks;
-  } catch (e) {
-    console.error('[GoalDetail] 加载任务失败:', e);
-  }
+  // 使用 Composable 加载任务数据
+  await loadTasks(plan.startDate, plan.endDate)
 }
 
 // 页面加载时接收传递的数据
