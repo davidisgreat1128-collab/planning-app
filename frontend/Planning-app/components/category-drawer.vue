@@ -31,6 +31,8 @@
           @select="selectCategory"
           @edit="editCategory"
           @delete="deleteCategory"
+          @clear-all="handleClearAll"
+          @clear-uncategorized="handleClearUncategorized"
         />
 
       </scroll-view>
@@ -65,6 +67,20 @@
         @update:visible="showDeletePlanDialog = $event"
         @confirm="onDeletePlanConfirm"
       />
+
+      <!-- 清空所有规划和分类确认弹窗 -->
+      <ClearAllDialog
+        :visible="showClearAllDialog"
+        @confirm="onClearAllConfirm"
+        @cancel="showClearAllDialog = false"
+      />
+
+      <!-- 清空无分类任务确认弹窗 -->
+      <ClearUncategorizedDialog
+        :visible="showClearUncategorizedDialog"
+        @confirm="onClearUncategorizedConfirm"
+        @cancel="showClearUncategorizedDialog = false"
+      />
     </view>
   </view>
 </template>
@@ -73,12 +89,15 @@
 import { ref, computed, watch, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
 import { useCategoryStore } from '@/store/category.js';
+import { useTaskStore } from '@/store/task.js';
 // ⭐ 已废弃：规划现在统一存储在 CategoryRepository（type='plan'）
 // import { usePlanStore } from '@/store/plan.js';
 import { calculatePersistDays } from '@/utils/planStats.js';
 import CategoryDialog from '@/components/planning/CategoryDialog.vue';
 import DeleteCategoryDialog from '@/components/planning/DeleteCategoryDialog.vue';
 import DeletePlanDialog from '@/components/planning/DeletePlanDialog.vue';
+import ClearAllDialog from '@/components/category-drawer/ClearAllDialog.vue';
+import ClearUncategorizedDialog from '@/components/category-drawer/ClearUncategorizedDialog.vue';
 import UserInfoHeader from '@/components/category-drawer/UserInfoHeader.vue';
 import PlanList from '@/components/category-drawer/PlanList.vue';
 import CategoryList from '@/components/category-drawer/CategoryList.vue';
@@ -120,6 +139,10 @@ const userCategories = computed(() => categoryStore.categories);
 // 删除规划相关状态
 const showDeletePlanDialog = ref(false); // 删除规划确认弹窗
 const deletingPlan = ref(null); // 正在删除的规划
+
+// 清空操作相关状态
+const showClearAllDialog = ref(false); // 清空所有规划和分类确认弹窗
+const showClearUncategorizedDialog = ref(false); // 清空无分类任务确认弹窗
 
 // ============================================================
 // 计算属性
@@ -491,6 +514,88 @@ async function onDeletePlanConfirm(deleteWithTasks) {
   } catch (error) {
     uni.hideLoading();
     console.error('[CategoryDrawer] 删除规划失败:', error);
+    uni.showToast({
+      title: '删除失败，请重试',
+      icon: 'none'
+    });
+  }
+}
+
+/**
+ * 处理清空所有规划和分类（打开确认弹窗）
+ */
+function handleClearAll() {
+  showClearAllDialog.value = true;
+}
+
+/**
+ * 确认清空所有规划和分类
+ */
+async function onClearAllConfirm(deleteAllTasks) {
+  console.log('[CategoryDrawer] 确认清空所有规划和分类，deleteAllTasks:', deleteAllTasks);
+
+  try {
+    uni.showLoading({ title: deleteAllTasks ? '删除中...' : '清空中...' });
+
+    // 调用 categoryStore.clearAll()
+    await categoryStore.clearAll(deleteAllTasks);
+
+    // 切换到"全部"
+    selectCategory('all');
+
+    uni.hideLoading();
+    uni.showToast({
+      title: deleteAllTasks ? '已删除全部数据' : '已清空，任务已变为无分类',
+      icon: 'success'
+    });
+
+    showClearAllDialog.value = false;
+
+    // 通知父组件容器已改变，需要刷新任务列表
+    emit('container-changed');
+  } catch (error) {
+    uni.hideLoading();
+    console.error('[CategoryDrawer] 清空所有规划和分类失败:', error);
+    uni.showToast({
+      title: '操作失败，请重试',
+      icon: 'none'
+    });
+  }
+}
+
+/**
+ * 处理清空无分类任务（打开确认弹窗）
+ */
+function handleClearUncategorized() {
+  showClearUncategorizedDialog.value = true;
+}
+
+/**
+ * 确认清空无分类任务
+ */
+async function onClearUncategorizedConfirm() {
+  console.log('[CategoryDrawer] 确认清空无分类任务');
+
+  try {
+    uni.showLoading({ title: '删除中...' });
+
+    // 调用 taskStore.clearUncategorizedTasks()
+    const taskStore = useTaskStore();
+    await taskStore.clearUncategorizedTasks();
+
+    uni.hideLoading();
+    uni.showToast({
+      title: '已清空无分类任务',
+      icon: 'success'
+    });
+
+    showClearUncategorizedDialog.value = false;
+
+    // 通知父组件容器已改变，需要刷新任务列表
+    emit('container-changed');
+  } catch (error) {
+    uni.hideLoading();
+    console.error('[CategoryDrawer] 清空无分类任务失败:', error);
     uni.showToast({
       title: '删除失败，请重试',
       icon: 'none'

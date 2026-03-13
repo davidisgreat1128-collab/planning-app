@@ -10,7 +10,10 @@
         @tap="handleSelect('all')"
       >
         <text class="category-text">全部</text>
-        <text v-if="selectedId === 'all'" class="category-check">✓</text>
+        <!-- ⭐ 删除勾选图标，添加删除图标 -->
+        <view class="delete-icon-btn" @tap.stop="handleClearAll">
+          <text class="delete-icon">🗑️</text>
+        </view>
       </view>
 
       <!-- 无分类 -->
@@ -20,7 +23,10 @@
         @tap="handleSelect('none')"
       >
         <text class="category-text">无分类</text>
-        <text v-if="selectedId === 'none'" class="category-check">✓</text>
+        <!-- ⭐ 删除勾选图标，添加删除图标 -->
+        <view class="delete-icon-btn" @tap.stop="handleClearUncategorized">
+          <text class="delete-icon">🗑️</text>
+        </view>
       </view>
 
       <!-- 用户创建的普通分类（支持左滑操作） -->
@@ -91,7 +97,7 @@ const props = defineProps({
   }
 });
 
-const emit = defineEmits(['select', 'edit', 'delete']);
+const emit = defineEmits(['select', 'edit', 'delete', 'clearAll', 'clearUncategorized']);
 
 // 使用左滑手势Composable
 const { swipeOpenId, onTouchStart, onTouchMove, onTouchEnd } = useSwipeGesture();
@@ -115,6 +121,20 @@ function handleEdit(category) {
  */
 function handleDelete(category) {
   emit('delete', category);
+}
+
+/**
+ * 清空所有规划和分类
+ */
+function handleClearAll() {
+  emit('clearAll');
+}
+
+/**
+ * 清空所有无分类的任务
+ */
+function handleClearUncategorized() {
+  emit('clearUncategorized');
 }
 </script>
 
@@ -210,6 +230,25 @@ function handleDelete(category) {
   font-size: 32rpx;
   color: #fff;
   flex-shrink: 0;
+}
+
+/* 删除图标按钮（全部/无分类） */
+.delete-icon-btn {
+  padding: 0 10rpx;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.delete-icon {
+  font-size: 36rpx;
+  opacity: 0.6;
+  transition: opacity 0.2s;
+}
+
+.delete-icon-btn:active .delete-icon {
+  opacity: 1;
 }
 
 /* 左滑操作按钮 */

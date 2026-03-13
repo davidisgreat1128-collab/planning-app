@@ -321,6 +321,110 @@ export const useTaskStore = defineStore('task', () => {
     console.log('[TaskStore] 规划关联任务处理完成')
   }
 
+  /**
+   * 清空所有分类和规划后的任务处理
+   *
+   * @param {boolean} deleteAllTasks - true=删除所有任务，false=所有任务改为无分类
+   * @returns {Promise<void>}
+   *
+   * 使用场景：用户点击"清空所有规划和分类"
+   *
+   * 清空流程：
+   * 1. 获取所有任务
+   * 2. 根据 deleteAllTasks 参数决定：
+   *    - true：删除所有任务
+   *    - false：所有任务的 categoryId 和 planId 改为 null
+   * 3. 刷新当前任务列表
+   */
+  async function clearAllCategoriesAndPlansTasks(deleteAllTasks) {
+    console.log('[TaskStore] 处理清空所有分类后的任务，deleteAllTasks:', deleteAllTasks)
+
+    // 1. 获取所有任务
+    const allTasks = TaskRepository.getAll()
+    console.log('[TaskStore] 找到任务总数:', allTasks.length)
+
+    if (deleteAllTasks) {
+      // ============ 场景A：删除所有任务 ============
+      console.log('[TaskStore] 删除所有任务')
+
+      for (const task of allTasks) {
+        try {
+          await TaskRepository.delete(task.id)
+          console.log('[TaskStore] 已删除任务:', task.id)
+        } catch (e) {
+          console.error('[TaskStore] 删除任务失败:', task.id, e)
+        }
+      }
+    } else {
+      // ============ 场景B：所有任务改为无分类 ============
+      console.log('[TaskStore] 所有任务改为无分类')
+
+      for (const task of allTasks) {
+        try {
+          await TaskRepository.update(task.id, {
+            categoryId: null,
+            planId: null
+          })
+          console.log('[TaskStore] 任务已改为无分类:', task.id)
+        } catch (e) {
+          console.error('[TaskStore] 更新任务失败:', task.id, e)
+        }
+      }
+    }
+
+    // 3. 如果当前页面正在显示任务，重新加载当前日期的任务
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
+
+    console.log('[TaskStore] 清空所有分类后的任务处理完成')
+  }
+
+  /**
+   * 清空所有无分类的任务
+   *
+   * @returns {Promise<void>}
+   *
+   * 使用场景：用户点击"清空无分类任务"
+   *
+   * 清空流程：
+   * 1. 获取所有任务
+   * 2. 筛选出 categoryId=null 且 planId=null 的任务
+   * 3. 删除这些任务
+   * 4. 刷新当前任务列表
+   */
+  async function clearUncategorizedTasks() {
+    console.log('[TaskStore] 清空无分类任务')
+
+    // 1. 获取所有任务
+    const allTasks = TaskRepository.getAll()
+
+    // 2. 筛选无分类任务（categoryId=null 且 planId=null）
+    const uncategorizedTasks = allTasks.filter(
+      t => (t.categoryId === null || t.categoryId === undefined) &&
+           (t.planId === null || t.planId === undefined)
+    )
+
+    console.log('[TaskStore] 找到无分类任务数量:', uncategorizedTasks.length)
+
+    // 3. 删除无分类任务
+    for (const task of uncategorizedTasks) {
+      try {
+        await TaskRepository.delete(task.id)
+        console.log('[TaskStore] 已删除无分类任务:', task.id)
+      } catch (e) {
+        console.error('[TaskStore] 删除任务失败:', task.id, e)
+      }
+    }
+
+    // 4. 如果当前页面正在显示任务，重新加载当前日期的任务
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
+
+    console.log('[TaskStore] 清空无分类任务完成')
+  }
+
   // ============================================================
   // 导出
   // ============================================================
@@ -353,6 +457,8 @@ export const useTaskStore = defineStore('task', () => {
     sync,
     getTaskById,
     getAllTasks,
-    updateTasksAfterPlanDelete
+    updateTasksAfterPlanDelete,
+    clearAllCategoriesAndPlansTasks,
+    clearUncategorizedTasks
   }
 })

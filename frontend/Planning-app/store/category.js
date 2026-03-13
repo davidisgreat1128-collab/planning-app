@@ -331,16 +331,31 @@ export const useCategoryStore = defineStore('category', () => {
   }
 
 	/**
-   * 清除所有分类（仅用于测试，慎用！）
+   * 清空所有规划和分类
    *
+   * @param {boolean} deleteAllTasks - true=同时删除全部任务，false=任务改为无分类（默认false）
    * @returns {Promise<void>}
+   *
+   * 清空流程：
+   * 1. 删除所有分类和规划（CategoryRepository）
+   * 2. 处理所有任务：
+   *    - 如果 deleteAllTasks=true：删除所有任务
+   *    - 如果 deleteAllTasks=false：所有任务改为无分类（categoryId=null, planId=null）
    */
-  async function clearAll() {
+  async function clearAll(deleteAllTasks = false) {
+    console.log('[CategoryStore] 清空所有规划和分类，deleteAllTasks:', deleteAllTasks)
+
+    // 1. 删除所有分类和规划
     const allCategories = categories.value
     for (const cat of allCategories) {
       await CategoryRepository.delete(cat.id)
     }
     _syncFromRepository()  // ✅ 清除后同步
+    console.log('[CategoryStore] 所有分类和规划已删除')
+
+    // 2. 处理所有任务（调用 taskStore）
+    const taskStore = useTaskStore()
+    await taskStore.clearAllCategoriesAndPlansTasks(deleteAllTasks)
   }
 
   // ========== 导出 ==========
