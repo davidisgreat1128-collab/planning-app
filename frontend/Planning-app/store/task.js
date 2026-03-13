@@ -313,8 +313,10 @@ export const useTaskStore = defineStore('task', () => {
       }
     }
 
-    // 3. 同步更新 Store 中的数据（从 Repository 重新加载）
-    _syncFromRepository()
+    // 3. 如果当前页面正在显示任务，重新加载当前日期的任务
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
 
     console.log('[TaskStore] 规划关联任务处理完成')
   }
