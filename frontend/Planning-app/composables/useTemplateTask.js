@@ -49,6 +49,7 @@ export function useTemplateTask() {
       const taskDateStr = formatDateToYYYYMMDD(taskDate)  // ⭐ 改为YYYY-MM-DD格式
 
       // 为该天创建任务
+      console.log(`  [useTemplateTask] 第${dayIndex}天有 ${currentDayTasks.length} 个任务`)
       for (const taskTemplate of currentDayTasks) {
         // ⭐ 使用 Repository 创建任务（自动生成ID，格式为 cat_xxx）
         const newTask = {
@@ -66,8 +67,16 @@ export function useTemplateTask() {
           tags: []
         }
 
+        console.log(`  [useTemplateTask] 准备创建第 ${createdTaskCount + 1} 个任务:`, {
+          title: newTask.title,
+          date: newTask.taskDate,
+          dayIndex
+        })
+
         await TaskRepository.create(newTask)
         createdTaskCount++
+
+        console.log(`  [useTemplateTask] 第 ${createdTaskCount} 个任务创建完成`)
       }
     }
 

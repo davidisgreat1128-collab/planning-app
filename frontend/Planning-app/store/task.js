@@ -93,17 +93,41 @@ export const useTaskStore = defineStore('task', () => {
    */
   function _initEventSubscription() {
     TaskRepository.subscribe((event, data) => {
-      console.log(`[taskStore] 收到事件: ${event}`, data)
+      // ⭐⭐⭐ 详细日志：追踪事件处理
+      console.log('========================================')
+      console.log(`[taskStore] 收到 Repository 事件: ${event}`)
+      console.log('  事件时间:', new Date().toISOString())
+      console.log('  当前选中日期:', selectedDate.value)
+      console.log('  当前列表任务数:', tasks.value.length)
+      if (data) {
+        console.log('  事件数据:', {
+          id: data.id,
+          title: data.title,
+          taskDate: data.taskDate,
+          categoryId: data.categoryId
+        })
+      }
 
       switch (event) {
         case 'create':
+          console.log('  [create事件] 开始处理')
           // 如果新任务属于当前选中日期，自动添加到列表
           if (selectedDate.value && data.taskDate) {
             const taskDate = new Date(data.taskDate).toISOString().split('T')[0]
+            console.log('  任务日期:', taskDate, '当前选中:', selectedDate.value)
             if (taskDate === selectedDate.value) {
+              console.log('  ⭐ 任务属于当前日期，添加到列表')
+              console.log('  添加前列表长度:', tasks.value.length)
               tasks.value.push(data)
-              console.log('[taskStore] 自动添加新任务到列表:', data.title || data.id)
+              console.log('  添加后列表长度:', tasks.value.length)
+              console.log('  [taskStore] 自动添加新任务到列表:', data.title || data.id)
+            } else {
+              console.log('  ✖ 任务不属于当前日期，不添加')
             }
+          } else {
+            console.log('  ✖ selectedDate 或 taskDate 为空，不添加')
+            console.log('    selectedDate.value:', selectedDate.value)
+            console.log('    data.taskDate:', data.taskDate)
           }
           break
 
@@ -145,6 +169,9 @@ export const useTaskStore = defineStore('task', () => {
         default:
           console.warn(`[taskStore] 未知事件类型: ${event}`)
       }
+
+      console.log('  [taskStore] 事件处理完成，最终列表任务数:', tasks.value.length)
+      console.log('========================================')
     })
 
     console.log('[taskStore] 事件订阅已初始化')

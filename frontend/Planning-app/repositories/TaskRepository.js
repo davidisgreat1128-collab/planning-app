@@ -129,6 +129,16 @@ class TaskRepository {
    * @returns {Promise<object>}
    */
   async create(data) {
+    // ⭐⭐⭐ 详细日志：追踪任务创建来源
+    console.log('========================================')
+    console.log('[TaskRepository.create] 开始创建任务')
+    console.log('  调用时间:', new Date().toISOString())
+    console.log('  任务标题:', data.title)
+    console.log('  任务日期:', data.taskDate)
+    console.log('  分类ID:', data.categoryId)
+    console.log('  调用栈:', new Error().stack)
+    console.log('  当前缓存任务数:', this.memoryCache.size)
+
     const task = {
       id: this._generateId(),
       ...data,
@@ -137,10 +147,11 @@ class TaskRepository {
       deletedAt: null
     }
 
-    console.log('[TaskRepository] 创建任务:', task.title || task.id)
+    console.log('  生成的任务ID:', task.id)
 
     // 更新内存缓存
     this.memoryCache.set(task.id, task)
+    console.log('  缓存更新后任务数:', this.memoryCache.size)
 
     // 添加到操作队列
     this._addToQueue({
@@ -154,7 +165,10 @@ class TaskRepository {
     this._debouncedSync()
 
     // ⭐ 发布事件：通知订阅者任务已创建
+    console.log('  准备发布 create 事件，订阅者数量:', this.listeners.length)
     this._notify('create', task)
+    console.log('[TaskRepository.create] 任务创建完成')
+    console.log('========================================')
 
     return task
   }
