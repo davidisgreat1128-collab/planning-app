@@ -181,9 +181,17 @@ class TaskRepository {
   }
 
   /**
-   * 删除任务（软删除）
-   * @param {string} id
+   * 删除任务
+   *
+   * @param {string} id - 任务 ID
    * @returns {Promise<void>}
+   *
+   * 删除流程：
+   * 1. 标记 deletedAt（用于同步到服务器）
+   * 2. 添加删除操作到队列（等待同步）
+   * 3. 从内存缓存中移除（立即生效，刷新页面不恢复）
+   * 4. 持久化到 localStorage
+   * 5. 后台同步到服务器
    */
   async delete(id) {
     const task = this.memoryCache.get(id)
@@ -193,18 +201,23 @@ class TaskRepository {
 
     console.log('[TaskRepository] 删除任务:', task.title || task.id)
 
-    // 标记为已删除
-    task.deletedAt = Date.now()
+    const deletedAt = Date.now()
 
-    // 添加到队列
+    // 1. 添加删除操作到队列（用于同步到服务器）
     this._addToQueue({
       type: 'delete',
       entityId: id,
-      data: { deletedAt: task.deletedAt }
+      data: { deletedAt }
     })
 
-    // 持久化 + 同步
+    // 2. ⭐ 从内存缓存中移除（立即生效，避免刷新页面恢复）
+    this.memoryCache.delete(id)
+    console.log('[TaskRepository] 已从内存缓存中移除:', id)
+
+    // 3. 持久化到 localStorage（memoryCache 已移除，所以 localStorage 中也会移除）
     this._saveToLocalStorage()
+
+    // 4. 后台同步到服务器
     this._debouncedSync()
   }
 

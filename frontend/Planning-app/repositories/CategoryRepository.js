@@ -201,10 +201,17 @@ class CategoryRepository {
   }
 
   /**
-   * 删除分类（软删除）
+   * 删除分类
    *
    * @param {string} id - 分类 ID
    * @returns {Promise<void>}
+   *
+   * 删除流程：
+   * 1. 标记 deletedAt（用于同步到服务器）
+   * 2. 添加删除操作到队列（等待同步）
+   * 3. 从内存缓存中移除（立即生效，刷新页面不恢复）
+   * 4. 持久化到 localStorage
+   * 5. 后台同步到服务器
    */
   async delete(id) {
     const category = this.memoryCache.get(id)
@@ -214,20 +221,23 @@ class CategoryRepository {
 
     console.log('[CategoryRepository] 删除分类:', category.name)
 
-    // 标记为已删除（保留数据）
-    category.deletedAt = Date.now()
+    const deletedAt = Date.now()
 
-    // 添加到队列
+    // 1. 添加删除操作到队列（用于同步到服务器）
     this._addToQueue({
       type: 'delete',
       entityId: id,
-      data: { deletedAt: category.deletedAt }
+      data: { deletedAt }
     })
 
-    // 持久化（保留已删除数据在缓存中）
+    // 2. ⭐ 从内存缓存中移除（立即生效，避免刷新页面恢复）
+    this.memoryCache.delete(id)
+    console.log('[CategoryRepository] 已从内存缓存中移除:', id)
+
+    // 3. 持久化到 localStorage（memoryCache 已移除，所以 localStorage 中也会移除）
     this._saveToLocalStorage()
 
-    // 后台同步
+    // 4. 后台同步到服务器
     this._debouncedSync()
   }
 
