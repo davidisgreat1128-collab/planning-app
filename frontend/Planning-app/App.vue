@@ -5,6 +5,7 @@ import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
 import { usePlanningStore } from '@/store/planning.js';
 import { useTemplateStore } from '@/store/template.js';
+import { usePlanStore } from '@/store/plan.js';
 
 export default {
   async onLaunch() {
@@ -32,6 +33,7 @@ export default {
     const logStore = useLogStore();
     const planningStore = usePlanningStore();
     const templateStore = useTemplateStore();
+    const planStore = usePlanStore();
 
     try {
       // 并行加载所有 Store 数据
@@ -43,6 +45,10 @@ export default {
         planningStore.hydrate(),  // 加载规划数据
         templateStore.hydrate()   // 加载模板数据
       ]);
+
+      // ⭐ 修复BUG：加载规划数据（planStore使用localStorage持久化）
+      planStore.loadPlans();
+      console.log('[App] planStore 数据已加载，规划数量:', planStore.plans.length);
     } catch (err) {
       console.error('[App] Repository 数据加载失败:', err);
     }
