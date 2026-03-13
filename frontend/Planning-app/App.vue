@@ -19,6 +19,15 @@ export default {
     //   console.warn('[App] 清除缓存失败:', e);
     // }
 
+    // ⭐ 清理旧的 planStore 数据（planStore 已废弃，数据迁移到 categoryStore）
+    try {
+      uni.removeStorageSync('user_plans');       // 旧的规划数据
+      uni.removeStorageSync('selected_plan_id'); // 旧的选中状态（新位置不变，但数据格式可能不同）
+      console.log('[App] 已清理旧的 planStore 数据');
+    } catch (e) {
+      console.warn('[App] 清理旧数据失败:', e);
+    }
+
     // 记录首次安装日期（用于计算坚持天数）
     const firstInstallDate = uni.getStorageSync('first_install_date');
     if (!firstInstallDate) {

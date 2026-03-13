@@ -258,6 +258,67 @@ export const useTaskStore = defineStore('task', () => {
     return TaskRepository.getAll()
   }
 
+  /**
+   * 规划删除后，处理关联任务
+   *
+   * @param {string} planId - 规划ID
+   * @param {boolean} deleteWithTasks - true=删除任务，false=改为无分类
+   *
+   * 迁移自：store/plan.js:112-221
+   *
+   * 职责：
+   * - 查找所有属于该规划的任务（支持 categoryId 和 planId）
+   * - 根据 deleteWithTasks 参数决定删除任务 或 改为无分类
+   * - 通过 TaskRepository 执行数据操作
+   */
+  async function updateTasksAfterPlanDelete(planId, deleteWithTasks) {
+    console.log('[TaskStore] 处理规划删除后的关联任务，planId:', planId, 'deleteWithTasks:', deleteWithTasks)
+
+    // 1. 从 TaskRepository 获取所有任务
+    const allTasks = TaskRepository.getAll()
+
+    // 2. 筛选出属于该规划的任务（支持 categoryId 和 planId）
+    const planTasks = allTasks.filter(t =>
+      t.categoryId === planId || t.planId === planId
+    )
+
+    console.log('[TaskStore] 找到关联任务数量:', planTasks.length)
+
+    if (deleteWithTasks) {
+      // ============ 场景A：删除该规划下的所有任务 ============
+      console.log('[TaskStore] 删除规划下的所有任务')
+
+      for (const task of planTasks) {
+        try {
+          await TaskRepository.delete(task.id)
+          console.log('[TaskStore] 已删除任务:', task.id)
+        } catch (e) {
+          console.error('[TaskStore] 删除任务失败:', task.id, e)
+        }
+      }
+    } else {
+      // ============ 场景B：将任务改为无分类（保留任务）============
+      console.log('[TaskStore] 将规划下的任务改为无分类')
+
+      for (const task of planTasks) {
+        try {
+          await TaskRepository.update(task.id, {
+            categoryId: null,
+            planId: null
+          })
+          console.log('[TaskStore] 任务已改为无分类:', task.id)
+        } catch (e) {
+          console.error('[TaskStore] 更新任务失败:', task.id, e)
+        }
+      }
+    }
+
+    // 3. 同步更新 Store 中的数据（从 Repository 重新加载）
+    _syncFromRepository()
+
+    console.log('[TaskStore] 规划关联任务处理完成')
+  }
+
   // ============================================================
   // 导出
   // ============================================================
@@ -289,6 +350,7 @@ export const useTaskStore = defineStore('task', () => {
     clearTasks,
     sync,
     getTaskById,
-    getAllTasks
+    getAllTasks,
+    updateTasksAfterPlanDelete
   }
 })

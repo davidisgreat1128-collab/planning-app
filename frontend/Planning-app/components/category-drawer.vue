@@ -469,10 +469,8 @@ async function onDeletePlanConfirm(deleteWithTasks) {
     uni.showLoading({ title: '删除中...' });
 
     // ⭐ 架构统一：规划存储在 CategoryRepository（type='plan'）
-    await categoryStore.deletePlan(planId);
-
-    // 如果需要同时删除关联任务，由后端处理（未来功能）
-    // TODO: 后端实现级联删除逻辑（deleteWithTasks参数）
+    // deleteWithTasks: true=删除关联任务，false=改为无分类
+    await categoryStore.deletePlan(planId, deleteWithTasks);
 
     // 如果删除的是当前选中的规划，自动切换到"全部"
     if (isDeletingSelected) {

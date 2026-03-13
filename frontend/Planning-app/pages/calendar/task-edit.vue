@@ -338,7 +338,8 @@
 <script setup>
 import { ref, computed, onMounted } from 'vue';
 import { useTaskStore } from '@/store/task.js';
-import { usePlanStore } from '@/store/plan.js';
+// ⭐ 架构统一：planStore 已删除，规划存储在 CategoryRepository（type='plan'）
+// import { usePlanStore } from '@/store/plan.js';
 import { useCategoryStore } from '@/store/category.js';
 import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 import DateTabBar from '@/components/task/DateTabBar.vue';
@@ -362,7 +363,8 @@ import { parseRrule } from '@/utils/rruleBuilder.js';
 // Store
 // ============================================================
 const taskStore = useTaskStore();
-const planStore = usePlanStore();
+// ⭐ 架构统一：planStore 已删除
+// const planStore = usePlanStore();
 const categoryStore = useCategoryStore();
 
 // ============================================================

@@ -29,6 +29,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import CategoryRepository from '@/repositories/CategoryRepository'
+import { useTaskStore } from '@/store/task.js'
 
 export const useCategoryStore = defineStore('category', () => {
   // ========== 状态（State）==========
@@ -291,12 +292,24 @@ export const useCategoryStore = defineStore('category', () => {
    * ⭐ 删除规划（使用 Repository）
    *
    * @param {string} planId - 规划 ID
+   * @param {boolean} deleteWithTasks - true=删除关联任务，false=改为无分类（默认false）
    * @returns {Promise<void>}
+   *
+   * 删除流程：
+   * 1. 删除规划数据（CategoryRepository）
+   * 2. 处理关联任务（调用 taskStore.updateTasksAfterPlanDelete）
    */
-  async function deletePlan(planId) {
+  async function deletePlan(planId, deleteWithTasks = false) {
+    console.log('[CategoryStore] 删除规划，planId:', planId, 'deleteWithTasks:', deleteWithTasks)
+
+    // 1. 删除规划数据
     await CategoryRepository.delete(planId)
     _syncFromRepository()  // ✅ 同步后刷新Store
     console.log('[CategoryStore] 规划已删除（通过Repository）')
+
+    // 2. 处理关联任务（调用 taskStore）
+    const taskStore = useTaskStore()
+    await taskStore.updateTasksAfterPlanDelete(planId, deleteWithTasks)
   }
 
   /**

@@ -28,7 +28,10 @@
 
 import { ref, computed } from 'vue';
 import { useTaskStore } from '@/store/task';
-import { usePlanStore } from '@/store/plan';
+// ⭐ 架构统一：规划现在存储在 CategoryRepository（type='plan'）
+// 规划任务生成功能迁移到 usePlanTaskGenerator Composable
+// import { usePlanStore } from '@/store/plan';
+import { usePlanTaskGenerator } from '@/composables/usePlanTaskGenerator.js';
 import { usePlanningStore } from '@/store/planning';
 import { useLogStore } from '@/store/log';
 import { getHolidaysByRange, getLunarInfoRange, getWorkDaysByRange } from '@/api/holiday';
@@ -99,7 +102,9 @@ export function useCalendar() {
 
   // ============ Stores ============
   const taskStore = useTaskStore();
-  const planStore = usePlanStore();
+  // ⭐ 架构统一：规划任务生成改用 Composable
+  // const planStore = usePlanStore();
+  const { getTasksByDate: getPlanTasksByDate } = usePlanTaskGenerator();
   const planningStore = usePlanningStore();
   const logStore = useLogStore();
 
@@ -143,7 +148,8 @@ export function useCalendar() {
    */
   function getTaskDots(dateStr) {
     // 获取该日期的所有任务(包括规划任务)
-    const planTasks = planStore.getTasksByDate(dateStr);
+    // ⭐ 架构统一：改用 usePlanTaskGenerator().getTasksByDate()
+    const planTasks = getPlanTasksByDate(dateStr);
     const allTasks = [...taskStore.tasks, ...planTasks];
 
     const dotsSet = new Set();
