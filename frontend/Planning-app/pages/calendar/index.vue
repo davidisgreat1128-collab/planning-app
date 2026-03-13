@@ -503,13 +503,11 @@ function goToPlanningCategory() {
  * @param {object} container - 容器信息 { type, id }
  */
 async function handleContainerChanged(container) {
-  console.log('[Index] 容器变更:', container);
   // 使用 Composable 的方法设置选中容器
   taskFilterComposable.setSelectedContainer(container);
 
-  // ⭐ 强制刷新任务列表（重新从 Repository 加载数据）
+  // 强制刷新任务列表（重新从 Repository 加载数据）
   if (calendarComposable.selectedDate.value) {
-    console.log('[Index] 强制刷新任务列表，日期:', calendarComposable.selectedDate.value);
     await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
   }
 }
@@ -573,8 +571,6 @@ onMounted(async () => {
 
 // ⭐ 每次页面显示时刷新任务（包括从其他页面返回）
 onShow(async () => {
-  console.log('[index.vue] onShow - 刷新任务列表');
-
   // 重新从 Repository 加载当前日期的任务
   if (calendarComposable.selectedDate.value) {
     await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);

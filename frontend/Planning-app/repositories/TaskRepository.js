@@ -84,28 +84,6 @@ class TaskRepository {
   getAll() {
     const allTasks = Array.from(this.memoryCache.values())
     const activeTasks = allTasks.filter(task => !task.deletedAt)
-
-    // ⭐ 诊断日志：检查任务的 categoryId 和 planId
-    console.log('[TaskRepository] getAll 诊断:')
-    console.log(`  总任务数: ${allTasks.length}`)
-    console.log(`  未删除任务数: ${activeTasks.length}`)
-
-    // 统计任务归属情况
-    const categoryCount = activeTasks.filter(t => t.categoryId && t.categoryId !== null).length
-    const planCount = activeTasks.filter(t => t.planId && t.planId !== null).length
-    const uncategorizedCount = activeTasks.filter(t => !t.categoryId && !t.planId).length
-    const orphanTasks = activeTasks.filter(t => (t.categoryId || t.planId) && !t.categoryId && !t.planId)
-
-    console.log(`  有分类的任务: ${categoryCount}`)
-    console.log(`  有规划的任务: ${planCount}`)
-    console.log(`  无分类任务: ${uncategorizedCount}`)
-    console.log(`  孤儿任务: ${orphanTasks.length}`)
-
-    // ⭐ 打印每个任务的详细信息
-    activeTasks.forEach(task => {
-      console.log(`  [任务] id=${task.id}, title=${task.title}, categoryId=${task.categoryId}, planId=${task.planId}, isUrgent=${task.isUrgent}, isImportant=${task.isImportant}`)
-    })
-
     return activeTasks.sort((a, b) => b.createdAt - a.createdAt)  // 按创建时间倒序
   }
 

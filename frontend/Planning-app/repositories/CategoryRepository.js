@@ -90,24 +90,6 @@ class CategoryRepository {
   getAll() {
     const allCategories = Array.from(this.memoryCache.values())
     const activeCategories = allCategories.filter(cat => !cat.deletedAt)
-
-    // ⭐ 诊断日志：检查分类数据
-    console.log('[CategoryRepository] getAll 诊断:')
-    console.log(`  总分类数: ${allCategories.length}`)
-    console.log(`  未删除分类数: ${activeCategories.length}`)
-
-    // 统计分类类型
-    const categoryTypeCount = activeCategories.filter(c => c.type === 'category' || !c.type).length
-    const planTypeCount = activeCategories.filter(c => c.type === 'plan').length
-
-    console.log(`  普通分类: ${categoryTypeCount}`)
-    console.log(`  规划分类: ${planTypeCount}`)
-
-    // ⭐ 打印每个分类的详细信息
-    activeCategories.forEach(cat => {
-      console.log(`  [分类] id=${cat.id}, name=${cat.name}, type=${cat.type}, deletedAt=${cat.deletedAt}`)
-    })
-
     return activeCategories.sort((a, b) => (a.sortOrder || 0) - (b.sortOrder || 0))  // 按 sortOrder 排序
   }
 

@@ -119,18 +119,6 @@ export const useTaskStore = defineStore('task', () => {
       // 从 Repository 获取该日期的所有任务
       const allTasks = TaskRepository.getByDate(date)
 
-      // ⭐ 诊断日志：检查任务来源
-      console.log(`[TaskStore] fetchTasksByDate(${date}) 诊断:`)
-      console.log(`  获取到任务数: ${allTasks.length}`)
-
-      // 检查每个任务的归属
-      allTasks.forEach(task => {
-        console.log(`  [任务] id=${task.id}, title=${task.title}`)
-        console.log(`    categoryId=${task.categoryId}, planId=${task.planId}`)
-        console.log(`    isUrgent=${task.isUrgent}, isImportant=${task.isImportant}`)
-        console.log(`    date=${task.date}, status=${task.status}`)
-      })
-
       // TODO: 当前 Repository 只返回本地缓存，未来需要从服务器获取
       // const res = await taskApi.getTasks({ date })
       // 处理后端返回的 { single, range, recurring } 三分结构
