@@ -119,6 +119,18 @@ export const useTaskStore = defineStore('task', () => {
       // 从 Repository 获取该日期的所有任务
       const allTasks = TaskRepository.getByDate(date)
 
+      // ⭐ 诊断日志：检查任务来源
+      console.log(`[TaskStore] fetchTasksByDate(${date}) 诊断:`)
+      console.log(`  获取到任务数: ${allTasks.length}`)
+
+      // 检查每个任务的归属
+      allTasks.forEach(task => {
+        console.log(`  [任务] id=${task.id}, title=${task.title}`)
+        console.log(`    categoryId=${task.categoryId}, planId=${task.planId}`)
+        console.log(`    isUrgent=${task.isUrgent}, isImportant=${task.isImportant}`)
+        console.log(`    date=${task.date}, status=${task.status}`)
+      })
+
       // TODO: 当前 Repository 只返回本地缓存，未来需要从服务器获取
       // const res = await taskApi.getTasks({ date })
       // 处理后端返回的 { single, range, recurring } 三分结构
@@ -425,6 +437,67 @@ export const useTaskStore = defineStore('task', () => {
     console.log('[TaskStore] 清空无分类任务完成')
   }
 
+  /**
+   * ⭐ 诊断函数：检查孤儿任务（任务的 categoryId/planId 指向已删除的分类）
+   *
+   * @returns {object} 诊断报告
+   *
+   * 使用方式：
+   * ```javascript
+   * const report = taskStore.diagnoseOrphanTasks()
+   * console.log(report)
+   * ```
+   */
+  function diagnoseOrphanTasks() {
+    const allTasks = TaskRepository.getAll()
+    const allCategories = require('@/repositories/CategoryRepository').default.getAll()
+
+    console.log('[TaskStore] 诊断孤儿任务:')
+    console.log(`  总任务数: ${allTasks.length}`)
+    console.log(`  总分类数: ${allCategories.length}`)
+
+    // 提取所有有效的 categoryId 和 planId
+    const validCategoryIds = new Set(allCategories.map(c => c.id))
+
+    // 检查每个任务
+    const orphanTasks = []
+    allTasks.forEach(task => {
+      let isOrphan = false
+      let reason = ''
+
+      if (task.categoryId && !validCategoryIds.has(task.categoryId)) {
+        isOrphan = true
+        reason = `categoryId=${task.categoryId} 指向的分类不存在`
+      }
+
+      if (task.planId && !validCategoryIds.has(task.planId)) {
+        isOrphan = true
+        reason += (reason ? '; ' : '') + `planId=${task.planId} 指向的规划不存在`
+      }
+
+      if (isOrphan) {
+        orphanTasks.push({
+          id: task.id,
+          title: task.title,
+          categoryId: task.categoryId,
+          planId: task.planId,
+          reason
+        })
+        console.log(`  ⚠️ 孤儿任务: id=${task.id}, title=${task.title}, ${reason}`)
+      }
+    })
+
+    const report = {
+      totalTasks: allTasks.length,
+      totalCategories: allCategories.length,
+      orphanTasks,
+      orphanCount: orphanTasks.length
+    }
+
+    console.log(`  发现孤儿任务: ${orphanTasks.length} 个`)
+    return report
+  }
+
   // ============================================================
   // 导出
   // ============================================================
@@ -459,6 +532,9 @@ export const useTaskStore = defineStore('task', () => {
     getAllTasks,
     updateTasksAfterPlanDelete,
     clearAllCategoriesAndPlansTasks,
-    clearUncategorizedTasks
+    clearUncategorizedTasks,
+
+    // ⭐ 诊断工具
+    diagnoseOrphanTasks
   }
 })
