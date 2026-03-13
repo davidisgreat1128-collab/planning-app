@@ -171,9 +171,11 @@ export function printLocalStorage() {
   console.log('💾 LocalStorage 数据')
   console.log('========================================')
 
-  const keys = ['planning_app_tasks', 'planning_app_categories', 'planning_app_task_queue', 'planning_app_category_queue']
+  // ⭐ 新系统（Repository）数据
+  console.log('\n📦 新系统（Repository）:')
+  const newKeys = ['planning_app_tasks', 'planning_app_categories', 'planning_app_task_queue', 'planning_app_category_queue']
 
-  keys.forEach(key => {
+  newKeys.forEach(key => {
     const data = localStorage.getItem(key)
     if (data) {
       try {
@@ -181,6 +183,37 @@ export function printLocalStorage() {
         console.log(`\n[${key}]`)
         console.log(`  数据量: ${Array.isArray(parsed) ? parsed.length : '非数组'}`)
         console.log(`  数据:`, parsed)
+      } catch (e) {
+        console.log(`\n[${key}]`)
+        console.log(`  解析失败:`, e)
+      }
+    } else {
+      console.log(`\n[${key}]`)
+      console.log(`  无数据`)
+    }
+  })
+
+  // ⭐ 旧系统数据（uni.getStorageSync）
+  console.log('\n\n🗂️ 旧系统（直接localStorage）:')
+  const oldKeys = ['tasks', 'categories', 'plans']
+
+  oldKeys.forEach(key => {
+    const data = localStorage.getItem(key)
+    if (data) {
+      try {
+        const parsed = JSON.parse(data)
+        console.log(`\n[${key}] ⚠️ 发现旧系统数据！`)
+        console.log(`  数据量: ${Array.isArray(parsed) ? parsed.length : '非数组'}`)
+        console.log(`  数据:`, parsed)
+
+        // 如果是任务数据，检查ID格式
+        if (key === 'tasks' && Array.isArray(parsed)) {
+          const legacyTasks = parsed.filter(t => String(t.id).startsWith('task_'))
+          if (legacyTasks.length > 0) {
+            console.log(`  ⚠️ 包含 ${legacyTasks.length} 个旧格式任务（ID以task_开头）`)
+            console.log(`  示例ID:`, legacyTasks.slice(0, 3).map(t => t.id))
+          }
+        }
       } catch (e) {
         console.log(`\n[${key}]`)
         console.log(`  解析失败:`, e)
