@@ -81,6 +81,79 @@ export const useTaskStore = defineStore('task', () => {
   })
 
   // ============================================================
+  // ⭐ 事件订阅机制（2026-03-14 新增）
+  // ============================================================
+
+  /**
+   * 初始化事件订阅（Store 创建时自动调用）
+   *
+   * 订阅 TaskRepository 的数据变化事件，自动更新 tasks.value
+   *
+   * @private
+   */
+  function _initEventSubscription() {
+    TaskRepository.subscribe((event, data) => {
+      console.log(`[taskStore] 收到事件: ${event}`, data)
+
+      switch (event) {
+        case 'create':
+          // 如果新任务属于当前选中日期，自动添加到列表
+          if (selectedDate.value && data.taskDate) {
+            const taskDate = new Date(data.taskDate).toISOString().split('T')[0]
+            if (taskDate === selectedDate.value) {
+              tasks.value.push(data)
+              console.log('[taskStore] 自动添加新任务到列表:', data.title || data.id)
+            }
+          }
+          break
+
+        case 'update':
+          // 查找并更新对应任务
+          const updateIndex = tasks.value.findIndex(t => t.id === data.id)
+          if (updateIndex > -1) {
+            tasks.value[updateIndex] = data
+            console.log('[taskStore] 自动更新任务:', data.title || data.id)
+          } else {
+            // 如果更新后的任务属于当前日期，但列表中没有，添加它
+            if (selectedDate.value && data.taskDate) {
+              const taskDate = new Date(data.taskDate).toISOString().split('T')[0]
+              if (taskDate === selectedDate.value) {
+                tasks.value.push(data)
+                console.log('[taskStore] 更新后任务进入当前日期，自动添加:', data.title || data.id)
+              }
+            }
+          }
+          break
+
+        case 'delete':
+          // 从列表中移除已删除任务
+          const deleteIndex = tasks.value.findIndex(t => t.id === data.id)
+          if (deleteIndex > -1) {
+            tasks.value.splice(deleteIndex, 1)
+            console.log('[taskStore] 自动移除已删除任务:', data.id)
+          }
+          break
+
+        case 'hydrate':
+          // hydrate 完成：重新加载当前日期任务
+          if (selectedDate.value) {
+            tasks.value = TaskRepository.getByDate(selectedDate.value)
+            console.log('[taskStore] hydrate 完成，自动刷新列表，任务数:', tasks.value.length)
+          }
+          break
+
+        default:
+          console.warn(`[taskStore] 未知事件类型: ${event}`)
+      }
+    })
+
+    console.log('[taskStore] 事件订阅已初始化')
+  }
+
+  // ⭐ Store 初始化时自动订阅事件
+  _initEventSubscription()
+
+  // ============================================================
   // 方法
   // ============================================================
 
@@ -103,6 +176,7 @@ export const useTaskStore = defineStore('task', () => {
    */
   async function hydrate() {
     await TaskRepository.hydrate()
+    // ⭐ 无需手动刷新，Repository 会发布 'hydrate' 事件，自动触发刷新
   }
 
   /**
@@ -141,13 +215,7 @@ export const useTaskStore = defineStore('task', () => {
   async function addTask(data) {
     const newTask = await TaskRepository.create(data)
 
-    // 如果新任务属于当前选中日期，添加到列表
-    if (selectedDate.value) {
-      const taskDate = new Date(newTask.taskDate).toISOString().split('T')[0]
-      if (taskDate === selectedDate.value) {
-        tasks.value.push(newTask)
-      }
-    }
+    // ⭐ 无需手动更新 tasks.value，Repository 会发布 'create' 事件，自动触发更新
 
     return newTask
   }
@@ -162,11 +230,7 @@ export const useTaskStore = defineStore('task', () => {
   async function updateTask(id, data) {
     const updated = await TaskRepository.update(id, data)
 
-    // 更新本地列表中的任务
-    const index = tasks.value.findIndex(t => t.id === id)
-    if (index !== -1) {
-      tasks.value[index] = updated
-    }
+    // ⭐ 无需手动更新 tasks.value，Repository 会发布 'update' 事件，自动触发更新
 
     return updated
   }

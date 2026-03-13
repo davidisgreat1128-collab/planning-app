@@ -37,6 +37,10 @@ const MAX_RETRY = 5
 
 /**
  * 任务 Repository（单例模式）
+ *
+ * ⭐ 新增功能（2026-03-14）：事件通知机制（发布-订阅模式）
+ * - 数据变化时自动通知订阅者（Store）
+ * - 支持事件类型：create、update、delete、batchCreate、hydrate
  */
 class TaskRepository {
   constructor() {
@@ -48,6 +52,12 @@ class TaskRepository {
 
     // Debounce 定时器
     this.saveTimer = null
+
+    /**
+     * ⭐ 事件订阅者列表（发布-订阅模式）
+     * @type {Array<Function>}
+     */
+    this.listeners = []
 
     // 同步状态
     this.isSyncing = false
@@ -75,6 +85,9 @@ class TaskRepository {
     await this._replayQueue()
 
     console.log('[TaskRepository] hydrate 完成，任务数量:', this.memoryCache.size)
+
+    // ⭐ 发布事件：通知订阅者数据已加载完成
+    this._notify('hydrate', null)
   }
 
   /**
@@ -140,6 +153,9 @@ class TaskRepository {
     this._saveToLocalStorage()
     this._debouncedSync()
 
+    // ⭐ 发布事件：通知订阅者任务已创建
+    this._notify('create', task)
+
     return task
   }
 
@@ -176,6 +192,9 @@ class TaskRepository {
     // 持久化 + 同步
     this._saveToLocalStorage()
     this._debouncedSync()
+
+    // ⭐ 发布事件：通知订阅者任务已更新
+    this._notify('update', updated)
 
     return updated
   }
@@ -219,6 +238,9 @@ class TaskRepository {
 
     // 4. 后台同步到服务器
     this._debouncedSync()
+
+    // ⭐ 发布事件：通知订阅者任务已删除
+    this._notify('delete', { id, deletedAt })
   }
 
   /**
@@ -414,6 +436,65 @@ class TaskRepository {
    */
   _generateId() {
     return `task_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`
+  }
+
+  // ============================================================
+  // ⭐ 事件通知机制（发布-订阅模式）- 2026-03-14 新增
+  // ============================================================
+
+  /**
+   * 订阅 Repository 事件
+   *
+   * @param {Function} callback - 回调函数 (event, data) => void
+   * @returns {Function} 取消订阅函数
+   *
+   * @example
+   * const unsubscribe = TaskRepository.subscribe((event, data) => {
+   *   console.log('事件:', event, '数据:', data)
+   * })
+   * // 取消订阅
+   * unsubscribe()
+   */
+  subscribe(callback) {
+    if (typeof callback !== 'function') {
+      console.error('[TaskRepository] subscribe 参数必须是函数')
+      return () => {}
+    }
+
+    this.listeners.push(callback)
+    console.log(`[TaskRepository] 新增订阅者，当前订阅者数量: ${this.listeners.length}`)
+
+    // 返回取消订阅函数
+    return () => {
+      const index = this.listeners.indexOf(callback)
+      if (index > -1) {
+        this.listeners.splice(index, 1)
+        console.log(`[TaskRepository] 取消订阅，剩余订阅者数量: ${this.listeners.length}`)
+      }
+    }
+  }
+
+  /**
+   * 发布事件给所有订阅者（内部方法）
+   *
+   * @param {string} event - 事件类型（create、update、delete、batchCreate、hydrate）
+   * @param {*} data - 事件数据
+   * @private
+   */
+  _notify(event, data) {
+    if (this.listeners.length === 0) {
+      return
+    }
+
+    console.log(`[TaskRepository] 发布事件 [${event}]，订阅者数量: ${this.listeners.length}`)
+
+    this.listeners.forEach(callback => {
+      try {
+        callback(event, data)
+      } catch (err) {
+        console.error(`[TaskRepository] 事件通知失败 [${event}]:`, err)
+      }
+    })
   }
 }
 

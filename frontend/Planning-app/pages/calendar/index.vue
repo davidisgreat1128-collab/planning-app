@@ -208,7 +208,8 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-import { onShow } from '@dcloudio/uni-app';
+// ⭐ 移除 onShow，改用 Repository 事件通知机制（2026-03-14）
+// import { onShow } from '@dcloudio/uni-app';
 import { useTaskStore } from '@/store/task';
 import { useCalendar } from '@/composables/useCalendar';
 import { useDragDrop } from '@/composables/useDragDrop';
@@ -569,13 +570,16 @@ onMounted(async () => {
   }
 });
 
-// ⭐ 每次页面显示时刷新任务（包括从其他页面返回）
-onShow(async () => {
-  // 重新从 Repository 加载当前日期的任务
-  if (calendarComposable.selectedDate.value) {
-    await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
-  }
-});
+// ⭐ 移除 onShow 手动刷新（2026-03-14）
+// 原因：改用 Repository 事件通知机制，数据变化时自动更新 tasks.value
+// 当从模板页面创建任务后返回，Repository 发布 'create' 事件，taskStore 自动刷新列表
+// 无需手动调用 fetchTasksByDate
+//
+// onShow(async () => {
+//   if (calendarComposable.selectedDate.value) {
+//     await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
+//   }
+// });
 </script>
 
 <style scoped>
