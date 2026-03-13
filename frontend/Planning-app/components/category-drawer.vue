@@ -467,13 +467,13 @@ async function onDeletePlanConfirm(deleteWithTasks) {
   try {
     uni.showLoading({ title: '删除中...' });
 
-    // ✅ 三层架构：Component → Store → Repository
-    // 调用 categoryStore 删除规划（规划也是分类的一种）
-    await categoryStore.deleteCategory(planId);
-
-    // 调用 planStore 删除规划及其关联任务
+    // ⭐ 修复BUG：规划存储在planStore，不在categoryStore
+    // 只需调用 planStore.deletePlan() 即可
     const planStore = usePlanStore();
     await planStore.deletePlan(planId, deleteWithTasks);
+
+    // TODO: 未来统一架构时，规划应该存储在 CategoryRepository（type='plan'）
+    // 届时可以只调用 categoryStore.deleteCategory()
 
     // 如果删除的是当前选中的规划，自动切换到"全部"
     if (isDeletingSelected) {
