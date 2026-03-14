@@ -10,14 +10,38 @@
     @mousedown="handleMouseDown"
     @tap="handleTaskClick"
   >
-    <!-- 复选框 -->
-    <view class="task-checkbox" @tap.stop="handleCheckboxClick">
-      <view
-        class="checkbox-circle"
-        :class="task.status === 'completed' ? 'checked' : ''"
-        :style="{ borderColor: quadrantColor, backgroundColor: task.status === 'completed' ? quadrantColor : 'transparent' }"
-      >
-        <text v-if="task.status === 'completed'" class="check-icon">✓</text>
+    <!-- 图标区域（垂直排列，最多3个圆圈） -->
+    <view class="task-icons">
+      <!-- 1. 顶部：普通完成图标（始终显示） -->
+      <view class="icon-wrapper" @tap.stop="handleCheckboxClick">
+        <view
+          class="checkbox-circle"
+          :class="task.status === 'completed' ? 'checked' : ''"
+          :style="{ borderColor: quadrantColor, backgroundColor: task.status === 'completed' ? quadrantColor : 'transparent' }"
+        >
+          <text v-if="task.status === 'completed'" class="check-icon">✓</text>
+        </view>
+      </view>
+
+      <!-- 2. 中间：重复任务指示器（仅重复任务显示） -->
+      <view v-if="task.isRecurring" class="icon-wrapper" @tap.stop="handleRecurringClick">
+        <view
+          class="recurring-circle"
+          :class="task.status === 'completed' ? 'checked' : ''"
+        >
+          <text class="recurring-icon">🔁</text>
+        </view>
+      </view>
+
+      <!-- 3. 底部：子任务指示器（仅有子任务时显示） -->
+      <view v-if="hasSubtasks" class="icon-wrapper" @tap.stop="handleSubtaskClick">
+        <view class="subtask-circle">
+          <text class="subtask-icon">📋</text>
+          <!-- 子任务计数角标 -->
+          <view class="subtask-badge">
+            <text class="subtask-badge-text">{{ subtaskCompletedCount }}/{{ subtaskTotalCount }}</text>
+          </view>
+        </view>
       </view>
     </view>
 
@@ -29,11 +53,6 @@
       >
         {{ task.title }}
       </text>
-
-      <!-- 子任务指示器 -->
-      <view v-if="hasSubtasks" class="subtask-indicator">
-        <text class="subtask-count">{{ subtaskCompletedCount }}/{{ subtaskTotalCount }}</text>
-      </view>
 
       <!-- 时间信息（仅时间轴视图中的定时任务显示） -->
       <view v-if="showTime && task.startTime" class="task-time">
@@ -78,7 +97,9 @@ const emit = defineEmits([
   'task-click',
   'checkbox-click',
   'drag-start',
-  'mouse-drag-start'
+  'mouse-drag-start',
+  'recurring-click',  // 新增：点击重复任务图标
+  'subtask-click'     // 新增：点击子任务图标
 ]);
 
 // 计算属性
@@ -104,6 +125,22 @@ function handleTaskClick() {
 
 function handleCheckboxClick() {
   emit('checkbox-click', props.task);
+}
+
+/**
+ * 处理点击重复任务图标
+ * 向父组件发射事件，由父组件调用 Composable 完成业务逻辑
+ */
+function handleRecurringClick() {
+  emit('recurring-click', props.task);
+}
+
+/**
+ * 处理点击子任务图标
+ * 向父组件发射事件，由父组件打开模态框
+ */
+function handleSubtaskClick() {
+  emit('subtask-click', props.task);
 }
 
 function handleTouchStart(e) {
@@ -157,11 +194,26 @@ function formatTime(timeStr) {
   background: #F5F5F5;
 }
 
-/* 复选框 */
-.task-checkbox {
+/* ============================================================
+   图标区域（垂直排列）
+   ============================================================ */
+
+.task-icons {
+  display: flex;
+  flex-direction: column;
+  gap: 12rpx;
   margin-right: 20rpx;
-  padding: 8rpx;
 }
+
+.icon-wrapper {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* ============================================================
+   顶部图标：普通完成复选框
+   ============================================================ */
 
 .checkbox-circle {
   width: 36rpx;
@@ -203,17 +255,71 @@ function formatTime(timeStr) {
   color: #999999;
 }
 
-/* 子任务指示器 */
-.subtask-indicator {
-  margin-top: 8rpx;
+/* ============================================================
+   中间图标：重复任务指示器
+   ============================================================ */
+
+.recurring-circle {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #FFA726; /* 橙色 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s ease;
+  box-shadow: 0 2rpx 6rpx rgba(255, 167, 38, 0.3);
 }
 
-.subtask-count {
-  font-size: 22rpx;
-  color: #999999;
-  padding: 4rpx 12rpx;
-  background: #F0F0F0;
-  border-radius: 8rpx;
+.recurring-circle.checked {
+  background: #CCCCCC; /* 完成后变灰 */
+  box-shadow: none;
+}
+
+.recurring-icon {
+  font-size: 20rpx;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+/* ============================================================
+   底部图标：子任务指示器
+   ============================================================ */
+
+.subtask-circle {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  background: #5B8CFF; /* 蓝色 */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  transition: all 0.2s ease;
+  box-shadow: 0 2rpx 6rpx rgba(91, 140, 255, 0.3);
+}
+
+.subtask-icon {
+  font-size: 20rpx;
+  color: #FFFFFF;
+  line-height: 1;
+}
+
+.subtask-badge {
+  position: absolute;
+  bottom: -10rpx;
+  right: -10rpx;
+  background: #FF4444;
+  padding: 2rpx 8rpx;
+  border-radius: 12rpx;
+  box-shadow: 0 2rpx 4rpx rgba(255, 68, 68, 0.3);
+}
+
+.subtask-badge-text {
+  font-size: 18rpx;
+  font-weight: 600;
+  color: #FFFFFF;
+  line-height: 1.2;
 }
 
 /* 时间信息 */

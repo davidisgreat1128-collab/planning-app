@@ -187,6 +187,20 @@ class TaskRepository {
 
     console.log('[TaskRepository] 更新任务:', task.title || task.id)
 
+    // ⭐ 处理 subtasks 字段（确保格式正确）
+    // 如果 data 中包含 subtasks 字段，验证其格式
+    if (data.subtasks !== undefined) {
+      if (!Array.isArray(data.subtasks)) {
+        console.warn('[TaskRepository] subtasks 字段必须是数组，当前类型:', typeof data.subtasks)
+        data.subtasks = []
+      }
+      // 验证每个子任务对象包含 title 和 isDone 字段
+      data.subtasks = data.subtasks.map(st => ({
+        title: st.title || '',
+        isDone: Boolean(st.isDone)
+      }))
+    }
+
     const updated = {
       ...task,
       ...data,

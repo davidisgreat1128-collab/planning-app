@@ -75,6 +75,8 @@
         :container-name="taskFilterComposable.containerName.value"
         @task-click="openTask"
         @checkbox-click="toggleTaskDone"
+        @recurring-click="subtaskModalComposable.handleRecurringTaskComplete"
+        @subtask-click="subtaskModalComposable.openModal"
         @drag-start="dragDropComposable.startDrag"
         @mouse-drag-start="dragDropComposable.handleTaskMouseDown"
         @goals-click="goToPlanningCategory"
@@ -90,6 +92,8 @@
             :task="task"
             @task-click="openTask"
             @checkbox-click="toggleTaskDone"
+            @recurring-click="subtaskModalComposable.handleRecurringTaskComplete"
+            @subtask-click="subtaskModalComposable.openModal"
           />
         </view>
         <view class="list-section" v-if="notUrgentImportant.length > 0">
@@ -100,6 +104,8 @@
             :task="task"
             @task-click="openTask"
             @checkbox-click="toggleTaskDone"
+            @recurring-click="subtaskModalComposable.handleRecurringTaskComplete"
+            @subtask-click="subtaskModalComposable.openModal"
           />
         </view>
         <view class="list-section" v-if="urgentNotImportant.length > 0">
@@ -110,6 +116,8 @@
             :task="task"
             @task-click="openTask"
             @checkbox-click="toggleTaskDone"
+            @recurring-click="subtaskModalComposable.handleRecurringTaskComplete"
+            @subtask-click="subtaskModalComposable.openModal"
           />
         </view>
         <view class="list-section" v-if="notUrgentNotImportant.length > 0">
@@ -120,6 +128,8 @@
             :task="task"
             @task-click="openTask"
             @checkbox-click="toggleTaskDone"
+            @recurring-click="subtaskModalComposable.handleRecurringTaskComplete"
+            @subtask-click="subtaskModalComposable.openModal"
           />
         </view>
       </view>
@@ -203,6 +213,15 @@
       v-model:visible="showCategoryDrawer"
       @container-changed="handleContainerChanged"
     />
+
+    <!-- 子任务模态框 -->
+    <SubtaskModal
+      :visible="subtaskModalComposable.isModalVisible.value"
+      :task="subtaskModalComposable.currentTask.value"
+      @update:visible="subtaskModalComposable.closeModal"
+      @main-task-toggle="subtaskModalComposable.handleMainTaskToggle"
+      @subtask-toggle="subtaskModalComposable.handleSubtaskToggle"
+    />
   </view>
 </template>
 
@@ -214,6 +233,7 @@ import { useCalendar } from '@/composables/useCalendar';
 import { useDragDrop } from '@/composables/useDragDrop';
 import { useTaskQuadrant } from '@/composables/useTaskQuadrant';
 import { useTaskFilter } from '@/composables/useTaskFilter';
+import { useSubtaskModal } from '@/composables/useSubtaskModal';
 import { getQuadrant, getQuadrantColor } from '@/utils/quadrant';
 import { formatDate, getToday } from '@/utils/date';
 import CalendarBar from '@/components/calendar/CalendarBar.vue';
@@ -223,6 +243,7 @@ import TaskCard from '@/components/calendar/TaskCard.vue';
 import DragOverlay from '@/components/calendar/DragOverlay.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 import CategoryDrawer from '@/components/category-drawer.vue';
+import SubtaskModal from '@/components/task/SubtaskModal.vue';
 
 // Store
 const taskStore = useTaskStore();
@@ -234,6 +255,7 @@ const dragDropComposable = useDragDrop({
 });
 const quadrantComposable = useTaskQuadrant();
 const taskFilterComposable = useTaskFilter();
+const subtaskModalComposable = useSubtaskModal();
 
 // 状态
 const statusBarHeight = ref(0);

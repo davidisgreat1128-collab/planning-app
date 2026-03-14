@@ -277,6 +277,45 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
+   * 批量更新任务的子任务列表
+   *
+   * @param {string} taskId - 任务 ID
+   * @param {Array} subtasks - 新的子任务数组 [{title, isDone}, ...]
+   * @returns {Promise<object>} 更新后的任务对象
+   */
+  async function updateTaskSubtasks(taskId, subtasks) {
+    const updated = await TaskRepository.update(taskId, { subtasks })
+
+    // ⭐ 无需手动更新 tasks.value，Repository 会发布 'update' 事件，自动触发更新
+
+    return updated
+  }
+
+  /**
+   * 完成今日重复任务实例
+   * 逻辑：仅标记今日实例为完成，不影响其他日期的实例
+   *
+   * ⚠️ 注意：这是临时简化方案，后端尚未实现重复任务实例分离
+   * 当前实现：直接更新任务状态为 completed
+   * TODO: 待后端实现重复任务实例管理后，改为更新特定日期实例
+   *
+   * @param {string} taskId - 重复任务 ID
+   * @returns {Promise<void>}
+   */
+  async function completeRecurringTaskToday(taskId) {
+    // 临时方案：直接更新任务状态（视觉效果同普通任务完成）
+    const task = tasks.value.find(t => t.id === taskId)
+    if (!task) return
+
+    const newStatus = task.status === 'completed' ? 'pending' : 'completed'
+    await updateTask(taskId, { status: newStatus })
+
+    // TODO: 后端实现后改为以下逻辑：
+    // const todayDate = selectedDate.value
+    // await TaskRepository.completeRecurringInstance(taskId, todayDate)
+  }
+
+  /**
    * 删除任务
    *
    * @param {string} id - 任务 ID
@@ -612,6 +651,8 @@ export const useTaskStore = defineStore('task', () => {
     updateTasksAfterPlanDelete,
     clearAllCategoriesAndPlansTasks,
     clearUncategorizedTasks,
+    updateTaskSubtasks,              // 新增：批量更新子任务
+    completeRecurringTaskToday,      // 新增：完成重复任务今日实例
 
     // ⭐ 诊断工具
     diagnoseOrphanTasks
