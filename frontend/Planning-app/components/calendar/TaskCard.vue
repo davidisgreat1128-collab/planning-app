@@ -25,24 +25,32 @@
 
       <!-- 2. 中间：重复任务指示器（仅重复任务显示） -->
       <view v-if="task.isRecurring" class="icon-wrapper" @tap.stop="handleRecurringClick">
-        <image
-          class="recurring-icon-img"
-          :class="task.status === 'completed' ? 'icon-completed' : ''"
-          :style="{ filter: getIconFilter(task.status === 'completed' ? '#999999' : quadrantColor) }"
-          src="/static/icons/recurring.png"
-          mode="aspectFit"
-        />
+        <!-- 用两个同心圆表示循环 -->
+        <view class="recurring-double-circle">
+          <view
+            class="recurring-outer-circle"
+            :style="{ borderColor: task.status === 'completed' ? '#CCCCCC' : quadrantColor }"
+          ></view>
+          <view
+            class="recurring-inner-circle"
+            :style="{ borderColor: task.status === 'completed' ? '#CCCCCC' : quadrantColor }"
+          ></view>
+        </view>
       </view>
 
       <!-- 3. 底部：子任务指示器（仅有子任务时显示） -->
       <view v-if="hasSubtasks" class="icon-wrapper" @tap.stop="handleSubtaskClick">
         <view class="subtask-icon-container">
-          <image
-            class="subtask-icon-img"
-            :style="{ filter: getIconFilter(quadrantColor) }"
-            src="/static/icons/subtask.png"
-            mode="aspectFit"
-          />
+          <view
+            class="subtask-square-border"
+            :style="{ borderColor: quadrantColor }"
+          >
+            <image
+              class="subtask-icon-img"
+              src="/static/icons/subtask.png"
+              mode="aspectFit"
+            />
+          </view>
           <!-- 子任务计数角标 -->
           <view class="subtask-badge">
             <text class="subtask-badge-text">{{ subtaskCompletedCount }}/{{ subtaskTotalCount }}</text>
@@ -303,21 +311,38 @@ function formatTime(timeStr) {
 }
 
 /* ============================================================
-   中间图标：重复任务指示器（图片）
+   中间图标：重复任务指示器（两个同心圆）
    ============================================================ */
 
-.recurring-icon-img {
+.recurring-double-circle {
   width: 36rpx;
   height: 36rpx;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recurring-outer-circle {
+  width: 36rpx;
+  height: 36rpx;
+  border-radius: 50%;
+  border: 3rpx solid;
+  position: absolute;
   transition: all 0.2s ease;
 }
 
-.recurring-icon-img.icon-completed {
-  opacity: 0.6;
+.recurring-inner-circle {
+  width: 20rpx;
+  height: 20rpx;
+  border-radius: 50%;
+  border: 3rpx solid;
+  position: absolute;
+  transition: all 0.2s ease;
 }
 
 /* ============================================================
-   底部图标：子任务指示器（图片）
+   底部图标：子任务指示器（方框+图片）
    ============================================================ */
 
 .subtask-icon-container {
@@ -327,10 +352,22 @@ function formatTime(timeStr) {
   justify-content: center;
 }
 
-.subtask-icon-img {
+.subtask-square-border {
   width: 36rpx;
   height: 36rpx;
+  border-radius: 8rpx;
+  border: 3rpx solid;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
   transition: all 0.2s ease;
+}
+
+.subtask-icon-img {
+  width: 20rpx;
+  height: 20rpx;
+  opacity: 0.8;
 }
 
 .subtask-badge {
