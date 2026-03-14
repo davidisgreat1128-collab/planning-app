@@ -19,7 +19,14 @@
       "Bash(git fetch:*)",
       "Read(//d//**)",
       "Bash(git tag:*)",
-      "Bash(xargs:*)"
+      "Bash(xargs:*)",
+      "Bash(npm install:*)",
+      "Bash(mysql -u root -pwokao@53231812 planning_app_dev -e \"SHOW TABLES LIKE ''task_occurrences'';\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SHOW TABLES LIKE ''task_occurrences'';\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DROP TABLE IF EXISTS task_occurrences;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SHOW COLUMNS FROM tasks LIKE ''exdate'';\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"ALTER TABLE tasks ADD COLUMN exdate TEXT DEFAULT NULL COMMENT ''例外日期JSON数组'';\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SHOW TABLES; DESC task_completion_records;\")"
     ],
     "deny": [],
     "ask": []

@@ -145,6 +145,31 @@ function initTaskModel(sequelize) {
         allowNull: true,
         defaultValue: null
       },
+      exdate: {
+        type: DataTypes.TEXT,
+        allowNull: true,
+        defaultValue: null,
+        comment: '排除日期列表，逗号分隔的日期字符串（如"2026-03-20,2026-04-15"）',
+        get() {
+          const rawValue = this.getDataValue('exdate');
+          if (!rawValue) return [];
+          // 解析逗号分隔的日期字符串为数组
+          return rawValue.split(',').map(d => d.trim()).filter(d => d);
+        },
+        set(value) {
+          if (!value || value.length === 0) {
+            this.setDataValue('exdate', null);
+          } else if (Array.isArray(value)) {
+            // 数组转为逗号分隔字符串
+            this.setDataValue('exdate', value.join(','));
+          } else if (typeof value === 'string') {
+            // 字符串直接存储
+            this.setDataValue('exdate', value);
+          } else {
+            this.setDataValue('exdate', null);
+          }
+        }
+      },
       // 来源追踪
       sourceType: {
         type: DataTypes.ENUM(...TASK_SOURCE_TYPE_VALUES),

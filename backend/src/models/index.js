@@ -12,6 +12,7 @@ const initAlarmSoundModel = require('./alarmSound');
 const initAlarmModel = require('./alarm');
 const initJournalLogModel = require('./journalLog');
 const initPlanProgressLogModel = require('./planProgressLog');
+const initCompletionRecordModel = require('./completionRecord');
 
 const env = process.env.NODE_ENV || 'development';
 const config = dbConfig[env];
@@ -53,6 +54,7 @@ const AlarmSound = initAlarmSoundModel(sequelize);
 const Alarm = initAlarmModel(sequelize);
 const JournalLog = initJournalLogModel(sequelize);
 const PlanProgressLog = initPlanProgressLogModel(sequelize);
+const CompletionRecord = initCompletionRecordModel(sequelize);
 
 // ============================================================
 // 定义模型关联关系
@@ -99,6 +101,13 @@ JournalLog.belongsTo(PlanningRecord, { foreignKey: 'planId', as: 'plan' });
 JournalLog.belongsTo(Task, { foreignKey: 'taskId', as: 'relatedTask' });
 Task.hasMany(JournalLog, { foreignKey: 'taskId', as: 'logs' });
 
+// CompletionRecord 关联（新增）
+Task.hasMany(CompletionRecord, { foreignKey: 'taskId', as: 'completionRecords' });
+CompletionRecord.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
+
+User.hasMany(CompletionRecord, { foreignKey: 'userId', as: 'completionRecords' });
+CompletionRecord.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 const db = {
   sequelize,
   Sequelize,
@@ -112,7 +121,8 @@ const db = {
   AlarmSound,
   Alarm,
   JournalLog,
-  PlanProgressLog
+  PlanProgressLog,
+  CompletionRecord
 };
 
 module.exports = db;

@@ -84,6 +84,36 @@ const categoryIdParamSchema = Joi.object({
   categoryId: Joi.string().max(50).required()
 });
 
+// 新增：完成记录相关的Schema
+const completeTaskSchema = Joi.object({
+  completionDate: dateStr.required(),
+  subtaskCompletion: Joi.object().allow(null),
+  note: Joi.string().max(2000).allow('', null)
+});
+
+const getOccurrencesQuerySchema = Joi.object({
+  start: dateStr.required(),
+  end: dateStr.required()
+});
+
+const getCompletionRecordsQuerySchema = Joi.object({
+  start: dateStr,
+  end: dateStr,
+  page: Joi.number().integer().min(1).default(1),
+  pageSize: Joi.number().integer().min(1).max(100).default(20)
+});
+
+const updateCompletionRecordSchema = Joi.object({
+  status: Joi.string().valid('pending', 'completed', 'skipped'),
+  subtaskCompletion: Joi.object().allow(null),
+  note: Joi.string().max(2000).allow('', null)
+}).min(1);
+
+const taskIdAndDateParamsSchema = Joi.object({
+  taskId: Joi.number().integer().positive().required(),
+  date: dateStr.required()
+});
+
 // ---- Routes ----
 
 router.use(authenticate);
@@ -111,5 +141,41 @@ router.put('/category/:categoryId/uncategorize', validateParams(categoryIdParamS
 
 // DELETE /api/v1/tasks/category/:categoryId - 删除分类下的所有任务
 router.delete('/category/:categoryId', validateParams(categoryIdParamSchema), taskController.deleteCategoryTasks);
+
+// ============================================================
+// 重复任务 + 完成记录 新增路由（RRULE规则计算）
+// ============================================================
+
+// GET /api/v1/tasks/:taskId/occurrences?start=2026-03-01&end=2026-03-31
+// 获取重复任务在指定日期范围内的所有发生日期
+router.get('/:taskId/occurrences',
+  validateParams(idParamSchema),
+  validateQuery(getOccurrencesQuerySchema),
+  taskController.getTaskOccurrences
+);
+
+// POST /api/v1/tasks/:taskId/complete
+// 创建任务完成记录
+router.post('/:taskId/complete',
+  validateParams(idParamSchema),
+  validate(completeTaskSchema),
+  taskController.completeTask
+);
+
+// GET /api/v1/tasks/:taskId/completion-records?start=2026-03-01&end=2026-03-31
+// 获取任务的完成记录列表
+router.get('/:taskId/completion-records',
+  validateParams(idParamSchema),
+  validateQuery(getCompletionRecordsQuerySchema),
+  taskController.getCompletionRecords
+);
+
+// PUT /api/v1/tasks/:taskId/completion-records/:date
+// 更新任务完成记录
+router.put('/:taskId/completion-records/:date',
+  validateParams(taskIdAndDateParamsSchema),
+  validate(updateCompletionRecordSchema),
+  taskController.updateCompletionRecord
+);
 
 module.exports = router;

@@ -1,6 +1,8 @@
 'use strict';
 
 const taskService = require('../services/taskService');
+const completionRecordRepository = require('../repositories/CompletionRecordRepository');
+const rruleCalculationService = require('../services/RRuleCalculationService');
 const { success, created } = require('../utils/response');
 const { ValidationError } = require('../utils/errors');
 
@@ -155,6 +157,144 @@ async function deleteCategoryTasks(req, res, next) {
   }
 }
 
+// ============================================================
+// 重复任务 + 完成记录 新增方法（RRULE规则计算）
+// ============================================================
+
+/**
+ * GET /api/v1/tasks/:taskId/occurrences?start=2026-03-01&end=2026-03-31
+ * 获取重复任务在指定日期范围内的所有发生日期
+ */
+async function getTaskOccurrences(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.taskId);
+    const { start, end } = req.query;
+
+    if (!start || !end) {
+      throw new ValidationError('请提供 start 和 end 参数（YYYY-MM-DD格式）');
+    }
+
+    // 获取任务
+    const task = await taskService.getTaskById(taskId, req.user.id);
+
+    if (!task.isRecurring || !task.rrule) {
+      return success(res, { occurrences: [] }, '任务不是重复任务');
+    }
+
+    // 计算发生日期
+    const occurrences = rruleCalculationService.calculateOccurrences(task, start, end);
+
+    return success(res, { taskId, start, end, occurrences });
+  } catch (err) {
+    console.error('[TaskController] 获取任务发生日期失败:', err);
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/tasks/:taskId/complete
+ * 创建任务完成记录（重复任务在指定日期的完成记录）
+ * Body: { completionDate, subtaskCompletion?, note? }
+ */
+async function completeTask(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.taskId);
+    const { completionDate, subtaskCompletion, note } = req.body;
+
+    if (!completionDate || !/^\d{4}-\d{2}-\d{2}$/.test(completionDate)) {
+      throw new ValidationError('请提供有效的completionDate（YYYY-MM-DD格式）');
+    }
+
+    // 验证任务是否存在
+    const task = await taskService.getTaskById(taskId, req.user.id);
+
+    // 如果是重复任务，检查该日期是否有效
+    if (task.isRecurring && task.rrule) {
+      const isValid = rruleCalculationService.isOccurrenceOnDate(task, completionDate);
+      if (!isValid) {
+        throw new ValidationError('该日期不在任务的重复规则中');
+      }
+    }
+
+    // 创建完成记录
+    const record = await completionRecordRepository.create({
+      taskId,
+      userId: req.user.id,
+      completionDate,
+      status: 'completed',
+      subtaskCompletion: subtaskCompletion || null,
+      note: note || null
+    });
+
+    return created(res, record, '任务完成记录已创建');
+  } catch (err) {
+    console.error('[TaskController] 创建完成记录失败:', err);
+    next(err);
+  }
+}
+
+/**
+ * GET /api/v1/tasks/:taskId/completion-records?start=2026-03-01&end=2026-03-31
+ * 获取任务的完成记录列表
+ */
+async function getCompletionRecords(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.taskId);
+    const { start, end, page = 1, pageSize = 20 } = req.query;
+
+    // 验证任务是否存在
+    await taskService.getTaskById(taskId, req.user.id);
+
+    // 获取完成记录
+    const { rows, count } = await completionRecordRepository.getByTask(taskId, {
+      page: parseInt(page),
+      pageSize: parseInt(pageSize),
+      startDate: start,
+      endDate: end
+    });
+
+    return success(res, {
+      taskId,
+      records: rows,
+      pagination: {
+        page: parseInt(page),
+        pageSize: parseInt(pageSize),
+        total: count
+      }
+    });
+  } catch (err) {
+    console.error('[TaskController] 获取完成记录失败:', err);
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/v1/tasks/:taskId/completion-records/:date
+ * 更新任务完成记录
+ * Body: { status?, subtaskCompletion?, note? }
+ */
+async function updateCompletionRecord(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.taskId);
+    const completionDate = req.params.date;
+
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(completionDate)) {
+      throw new ValidationError('日期格式需为 YYYY-MM-DD');
+    }
+
+    // 验证任务是否存在
+    await taskService.getTaskById(taskId, req.user.id);
+
+    // 更新完成记录
+    const record = await completionRecordRepository.update(taskId, completionDate, req.body);
+
+    return success(res, record, '完成记录已更新');
+  } catch (err) {
+    console.error('[TaskController] 更新完成记录失败:', err);
+    next(err);
+  }
+}
+
 module.exports = {
   createTask,
   getTasks,
@@ -163,5 +303,10 @@ module.exports = {
   deleteTask,
   getSubtasksByPlan,
   uncategorizeTasks,
-  deleteCategoryTasks
+  deleteCategoryTasks,
+  // 新增方法
+  getTaskOccurrences,
+  completeTask,
+  getCompletionRecords,
+  updateCompletionRecord
 };
