@@ -604,7 +604,8 @@ const {
   currentQuadrant,
   repeatRuleManager,
   hasFormChanged,
-  update
+  update,
+  loadFromTask  // ✅ 新增：解构 loadFromTask 方法
 } = taskFormApi;
 
 // ✅ 从 repeatRuleManager 解构重复规则状态和方法
@@ -1362,38 +1363,23 @@ onMounted(() => {
     }
 
     if (task) {
+      // ✅ 修复BUG：调用 taskFormApi.loadFromTask() 初始化表单
+      // 这会正确设置 originalForm 和 originalSubtasks，使 hasFormChanged 正常工作
+      console.log('[TaskEdit] 调用 taskFormApi.loadFromTask() 初始化表单');
+
       // 保存原始任务ID（对于重复任务，task.taskId 是原始ID，task.id 是实例ID）
       originalTaskId.value = task.taskId || task.id;
 
-      form.value.title        = task.title        || '';
-      form.value.description  = task.description  || '';
-      form.value.isUrgent     = task.isUrgent     || false;
-      form.value.isImportant  = task.isImportant  || false;
-      form.value.isAllDay     = task.isAllDay     !== false;
-      form.value.taskDate     = task.taskDate     || task.date || task.occurDate || '';
-      form.value.startTime    = task.startTime    || '';
-      form.value.endTime      = task.endTime      || '';
-      form.value.rrule        = task.rrule        || '';
-      form.value.planId       = task.planId       || task.categoryId || null;
-      // 判断模式
-      form.value.hasTimeRange = !task.isAllDay && !!task.startTime;
-      // 解析 RRULE 到 UI 状态
+      // 调用 useTaskForm 的 loadFromTask 方法
+      taskFormApi.loadFromTask(task);
+
+      // 解析 RRULE 到 UI 状态（如果有）
       if (task.rrule) {
         parseRruleToUI(task.rrule);
       }
-      // 新增字段
-      taskDone.value    = task.status === 'completed';
-      // 兼容多种时间字段格式：createdAt / created_at / createTime
-      createdAt.value   = task.createdAt  || task.created_at  || task.createTime || '';
-      // 兼容完成时间字段：completedAt / completed_at / updateTime (仅当任务已完成时)
-      completedAt.value = task.completedAt || task.completed_at || (task.status === 'completed' ? task.updateTime : '') || '';
-      // 子计划
-      if (task.subtasks && Array.isArray(task.subtasks)) {
-        subtasks.value = task.subtasks.map(s => ({ title: s.title || s, done: s.done || false }));
-      }
 
-      // ✅ selectedPlanName 已改为 computed 属性（618-637行），无需手动赋值
-      // 会自动根据 form.value.planId 和 form.value.categoryId 计算容器名称
+      // 设置任务完成状态
+      taskDone.value = task.status === 'completed';
     }
   }
 
@@ -1409,21 +1395,24 @@ onMounted(() => {
     form.value.taskDate = formatDate(new Date());
   }
 
-  // 根据 taskDate 初始化 activeDateTab
-  const today    = formatDate(new Date());
-  const tomorrow = formatDate(new Date(Date.now() + 86400000));
-  if (!form.value.taskDate) {
-    // 取消"收集箱"功能，空日期默认为"今天"
-    activeDateTab.value = 'today';
-    form.value.taskDate = today;
-  } else if (form.value.taskDate === today) {
-    activeDateTab.value = 'today';
-  } else if (form.value.taskDate === tomorrow) {
-    activeDateTab.value = 'tomorrow';
-  } else {
-    // 其他日期：设为 custom，并记录到 customDate
-    activeDateTab.value = 'custom';
-    customDate.value = form.value.taskDate;
+  // ✅ 注意：activeDateTab 的初始化已在 taskFormApi.loadFromTask() 中完成
+  // 如果没有加载任务（新建模式），则手动设置
+  if (!isEdit.value) {
+    const today = formatDate(new Date());
+    const tomorrow = formatDate(new Date(Date.now() + 86400000));
+    if (!form.value.taskDate) {
+      // 取消"收集箱"功能，空日期默认为"今天"
+      activeDateTab.value = 'today';
+      form.value.taskDate = today;
+    } else if (form.value.taskDate === today) {
+      activeDateTab.value = 'today';
+    } else if (form.value.taskDate === tomorrow) {
+      activeDateTab.value = 'tomorrow';
+    } else {
+      // 其他日期：设为 custom，并记录到 customDate
+      activeDateTab.value = 'custom';
+      customDate.value = form.value.taskDate;
+    }
   }
 
 });
