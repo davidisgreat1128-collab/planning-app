@@ -10,23 +10,12 @@
     @mousedown="handleMouseDown"
     @tap="handleTaskClick"
   >
-    <!-- 图标区域（垂直排列，最多3个圆圈） -->
+    <!-- 图标区域（垂直排列，最多2个图标：主图标+子任务） -->
     <view class="task-icons">
-      <!-- 1. 顶部：普通完成图标（始终显示） -->
-      <view class="icon-wrapper" @tap.stop="handleCheckboxClick">
-        <view
-          class="checkbox-circle"
-          :class="task.status === 'completed' ? 'checked' : ''"
-          :style="{ borderColor: quadrantColor, backgroundColor: task.status === 'completed' ? quadrantColor : 'transparent' }"
-        >
-          <text v-if="task.status === 'completed'" class="check-icon">✓</text>
-        </view>
-      </view>
+      <!-- 1. 主图标：根据任务类型显示不同图标 -->
 
-      <!-- 2. 中间：重复任务指示器（仅重复任务显示） -->
-      <!-- 临时测试：显示所有任务的循环图标，验证CSS是否正常 -->
+      <!-- 1.1 重复任务：显示同心圆图标（替代普通圆圈） -->
       <view v-if="task.isRecurring || task.title?.includes('重复')" class="icon-wrapper" @tap.stop="handleRecurringClick">
-        <!-- 用两个同心圆表示循环 -->
         <view class="recurring-double-circle">
           <view
             class="recurring-outer-circle"
@@ -39,8 +28,8 @@
         </view>
       </view>
 
-      <!-- 3. 底部：子任务指示器（仅有子任务时显示） -->
-      <view v-if="hasSubtasks" class="icon-wrapper" @tap.stop="handleSubtaskClick">
+      <!-- 1.2 有子任务：显示子任务图标（方形+进度角标） -->
+      <view v-else-if="hasSubtasks" class="icon-wrapper" @tap.stop="handleSubtaskClick">
         <view class="subtask-icon-container">
           <view
             class="subtask-square-border"
@@ -56,6 +45,17 @@
           <view class="subtask-badge">
             <text class="subtask-badge-text">{{ subtaskCompletedCount }}/{{ subtaskTotalCount }}</text>
           </view>
+        </view>
+      </view>
+
+      <!-- 1.3 普通任务：显示普通完成圆圈 -->
+      <view v-else class="icon-wrapper" @tap.stop="handleCheckboxClick">
+        <view
+          class="checkbox-circle"
+          :class="task.status === 'completed' ? 'checked' : ''"
+          :style="{ borderColor: quadrantColor, backgroundColor: task.status === 'completed' ? quadrantColor : 'transparent' }"
+        >
+          <text v-if="task.status === 'completed'" class="check-icon">✓</text>
         </view>
       </view>
     </view>
@@ -276,6 +276,7 @@ function formatTime(timeStr) {
   height: 36rpx;
   border-radius: 50%;
   border: 3rpx solid;
+  box-sizing: border-box;
   display: flex;
   align-items: center;
   justify-content: center;
