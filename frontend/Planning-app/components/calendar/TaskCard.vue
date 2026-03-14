@@ -24,7 +24,8 @@
       </view>
 
       <!-- 2. 中间：重复任务指示器（仅重复任务显示） -->
-      <view v-if="task.isRecurring" class="icon-wrapper" @tap.stop="handleRecurringClick">
+      <!-- 临时测试：显示所有任务的循环图标，验证CSS是否正常 -->
+      <view v-if="task.isRecurring || task.title?.includes('重复')" class="icon-wrapper" @tap.stop="handleRecurringClick">
         <!-- 用两个同心圆表示循环 -->
         <view class="recurring-double-circle">
           <view
