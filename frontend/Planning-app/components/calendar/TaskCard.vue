@@ -28,25 +28,27 @@
         <view
           class="recurring-circle"
           :class="task.status === 'completed' ? 'checked' : ''"
-          :style="{ borderColor: quadrantColor }"
+          :style="{ borderColor: task.status === 'completed' ? '#CCCCCC' : quadrantColor }"
         >
-          <!-- SVG循环箭头图标 -->
-          <view class="recurring-svg" :style="{ color: task.status === 'completed' ? '#999999' : quadrantColor }">
-            <text class="recurring-arrow">↻</text>
-          </view>
+          <!-- CSS绘制的循环箭头图标 -->
+          <view
+            class="recurring-arrow-icon"
+            :style="{
+              borderTopColor: task.status === 'completed' ? '#999999' : quadrantColor,
+              borderRightColor: task.status === 'completed' ? '#999999' : quadrantColor
+            }"
+          ></view>
         </view>
       </view>
 
       <!-- 3. 底部：子任务指示器（仅有子任务时显示） -->
       <view v-if="hasSubtasks" class="icon-wrapper" @tap.stop="handleSubtaskClick">
         <view class="subtask-square" :style="{ borderColor: quadrantColor }">
-          <!-- SVG清单图标 -->
-          <view class="subtask-svg" :style="{ color: quadrantColor }">
-            <view class="subtask-lines">
-              <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
-              <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
-              <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
-            </view>
+          <!-- CSS绘制的清单图标（三条横线） -->
+          <view class="subtask-icon-wrapper">
+            <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
+            <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
+            <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
           </view>
           <!-- 子任务计数角标 -->
           <view class="subtask-badge">
@@ -267,7 +269,7 @@ function formatTime(timeStr) {
 }
 
 /* ============================================================
-   中间图标：重复任务指示器
+   中间图标：重复任务指示器（CSS绘制循环箭头）
    ============================================================ */
 
 .recurring-circle {
@@ -284,23 +286,36 @@ function formatTime(timeStr) {
 
 .recurring-circle.checked {
   background: #F0F0F0;
-  border-color: #CCCCCC;
 }
 
-.recurring-svg {
-  display: flex;
-  align-items: center;
-  justify-content: center;
+/* CSS绘制循环箭头：用弧形边框模拟 */
+.recurring-arrow-icon {
+  width: 20rpx;
+  height: 20rpx;
+  border: 3rpx solid transparent;
+  border-top-color: currentColor;
+  border-right-color: currentColor;
+  border-radius: 50%;
+  transform: rotate(45deg);
+  position: relative;
 }
 
-.recurring-arrow {
-  font-size: 24rpx;
-  font-weight: bold;
-  line-height: 1;
+/* 箭头尖端 */
+.recurring-arrow-icon::after {
+  content: '';
+  position: absolute;
+  top: -6rpx;
+  right: -2rpx;
+  width: 0;
+  height: 0;
+  border-left: 4rpx solid transparent;
+  border-right: 4rpx solid transparent;
+  border-bottom: 6rpx solid currentColor;
+  transform: rotate(45deg);
 }
 
 /* ============================================================
-   底部图标：子任务指示器
+   底部图标：子任务指示器（CSS绘制三条横线）
    ============================================================ */
 
 .subtask-square {
@@ -316,20 +331,16 @@ function formatTime(timeStr) {
   transition: all 0.2s ease;
 }
 
-.subtask-svg {
+.subtask-icon-wrapper {
   display: flex;
+  flex-direction: column;
+  gap: 3rpx;
   align-items: center;
   justify-content: center;
 }
 
-.subtask-lines {
-  display: flex;
-  flex-direction: column;
-  gap: 4rpx;
-}
-
 .subtask-line {
-  width: 18rpx;
+  width: 16rpx;
   height: 2rpx;
   border-radius: 1rpx;
 }
