@@ -25,31 +25,24 @@
 
       <!-- 2. 中间：重复任务指示器（仅重复任务显示） -->
       <view v-if="task.isRecurring" class="icon-wrapper" @tap.stop="handleRecurringClick">
-        <view
-          class="recurring-circle"
-          :class="task.status === 'completed' ? 'checked' : ''"
-          :style="{ borderColor: task.status === 'completed' ? '#CCCCCC' : quadrantColor }"
-        >
-          <!-- CSS绘制的循环箭头图标 -->
-          <view
-            class="recurring-arrow-icon"
-            :style="{
-              borderTopColor: task.status === 'completed' ? '#999999' : quadrantColor,
-              borderRightColor: task.status === 'completed' ? '#999999' : quadrantColor
-            }"
-          ></view>
-        </view>
+        <image
+          class="recurring-icon-img"
+          :class="task.status === 'completed' ? 'icon-completed' : ''"
+          :style="{ filter: getIconFilter(task.status === 'completed' ? '#999999' : quadrantColor) }"
+          src="/static/icons/recurring.png"
+          mode="aspectFit"
+        />
       </view>
 
       <!-- 3. 底部：子任务指示器（仅有子任务时显示） -->
       <view v-if="hasSubtasks" class="icon-wrapper" @tap.stop="handleSubtaskClick">
-        <view class="subtask-square" :style="{ borderColor: quadrantColor }">
-          <!-- CSS绘制的清单图标（三条横线） -->
-          <view class="subtask-icon-wrapper">
-            <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
-            <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
-            <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
-          </view>
+        <view class="subtask-icon-container">
+          <image
+            class="subtask-icon-img"
+            :style="{ filter: getIconFilter(quadrantColor) }"
+            src="/static/icons/subtask.png"
+            mode="aspectFit"
+          />
           <!-- 子任务计数角标 -->
           <view class="subtask-badge">
             <text class="subtask-badge-text">{{ subtaskCompletedCount }}/{{ subtaskTotalCount }}</text>
@@ -154,6 +147,47 @@ function handleRecurringClick() {
  */
 function handleSubtaskClick() {
   emit('subtask-click', props.task);
+}
+
+/**
+ * 将十六进制颜色转换为CSS filter滤镜
+ * 用于将黑色图标变为指定颜色
+ *
+ * @param {string} hexColor - 十六进制颜色值（如 #FF4D4F）
+ * @returns {string} CSS filter滤镜字符串
+ */
+function getIconFilter(hexColor) {
+  // 将hex颜色转换为RGB
+  const hex = hexColor.replace('#', '');
+  const r = parseInt(hex.substring(0, 2), 16);
+  const g = parseInt(hex.substring(2, 4), 16);
+  const b = parseInt(hex.substring(4, 6), 16);
+
+  // 计算色相、饱和度、亮度
+  // 这是一个简化的颜色滤镜生成算法
+  const brightness = (r + g + b) / 3 / 255;
+  const saturate = 1.5; // 饱和度增强
+
+  // 根据颜色生成对应的滤镜
+  // 红色系：hue-rotate(0deg)
+  // 橙色系：hue-rotate(30deg)
+  // 蓝色系：hue-rotate(220deg)
+  // 绿色系：hue-rotate(100deg)
+  let hueRotate = 0;
+  if (hexColor === '#FF4D4F' || hexColor === '#FF4444') {
+    hueRotate = 0; // 红色
+  } else if (hexColor === '#FFA940' || hexColor === '#FFA726') {
+    hueRotate = 30; // 橙色
+  } else if (hexColor === '#597EF7' || hexColor === '#5B8CFF') {
+    hueRotate = 220; // 蓝色
+  } else if (hexColor === '#73D13D' || hexColor === '#4CAF50') {
+    hueRotate = 100; // 绿色
+  } else if (hexColor === '#999999' || hexColor === '#CCCCCC') {
+    // 灰色：降低饱和度
+    return `grayscale(100%) brightness(0.6)`;
+  }
+
+  return `sepia(100%) saturate(${saturate}) hue-rotate(${hueRotate}deg) brightness(${brightness + 0.5})`;
 }
 
 function handleTouchStart(e) {
@@ -269,80 +303,34 @@ function formatTime(timeStr) {
 }
 
 /* ============================================================
-   中间图标：重复任务指示器（CSS绘制循环箭头）
+   中间图标：重复任务指示器（图片）
    ============================================================ */
 
-.recurring-circle {
+.recurring-icon-img {
   width: 36rpx;
   height: 36rpx;
-  border-radius: 50%;
-  border: 3rpx solid;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   transition: all 0.2s ease;
 }
 
-.recurring-circle.checked {
-  background: #F0F0F0;
-}
-
-/* CSS绘制循环箭头：用弧形边框模拟 */
-.recurring-arrow-icon {
-  width: 20rpx;
-  height: 20rpx;
-  border: 3rpx solid transparent;
-  border-top-color: currentColor;
-  border-right-color: currentColor;
-  border-radius: 50%;
-  transform: rotate(45deg);
-  position: relative;
-}
-
-/* 箭头尖端 */
-.recurring-arrow-icon::after {
-  content: '';
-  position: absolute;
-  top: -6rpx;
-  right: -2rpx;
-  width: 0;
-  height: 0;
-  border-left: 4rpx solid transparent;
-  border-right: 4rpx solid transparent;
-  border-bottom: 6rpx solid currentColor;
-  transform: rotate(45deg);
+.recurring-icon-img.icon-completed {
+  opacity: 0.6;
 }
 
 /* ============================================================
-   底部图标：子任务指示器（CSS绘制三条横线）
+   底部图标：子任务指示器（图片）
    ============================================================ */
 
-.subtask-square {
+.subtask-icon-container {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.subtask-icon-img {
   width: 36rpx;
   height: 36rpx;
-  border-radius: 8rpx;
-  border: 3rpx solid;
-  background: transparent;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: relative;
   transition: all 0.2s ease;
-}
-
-.subtask-icon-wrapper {
-  display: flex;
-  flex-direction: column;
-  gap: 3rpx;
-  align-items: center;
-  justify-content: center;
-}
-
-.subtask-line {
-  width: 16rpx;
-  height: 2rpx;
-  border-radius: 1rpx;
 }
 
 .subtask-badge {
