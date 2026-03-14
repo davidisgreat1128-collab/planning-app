@@ -266,17 +266,32 @@ const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '�
 const todayStr = computed(() => getToday());
 
 // 四象限任务分组（从 taskStore 获取，然后应用容器过滤）
-const urgentImportant = computed(() =>
-  taskFilterComposable.filterTasks(taskStore.urgentImportant)
-);
+const urgentImportant = computed(() => {
+  const raw = taskStore.urgentImportant;
+  const filtered = taskFilterComposable.filterTasks(raw);
+  console.log('[index.vue urgentImportant]', {
+    'taskStore.tasks.length': taskStore.tasks.length,
+    'taskStore.urgentImportant.length': raw.length,
+    '过滤后.length': filtered.length,
+    '任务ID列表': filtered.map(t => ({ id: t.id, title: t.title }))
+  });
+  return filtered;
+});
 const urgentImportantDone = computed(() =>
   taskFilterComposable.filterTasks(
     taskStore.doneTasks.filter(t => t.isUrgent && t.isImportant)
   )
 );
-const notUrgentImportant = computed(() =>
-  taskFilterComposable.filterTasks(taskStore.notUrgentImportant)
-);
+const notUrgentImportant = computed(() => {
+  const raw = taskStore.notUrgentImportant;
+  const filtered = taskFilterComposable.filterTasks(raw);
+  console.log('[index.vue notUrgentImportant]', {
+    'taskStore.notUrgentImportant.length': raw.length,
+    '过滤后.length': filtered.length,
+    '任务ID列表': filtered.map(t => ({ id: t.id, title: t.title }))
+  });
+  return filtered;
+});
 const notUrgentImportantDone = computed(() =>
   taskFilterComposable.filterTasks(
     taskStore.doneTasks.filter(t => !t.isUrgent && t.isImportant)
