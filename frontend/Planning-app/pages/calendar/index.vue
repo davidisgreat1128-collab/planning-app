@@ -208,8 +208,7 @@
 
 <script setup>
 import { ref, computed, watch, onMounted } from 'vue';
-// ⭐ 移除 onShow，改用 Repository 事件通知机制（2026-03-14）
-// import { onShow } from '@dcloudio/uni-app';
+import { onShow } from '@dcloudio/uni-app';
 import { useTaskStore } from '@/store/task';
 import { useCalendar } from '@/composables/useCalendar';
 import { useDragDrop } from '@/composables/useDragDrop';
@@ -585,16 +584,20 @@ onMounted(async () => {
   }
 });
 
-// ⭐ 移除 onShow 手动刷新（2026-03-14）
-// 原因：改用 Repository 事件通知机制，数据变化时自动更新 tasks.value
-// 当从模板页面创建任务后返回，Repository 发布 'create' 事件，taskStore 自动刷新列表
-// 无需手动调用 fetchTasksByDate
-//
-// onShow(async () => {
-//   if (calendarComposable.selectedDate.value) {
-//     await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
-//   }
-// });
+// ⭐ onShow 生命周期：确保返回时数据同步（2026-03-14 修复）
+// 问题：从规划详情页创建任务后返回，selectedDate 未变化，watch 不触发
+// 解决：onShow 时强制重新加载当前日期任务，确保 UI 显示最新数据
+onShow(async () => {
+  console.log('[index.vue onShow] 页面显示，检查是否需要刷新任务');
+  console.log('[index.vue onShow] selectedDate:', calendarComposable.selectedDate.value);
+  console.log('[index.vue onShow] tasks.value.length:', taskStore.tasks.length);
+
+  if (calendarComposable.selectedDate.value) {
+    console.log('[index.vue onShow] 重新加载当前日期任务');
+    await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
+    console.log('[index.vue onShow] 刷新完成，tasks.value.length:', taskStore.tasks.length);
+  }
+});
 </script>
 
 <style scoped>
