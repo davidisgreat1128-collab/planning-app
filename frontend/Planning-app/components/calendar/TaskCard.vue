@@ -28,15 +28,26 @@
         <view
           class="recurring-circle"
           :class="task.status === 'completed' ? 'checked' : ''"
+          :style="{ borderColor: quadrantColor }"
         >
-          <text class="recurring-icon">🔁</text>
+          <!-- SVG循环箭头图标 -->
+          <view class="recurring-svg" :style="{ color: task.status === 'completed' ? '#999999' : quadrantColor }">
+            <text class="recurring-arrow">↻</text>
+          </view>
         </view>
       </view>
 
       <!-- 3. 底部：子任务指示器（仅有子任务时显示） -->
       <view v-if="hasSubtasks" class="icon-wrapper" @tap.stop="handleSubtaskClick">
-        <view class="subtask-circle">
-          <text class="subtask-icon">📋</text>
+        <view class="subtask-square" :style="{ borderColor: quadrantColor }">
+          <!-- SVG清单图标 -->
+          <view class="subtask-svg" :style="{ color: quadrantColor }">
+            <view class="subtask-lines">
+              <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
+              <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
+              <view class="subtask-line" :style="{ backgroundColor: quadrantColor }"></view>
+            </view>
+          </view>
           <!-- 子任务计数角标 -->
           <view class="subtask-badge">
             <text class="subtask-badge-text">{{ subtaskCompletedCount }}/{{ subtaskTotalCount }}</text>
@@ -263,22 +274,28 @@ function formatTime(timeStr) {
   width: 36rpx;
   height: 36rpx;
   border-radius: 50%;
-  background: #FFA726; /* 橙色 */
+  border: 3rpx solid;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   transition: all 0.2s ease;
-  box-shadow: 0 2rpx 6rpx rgba(255, 167, 38, 0.3);
 }
 
 .recurring-circle.checked {
-  background: #CCCCCC; /* 完成后变灰 */
-  box-shadow: none;
+  background: #F0F0F0;
+  border-color: #CCCCCC;
 }
 
-.recurring-icon {
-  font-size: 20rpx;
-  color: #FFFFFF;
+.recurring-svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.recurring-arrow {
+  font-size: 24rpx;
+  font-weight: bold;
   line-height: 1;
 }
 
@@ -286,23 +303,35 @@ function formatTime(timeStr) {
    底部图标：子任务指示器
    ============================================================ */
 
-.subtask-circle {
+.subtask-square {
   width: 36rpx;
   height: 36rpx;
-  border-radius: 50%;
-  background: #5B8CFF; /* 蓝色 */
+  border-radius: 8rpx;
+  border: 3rpx solid;
+  background: transparent;
   display: flex;
   align-items: center;
   justify-content: center;
   position: relative;
   transition: all 0.2s ease;
-  box-shadow: 0 2rpx 6rpx rgba(91, 140, 255, 0.3);
 }
 
-.subtask-icon {
-  font-size: 20rpx;
-  color: #FFFFFF;
-  line-height: 1;
+.subtask-svg {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.subtask-lines {
+  display: flex;
+  flex-direction: column;
+  gap: 4rpx;
+}
+
+.subtask-line {
+  width: 18rpx;
+  height: 2rpx;
+  border-radius: 1rpx;
 }
 
 .subtask-badge {
