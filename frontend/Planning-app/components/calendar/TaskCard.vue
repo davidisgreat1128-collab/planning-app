@@ -330,6 +330,8 @@ function formatTime(timeStr) {
   border-radius: 50%;
   border: 3rpx solid;
   position: absolute;
+  top: 0;
+  left: 0;
   transition: all 0.2s ease;
 }
 
@@ -339,6 +341,9 @@ function formatTime(timeStr) {
   border-radius: 50%;
   border: 3rpx solid;
   position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   transition: all 0.2s ease;
 }
 
