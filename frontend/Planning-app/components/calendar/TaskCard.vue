@@ -319,9 +319,6 @@ function formatTime(timeStr) {
   width: 36rpx;
   height: 36rpx;
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
 }
 
 .recurring-outer-circle {
@@ -329,9 +326,7 @@ function formatTime(timeStr) {
   height: 36rpx;
   border-radius: 50%;
   border: 3rpx solid;
-  position: absolute;
-  top: 0;
-  left: 0;
+  box-sizing: border-box;
   transition: all 0.2s ease;
 }
 
@@ -340,10 +335,10 @@ function formatTime(timeStr) {
   height: 20rpx;
   border-radius: 50%;
   border: 3rpx solid;
+  box-sizing: border-box;
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 8rpx;  /* (36-20)/2 = 8rpx 居中 */
+  left: 8rpx; /* (36-20)/2 = 8rpx 居中 */
   transition: all 0.2s ease;
 }
 
