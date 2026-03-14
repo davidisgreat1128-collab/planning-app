@@ -73,7 +73,13 @@ const emit = defineEmits(['update:visible', 'update:modelValue', 'select']);
 // 数据
 // ============================================================
 
-/** 四象限选项 */
+/**
+ * 四象限选项
+ *
+ * 布局顺序（2026-03-14更新）：
+ * Q1(重要且紧急)  Q3(紧急不重要)
+ * Q2(重要不紧急)  Q4(不急不重要)
+ */
 const quadrants = [
   {
     key: 'q1',
@@ -87,26 +93,26 @@ const quadrants = [
     color: '#FF4444'
   },
   {
-    key: 'q2',
-    name: '重要不紧急',
-    desc: '规划成长',
-    icon: '🔵',
-    badgeIcon: '!!',
-    posClass: 'qp-top-right',
-    isUrgent: false,
-    isImportant: true,
-    color: '#5B8CFF'
-  },
-  {
     key: 'q3',
     name: '紧急不重要',
     desc: '可委托他人',
     icon: '🟡',
     badgeIcon: '!',
-    posClass: 'qp-bot-left',
+    posClass: 'qp-top-right',  // ✅ 从 qp-bot-left 改为 qp-top-right
     isUrgent: true,
     isImportant: false,
     color: '#FFA726'
+  },
+  {
+    key: 'q2',
+    name: '重要不紧急',
+    desc: '规划成长',
+    icon: '🔵',
+    badgeIcon: '!!',
+    posClass: 'qp-bot-left',  // ✅ 从 qp-top-right 改为 qp-bot-left
+    isUrgent: false,
+    isImportant: true,
+    color: '#5B8CFF'
   },
   {
     key: 'q4',

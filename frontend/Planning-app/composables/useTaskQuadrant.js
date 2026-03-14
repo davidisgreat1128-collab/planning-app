@@ -38,6 +38,12 @@ import { updateTaskRecurrence } from '@/api/task';
 
 /**
  * 象限定义配置
+ *
+ * 布局顺序（2026-03-14更新）：
+ * Q1(重要且紧急)  Q3(紧急不重要)
+ * Q2(重要不紧急)  Q4(不急不重要)
+ *
+ * 注意：数组顺序影响UI显示顺序（Grid布局）
  */
 export const quadrants = [
   {
@@ -50,15 +56,6 @@ export const quadrants = [
     description: '危机处理、紧急问题'
   },
   {
-    key: 'q2',
-    name: '重要不紧急',
-    isUrgent: false,
-    isImportant: true,
-    color: '#1890FF',
-    icon: '⭐',
-    description: '规划、学习、成长'
-  },
-  {
     key: 'q3',
     name: '紧急不重要',
     isUrgent: true,
@@ -66,6 +63,15 @@ export const quadrants = [
     color: '#FAAD14',
     icon: '⚡',
     description: '琐事、打扰、干扰'
+  },
+  {
+    key: 'q2',
+    name: '重要不紧急',
+    isUrgent: false,
+    isImportant: true,
+    color: '#1890FF',
+    icon: '⭐',
+    description: '规划、学习、成长'
   },
   {
     key: 'q4',

@@ -769,11 +769,17 @@ const startDateWeekday = computed(() => {
 // 常量
 // ============================================================
 
-/** 四象限选项（用于徽章显示） */
+/**
+ * 四象限选项（用于徽章显示）
+ *
+ * 布局顺序（2026-03-14更新）：
+ * Q1(重要且紧急)  Q3(紧急不重要)
+ * Q2(重要不紧急)  Q4(不急不重要)
+ */
 const quadrants = [
   { key: 'q1', name: '重要且紧急', badgeIcon: '!!!!' },
-  { key: 'q2', name: '重要不紧急', badgeIcon: '!!' },
   { key: 'q3', name: '紧急不重要', badgeIcon: '!' },
+  { key: 'q2', name: '重要不紧急', badgeIcon: '!!' },
   { key: 'q4', name: '不急不重要', badgeIcon: '○' }
 ];
 
