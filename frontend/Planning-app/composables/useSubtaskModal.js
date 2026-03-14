@@ -204,8 +204,10 @@ export function useSubtaskModal() {
    * @param {object} task - 重复任务对象
    */
   async function handleRecurringTaskComplete(task) {
-    if (!task.isRecurring) {
-      console.warn('[useSubtaskModal] 该任务不是重复任务:', task.id)
+    // 临时测试：允许标题包含"重复"的任务触发完成逻辑
+    const isRecurring = task.isRecurring || task.title?.includes('重复')
+    if (!isRecurring) {
+      console.warn('[useSubtaskModal] 该任务不是重复任务:', task.id, task)
       return
     }
 
@@ -214,6 +216,9 @@ export function useSubtaskModal() {
 
     console.log('[useSubtaskModal] 重复任务完成切换:', {
       taskId: task.id,
+      title: task.title,
+      isRecurring: task.isRecurring,
+      titleIncludes: task.title?.includes('重复'),
       oldStatus: task.status,
       newStatus: newStatus,
       note: '临时方案：直接更新任务状态'
