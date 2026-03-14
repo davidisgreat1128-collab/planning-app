@@ -11,11 +11,62 @@
       </view>
     </view>
 
-    <!-- 四象限网格 -->
+    <!-- 四象限网格
+         布局顺序（2026-03-14更新）：
+         Q1(重要且紧急)  Q3(紧急不重要)
+         Q2(重要不紧急)  Q4(不急不重要)
+    -->
     <view class="quadrant-grid">
       <!-- 第一行 -->
       <view class="quadrant-row">
-        <!-- Q3: 紧急不重要 (左上) -->
+        <!-- Q1: 重要且紧急 (左上) ✅ 从右上移到左上 -->
+        <view
+          class="quadrant-card quadrant-q1"
+          @touchstart="handleQuadrantTouchStart($event, 'q1')"
+          @touchmove="handleQuadrantTouchMove"
+          @touchend="handleQuadrantTouchEnd($event, 'q1')"
+        >
+          <view class="nb-clips">
+            <view class="nb-clip"></view>
+          </view>
+
+          <view class="quadrant-header">
+            <text class="quadrant-title">重要且紧急</text>
+            <view class="title-underline quadrant-q1-line"></view>
+          </view>
+
+          <scroll-view class="quadrant-content" scroll-y>
+            <task-card
+              v-for="task in urgentImportant"
+              :key="task.id"
+              :task="task"
+              :draggable="true"
+              @task-click="handleTaskClick"
+              @checkbox-click="handleCheckboxClick"
+              @drag-start="(e, task) => handleDragStart(e, task, 'q1')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q1')"
+            />
+
+            <task-card
+              v-for="task in urgentImportantDone"
+              :key="task.id"
+              :task="task"
+              :draggable="true"
+              @task-click="handleTaskClick"
+              @checkbox-click="handleCheckboxClick"
+              @drag-start="(e, task) => handleDragStart(e, task, 'q1')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q1')"
+            />
+
+            <view v-if="urgentImportant.length === 0 && urgentImportantDone.length === 0" class="empty-quadrant">
+              <text class="empty-icon">○</text>
+              <text class="empty-text">危机象限</text>
+              <text class="empty-hint">快速解决</text>
+            </view>
+          </scroll-view>
+        </view>
+
+        <!-- Q3: 紧急不重要 (右上) ✅ 从左上移到右上 -->
         <view
           class="quadrant-card quadrant-q3"
           @touchstart="handleQuadrantTouchStart($event, 'q3')"
@@ -67,105 +118,11 @@
             </view>
           </scroll-view>
         </view>
-
-        <!-- Q1: 重要且紧急 (右上) -->
-        <view
-          class="quadrant-card quadrant-q1"
-          @touchstart="handleQuadrantTouchStart($event, 'q1')"
-          @touchmove="handleQuadrantTouchMove"
-          @touchend="handleQuadrantTouchEnd($event, 'q1')"
-        >
-          <view class="nb-clips">
-            <view class="nb-clip"></view>
-          </view>
-
-          <view class="quadrant-header">
-            <text class="quadrant-title">重要且紧急</text>
-            <view class="title-underline quadrant-q1-line"></view>
-          </view>
-
-          <scroll-view class="quadrant-content" scroll-y>
-            <task-card
-              v-for="task in urgentImportant"
-              :key="task.id"
-              :task="task"
-              :draggable="true"
-              @task-click="handleTaskClick"
-              @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q1')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q1')"
-            />
-
-            <task-card
-              v-for="task in urgentImportantDone"
-              :key="task.id"
-              :task="task"
-              :draggable="true"
-              @task-click="handleTaskClick"
-              @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q1')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q1')"
-            />
-
-            <view v-if="urgentImportant.length === 0 && urgentImportantDone.length === 0" class="empty-quadrant">
-              <text class="empty-icon">○</text>
-              <text class="empty-text">危机象限</text>
-              <text class="empty-hint">快速解决</text>
-            </view>
-          </scroll-view>
-        </view>
       </view>
 
       <!-- 第二行 -->
       <view class="quadrant-row">
-        <!-- Q4: 不重要不紧急 (左下) -->
-        <view
-          class="quadrant-card quadrant-q4"
-          @touchstart="handleQuadrantTouchStart($event, 'q4')"
-          @touchmove="handleQuadrantTouchMove"
-          @touchend="handleQuadrantTouchEnd($event, 'q4')"
-        >
-          <view class="nb-clips">
-            <view class="nb-clip"></view>
-          </view>
-
-          <view class="quadrant-header">
-            <text class="quadrant-title">不重要不紧急</text>
-            <view class="title-underline quadrant-q4-line"></view>
-          </view>
-
-          <scroll-view class="quadrant-content" scroll-y>
-            <task-card
-              v-for="task in notUrgentNotImportant"
-              :key="task.id"
-              :task="task"
-              :draggable="true"
-              @task-click="handleTaskClick"
-              @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q4')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q4')"
-            />
-
-            <task-card
-              v-for="task in notUrgentNotImportantDone"
-              :key="task.id"
-              :task="task"
-              :draggable="true"
-              @task-click="handleTaskClick"
-              @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q4')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q4')"
-            />
-
-            <view v-if="notUrgentNotImportant.length === 0 && notUrgentNotImportantDone.length === 0" class="empty-quadrant">
-              <text class="empty-icon">○</text>
-              <text class="empty-text">无益象限</text>
-              <text class="empty-hint">不做</text>
-            </view>
-          </scroll-view>
-        </view>
-
-        <!-- Q2: 重要不紧急 (右下) -->
+        <!-- Q2: 重要不紧急 (左下) ✅ 从右下移到左下 -->
         <view
           class="quadrant-card quadrant-q2"
           @touchstart="handleQuadrantTouchStart($event, 'q2')"
@@ -208,6 +165,53 @@
               <text class="empty-icon">○</text>
               <text class="empty-text">成长象限</text>
               <text class="empty-hint">投入精力</text>
+            </view>
+          </scroll-view>
+        </view>
+
+        <!-- Q4: 不重要不紧急 (右下) -->
+        <view
+          class="quadrant-card quadrant-q4"
+          @touchstart="handleQuadrantTouchStart($event, 'q4')"
+          @touchmove="handleQuadrantTouchMove"
+          @touchend="handleQuadrantTouchEnd($event, 'q4')"
+        >
+          <view class="nb-clips">
+            <view class="nb-clip"></view>
+          </view>
+
+          <view class="quadrant-header">
+            <text class="quadrant-title">不重要不紧急</text>
+            <view class="title-underline quadrant-q4-line"></view>
+          </view>
+
+          <scroll-view class="quadrant-content" scroll-y>
+            <task-card
+              v-for="task in notUrgentNotImportant"
+              :key="task.id"
+              :task="task"
+              :draggable="true"
+              @task-click="handleTaskClick"
+              @checkbox-click="handleCheckboxClick"
+              @drag-start="(e, task) => handleDragStart(e, task, 'q4')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q4')"
+            />
+
+            <task-card
+              v-for="task in notUrgentNotImportantDone"
+              :key="task.id"
+              :task="task"
+              :draggable="true"
+              @task-click="handleTaskClick"
+              @checkbox-click="handleCheckboxClick"
+              @drag-start="(e, task) => handleDragStart(e, task, 'q4')"
+              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q4')"
+            />
+
+            <view v-if="notUrgentNotImportant.length === 0 && notUrgentNotImportantDone.length === 0" class="empty-quadrant">
+              <text class="empty-icon">○</text>
+              <text class="empty-text">无益象限</text>
+              <text class="empty-hint">不做</text>
             </view>
           </scroll-view>
         </view>
