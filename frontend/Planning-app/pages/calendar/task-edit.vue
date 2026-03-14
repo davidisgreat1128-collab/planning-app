@@ -185,6 +185,65 @@
         </view>
       </view>
 
+      <!-- ⭐⭐⭐ 调试信息面板（任务来源追踪）- 2026-03-14 新增 -->
+      <view class="tep-debug-panel">
+        <view class="tep-debug-title">🔍 任务来源诊断</view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">任务ID:</text>
+          <text class="tep-debug-value">{{ taskId || '新任务' }}</text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">创建时间:</text>
+          <text class="tep-debug-value">{{ debugInfo.createdAt }}</text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">任务日期 (taskDate):</text>
+          <text class="tep-debug-value">{{ debugInfo.taskDate }}</text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">分类ID (categoryId):</text>
+          <text class="tep-debug-value">{{ debugInfo.categoryId }}</text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">分类名称:</text>
+          <text class="tep-debug-value">{{ debugInfo.categoryName }}</text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">是否在 Repository 中:</text>
+          <text class="tep-debug-value" :class="debugInfo.inRepository ? 'tep-debug-yes' : 'tep-debug-no'">
+            {{ debugInfo.inRepository ? '✅ 是' : '❌ 否' }}
+          </text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">是否在 Store 中:</text>
+          <text class="tep-debug-value" :class="debugInfo.inStore ? 'tep-debug-yes' : 'tep-debug-no'">
+            {{ debugInfo.inStore ? '✅ 是' : '❌ 否' }}
+          </text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">Repository 总任务数:</text>
+          <text class="tep-debug-value">{{ debugInfo.repositoryTotalCount }}</text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">Store 当前日期任务数:</text>
+          <text class="tep-debug-value">{{ debugInfo.storeTotalCount }}</text>
+        </view>
+
+        <view class="tep-debug-section">
+          <text class="tep-debug-label">完整任务数据:</text>
+          <view class="tep-debug-json">{{ debugInfo.fullTask }}</view>
+        </view>
+      </view>
+
       <view style="height: 180rpx;"></view>
     </scroll-view>
 
@@ -358,6 +417,10 @@ import { useTaskForm } from '@/composables/useTaskForm.js';
 import { useDateTimePickers } from '@/composables/useDateTimePickers.js';
 import { formatDate, getWeekdayName, calcDays, timeDiffMinutes, formatDuration, formatDateWithWeekday, formatDateTimeDot, formatMonthDay, getToday, getTomorrow, getDateAfterDays } from '@/utils/date.js';
 import { parseRrule } from '@/utils/rruleBuilder.js';
+
+// ⭐⭐⭐ 新增：导入 Repository 用于任务来源诊断（2026-03-14）
+import TaskRepository from '@/repositories/TaskRepository';
+import CategoryRepository from '@/repositories/CategoryRepository';
 
 // ============================================================
 // Store
@@ -1364,6 +1427,55 @@ onMounted(() => {
   }
 
 });
+
+// ============================================================
+// ⭐⭐⭐ 任务来源诊断信息（2026-03-14 新增）
+// ============================================================
+
+/**
+ * 调试信息：追踪任务来源
+ */
+const debugInfo = computed(() => {
+  if (!taskId.value) {
+    return {
+      createdAt: '新任务',
+      taskDate: form.value.taskDate || '未设置',
+      categoryId: form.value.categoryId || '未设置',
+      categoryName: '新任务',
+      inRepository: false,
+      inStore: false,
+      repositoryTotalCount: TaskRepository.getAll().length,
+      storeTotalCount: taskStore.tasks.length,
+      fullTask: '新任务（尚未保存）'
+    }
+  }
+
+  // 从 Repository 获取任务
+  const taskInRepo = TaskRepository.getById(taskId.value)
+
+  // 从 Store 获取任务
+  const taskInStore = taskStore.tasks.find(t => t.id === taskId.value)
+
+  // 从 CategoryRepository 获取分类名称
+  let categoryName = '无分类'
+  if (taskInRepo && taskInRepo.categoryId) {
+    const category = CategoryRepository.getById(taskInRepo.categoryId)
+    categoryName = category ? category.name : `未知分类 (${taskInRepo.categoryId})`
+  }
+
+  return {
+    createdAt: taskInRepo ? new Date(taskInRepo.createdAt).toLocaleString('zh-CN') : '未知',
+    taskDate: taskInRepo ? taskInRepo.taskDate : '未知',
+    categoryId: taskInRepo ? (taskInRepo.categoryId || '无') : '未知',
+    categoryName,
+    inRepository: !!taskInRepo,
+    inStore: !!taskInStore,
+    repositoryTotalCount: TaskRepository.getAll().length,
+    storeTotalCount: taskStore.tasks.length,
+    fullTask: taskInRepo ? JSON.stringify(taskInRepo, null, 2) : '任务不存在'
+  }
+})
+
 </script>
 
 <style scoped>
@@ -1784,6 +1896,81 @@ onMounted(() => {
   display: flex;
   align-items: flex-end;
   justify-content: center;
+}
+
+/* ============================================================
+   ⭐⭐⭐ 调试面板样式（任务来源诊断）- 2026-03-14 新增
+   ============================================================ */
+
+.tep-debug-panel {
+  margin: 40rpx;
+  padding: 30rpx;
+  background: #FFF3CD;
+  border: 2px solid #FFC107;
+  border-radius: 16rpx;
+}
+
+.tep-debug-title {
+  font-size: 32rpx;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 30rpx;
+  text-align: center;
+}
+
+.tep-debug-section {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 20rpx;
+  padding-bottom: 20rpx;
+  border-bottom: 1px solid #FFE5B4;
+}
+
+.tep-debug-section:last-child {
+  border-bottom: none;
+  flex-direction: column;
+}
+
+.tep-debug-label {
+  font-size: 28rpx;
+  color: #666;
+  font-weight: 500;
+  min-width: 300rpx;
+}
+
+.tep-debug-value {
+  font-size: 28rpx;
+  color: #333;
+  font-weight: 400;
+  word-break: break-all;
+  flex: 1;
+  text-align: right;
+}
+
+.tep-debug-yes {
+  color: #28a745;
+  font-weight: 600;
+}
+
+.tep-debug-no {
+  color: #dc3545;
+  font-weight: 600;
+}
+
+.tep-debug-json {
+  margin-top: 15rpx;
+  padding: 20rpx;
+  background: #FFFAEC;
+  border: 1px dashed #FFB74D;
+  border-radius: 8rpx;
+  font-size: 24rpx;
+  color: #555;
+  font-family: 'Courier New', monospace;
+  white-space: pre-wrap;
+  word-break: break-all;
+  max-height: 600rpx;
+  overflow-y: auto;
 }
 
 </style>
