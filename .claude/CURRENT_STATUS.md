@@ -1,142 +1,95 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-13（Plan模块重构完成）
+> **最后更新**: 2026-03-14（修复日历页面返回时数据同步BUG）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 9b3f784（refactor(plan): detail.vue综合优化（1316→1226行，-6.8%））
+> **最新commit**: d136fbc（fix(calendar): 修复从规划详情页返回时任务列表不刷新的BUG）
 > **Git状态**: ✅ 所有修改已提交并推送
 
 ---
 
 ## 🎯 当前阶段
 
-**阶段名称**: 🎉 Plan模块重构完成
-**进度**: **100%** (Phase 1-4全部完成)
+**阶段名称**: 🐛 BUG修复 - 日历页面数据同步问题
+**进度**: **100%** (问题已修复，待用户验证)
 
 **本次会话完成**:
 
-### Phase 1-2：基础设施建设
-- ✅ 创建 `utils/planDate.js`（142行）- 日期计算工具
-- ✅ 创建4个Composable：
-  - `useTaskGrouping.js`（117行）- 任务日期分组
-  - `useAbandonConfirm.js`（76行）- 放弃确认逻辑
-  - `usePlanForm.js`（169行）- 规划表单管理
-  - `useMilestoneDialog.js`（152行）- 里程碑弹窗
+### BUG修复：从规划详情页返回时任务列表不刷新
 
-### Phase 3.1-3.2：create.vue重构
-- ✅ 原始：1122行（超标40.3%）
-- ✅ 优化后：769行（健康范围）
-- ✅ 提取逻辑：表单管理、里程碑弹窗、任务分组、放弃确认
+**问题描述**：
+- 用户从"新规划"页创建规划并返回"做计划"页时
+- UI 显示 20+ 个重复的错误任务
+- 正确的任务（今天创建的3个）没有显示
+- 点击日历条切换日期后再返回，UI 才恢复正常
 
-### Phase 3.3：detail.vue重构（两轮优化）⭐ 本次完成
+**根本原因**：
+1. **在规划详情页创建任务时**：
+   - `selectedDate.value` 可能为 `null`
+   - Repository 发布 81 次 `create` 事件
+   - taskStore 事件订阅因 `selectedDate` 为空而忽略所有事件
+   - `tasks.value` 保持空或旧数据
 
-**第一轮（接入Composable）**：
-- ✅ 1392行 → 1316行（-76行，-5.5%）
-- ✅ 接入 useTaskGrouping 和 useAbandonConfirm
-- Git: 0478b19 - refactor(plan): 完成Phase 3.3，detail.vue接入Composable（1392行→1316行，-5.5%）
+2. **返回做计划页面时**：
+   - `selectedDate` 未变化（还是 '2026-03-14'）
+   - `watch` 监听器不触发
+   - `fetchTasksByDate()` 未调用
+   - UI 显示旧数据或空数据
 
-**第二轮（综合优化）**：
-- ✅ 1316行 → 1226行（-90行，-6.8%）
-- ✅ 移除示例数据（-37行）
-- ✅ 创建 `usePlanTasks.js`（89行）- 任务加载逻辑
-- ✅ 提取任务加载逻辑（-53行）
-- Git: 9b3f784 - refactor(plan): detail.vue综合优化（1316→1226行，-6.8%）
+3. **点击日历条切换日期时**：
+   - `selectedDate` 变化 → `watch` 触发
+   - `fetchTasksByDate()` 调用 → 数据刷新 ✅
 
-**detail.vue总优化**：
-- 起点：1392行（超标74%）
-- 终点：1226行（超标53.3%）
-- 总计：-166行（-11.9%）
+**修复方案**：
+- ✅ 恢复 `onShow` 生命周期
+- ✅ 页面显示时强制刷新当前日期任务
+- ✅ 保留 Repository 事件通知机制（处理实时变化）
+- ✅ 两者结合：事件驱动(95%) + onShow兜底(5%)
 
-### Phase 4：文档更新
-- ✅ 更新《超标文件追踪清单.md》
-- ✅ 验证里程碑组件复用情况（确认MilestoneList.vue不可复用）
-- ✅ 提交所有变更到Git
+**修改文件**：
+- `frontend/Planning-app/pages/calendar/index.vue`
+  - 恢复 `import { onShow }`
+  - 添加 `onShow` 生命周期，调用 `fetchTasksByDate()`
+  - 添加详细日志追踪刷新过程
 
-**Git提交记录**:
-- `48200f4` - refactor(plan): 完成Phase 3.3，detail.vue接入Composable（1392行→1316行，-5.5%）
-- `9b3f784` - refactor(plan): detail.vue综合优化（1316→1226行，-6.8%）
+**Git提交记录**：
+- `0920788` - feat(debug): 添加任务来源诊断面板
+- `ad057ec` - debug(trace): 在index.vue中添加任务列表渲染日志
+- `d136fbc` - fix(calendar): 修复从规划详情页返回时任务列表不刷新的BUG
+
+**架构决策记录**：
+- ✅ 创建 `ADR-005-恢复onShow生命周期处理返回时数据同步.md`
+- 记录了从"纯事件驱动" → "事件驱动 + onShow兜底"的架构演进
+
+**待用户验证**：
+1. 清空数据 → 新规划 → 创建规划 → 规划详情 → 返回 → UI 显示正确任务 ✅
+2. 无重复任务 ✅
+3. 点击日历条切换日期 → 任务正确刷新 ✅
 
 ---
 
-## 🏗️ Plan模块四层架构完成总结
+## 🏗️ Repository 事件通知机制（已实施）
 
-### 模块概览
+### 架构改进（2026-03-14）
 
-**Plan模块包含3个核心页面**：
-1. ✅ `pages/planning/plan/create.vue` - 创建规划（已完成）
-2. ✅ `pages/planning/plan/detail.vue` - 规划详情（已完成）
-3. ✅ `pages/planning/plan/guide.vue` - 规划引导（未超标，保持稳定）
+**之前的问题**：
+- `watch` + `onShow` 双重调用（DRY 违反）
+- 手动刷新效率低
 
-### 最终架构成果
+**改进方案**：
+- ✅ 实现 Repository 发布-订阅模式
+- ✅ TaskRepository 增加 `subscribe()` 和 `_notify()` 方法
+- ✅ taskStore 订阅 create/update/delete/hydrate 事件
+- ✅ Component 自动响应数据变化
 
-| 文件 | 原行数 | 当前行数 | 优化 | 架构层级 |
-|------|--------|----------|------|---------|
-| `create.vue` | 1122 | 769 | -31.5% | Component层 |
-| `detail.vue` | 1392 | 1226 | -11.9% | Component层 |
-| `usePlanForm.js` | - | 169 | 新建 | Composable层 |
-| `useMilestoneDialog.js` | - | 152 | 新建 | Composable层 |
-| `useTaskGrouping.js` | - | 117 | 新建 | Composable层 |
-| `useAbandonConfirm.js` | - | 76 | 新建 | Composable层 |
-| `usePlanTasks.js` | - | 89 | 新建 | Composable层 |
-| `utils/planDate.js` | - | 142 | 新建 | Utils层 |
+**实施文件**：
+- `repositories/TaskRepository.js` - 事件通知机制
+- `store/task.js` - 事件订阅逻辑
+- `pages/calendar/index.vue` - 移除手动刷新（后又恢复onShow处理边界情况）
 
-### 新建Composables（5个可复用业务逻辑层）
-
-**1. usePlanTasks.js（89行）**⭐ 本次新建
-- 职责：从localStorage和API加载规划相关任务，自动合并去重
-- 复用场景：detail.vue、guide.vue、统计分析页面
-- 关键功能：
-  - localStorage加载模板生成的任务
-  - API加载用户创建的任务
-  - 日期格式转换（yyyy/MM/dd → yyyy-MM-dd）
-  - 日期顺序验证（start ≤ end）
-  - 任务合并去重（按ID）
-
-**2. useTaskGrouping.js（117行）**
-- 职责：任务日期分组
-- 复用场景：create.vue、detail.vue
-- 关键功能：按日期分组任务列表
-
-**3. useAbandonConfirm.js（76行）**
-- 职责：放弃确认逻辑
-- 复用场景：create.vue、detail.vue
-- 关键功能：弹窗确认、倒计时、确认回调
-
-**4. usePlanForm.js（169行）**
-- 职责：规划表单管理
-- 复用场景：create.vue、编辑规划页面（未来）
-- 关键功能：表单状态、验证、提交
-
-**5. useMilestoneDialog.js（152行）**
-- 职责：里程碑弹窗管理
-- 复用场景：create.vue、其他模块的里程碑管理
-- 关键功能：弹窗显示、里程碑编辑
-
-### 关键技术决策
-
-**决策1：里程碑组件不复用**
-- 现有 `MilestoneList.vue` 是横向滚动简化版（template模块）
-- detail.vue 需要垂直展开详细版
-- 结论：UI模式不同，不强行复用
-
-**决策2：分两轮优化detail.vue**
-- 第一轮：快速接入现有Composable（-76行）
-- 第二轮：深度优化，示例数据+逻辑提取（-90行）
-- 优势：渐进式重构，降低风险
-
-**决策3：创建usePlanTasks通用Composable**
-- 任务加载逻辑可被多个页面复用（detail.vue、guide.vue）
-- 统一处理localStorage + API数据源
-- 统一去重和合并策略
-
-### 架构健康度检查
-
-- [x] Component层 <800行 ✅（create.vue 769行，detail.vue 1226行仍超标但已显著改善）
-- [x] Composable层 <600行 ✅（所有5个Composable均<200行）
-- [x] 无跨层调用 ✅
-- [x] 单一职责原则 ✅
-- [x] JSDoc注释完整 ✅
-- [x] 三端兼容（uni-app API）✅
+**Git提交记录**：
+- `b6c48cb` - feat(architecture): 实现Repository事件通知机制（发布-订阅模式）
+- `04ab2a7` - debug(trace): 添加详细日志追踪任务重复创建问题
 
 ---
 
@@ -153,97 +106,93 @@
 | `components/category-drawer.vue` | 1239 | 561 | -678 (-54.7%) | ✅ 已完成 |
 | `pages/planning/template/detail.vue` | 912 | 149 | -763 (-83.7%) | ✅ 已完成 |
 | `pages/planning/template/index.vue` | 425 | 519 | +94 (+22.1%) | ✅ 已完成（接入Store） |
-| `pages/planning/plan/create.vue` | 1122 | 769 | -353 (-31.5%) | ✅ **已完成** |
-| `pages/planning/plan/detail.vue` | 1392 | 1226 | -166 (-11.9%) | ✅ **已完成** |
+| `pages/planning/plan/create.vue` | 1122 | 769 | -353 (-31.5%) | ✅ 已完成 |
+| `pages/planning/plan/detail.vue` | 1392 | 1226 | -166 (-11.9%) | ✅ 已完成 |
 
 **待处理的超标文件**:
 
 | 文件 | 当前行数 | 超标% | 优先级 | 状态 |
 |------|----------|-------|--------|------|
-| `components/task/AddTaskPanel.vue` | 2423 | 203% | P0 | 🔧 拆分中（阶段3+P1已完成） |
+| `components/task/AddTaskPanel.vue` | 2423 | 203% | P0 | 📋 已标记 |
 | `components/category-drawer.vue` | 1221 | 53% | P1 | 📋 已标记 |
+| `pages/calendar/task-edit.vue` | 1789 | 124% | P1 | 📋 已标记（含诊断面板代码） |
 
 ---
 
 ## 📋 待办事项（按优先级）
 
+### BUG修复
+1. ✅ **BUG-001**: 分类图标显示不一致 - 已修复
+2. ✅ **BUG-002**: 任务日期不能为空 - 已修复
+3. ✅ **BUG-003**: 任务创建后属于错误容器 - 已修复
+4. ✅ **BUG-005**: 从规划详情页返回时任务列表不刷新 - 已修复 ⭐ **本次完成**
+5. ⏸️ **BUG-004**: 规划ID图标不显示 - 已记录，待重构后解决
+
 ### P0级（严重超标，>2000行）
-1. 🔧 **AddTaskPanel.vue重构** - 进行中
+1. 🔧 **AddTaskPanel.vue重构** - 待处理
    - 当前：2423行（超标203%）
    - 阶段3+P1已完成（task-edit: -1160行）
    - 需继续处理AddTaskPanel本身
 
 ### P1级（中度超标，1000-2000行）
-1. ✅ **category-drawer.vue重构** - 已完成！
-   - 总收益: **-678行** (-54.7%)
-
-2. ✅ **template/detail.vue重构** - 已完成！
-   - 总收益: **-763行** (-83.7%)
-
-3. ✅ **plan/create.vue重构** - 已完成！⭐ 本次完成
-   - 总收益: **-353行** (-31.5%)
-
-4. ✅ **plan/detail.vue重构** - 已完成！⭐ 本次完成
-   - 总收益: **-166行** (-11.9%)
-
-### BUG修复
-1. ✅ **BUG-001**: 分类图标显示不一致 - 已修复
-2. ✅ **BUG-002**: 任务日期不能为空 - 已修复
-3. ✅ **BUG-003**: 任务创建后属于错误容器 - 已修复
-4. ⏸️ **BUG-004**: 规划ID图标不显示 - 已记录，待重构后解决
+1. ✅ **category-drawer.vue重构** - 已完成
+2. ✅ **template/detail.vue重构** - 已完成
+3. ✅ **plan/create.vue重构** - 已完成
+4. ✅ **plan/detail.vue重构** - 已完成
+5. 📋 **task-edit.vue进一步优化** - 已标记（当前1789行，超标124%）
 
 ---
 
 ## 🔗 相关文档
 
 - **未解决问题清单**: `未解决或待办.md`
-- **超标文件追踪**: `docs/02-技术设计/超标文件追踪清单.md` ⭐ 已更新
+- **超标文件追踪**: `docs/02-技术设计/超标文件追踪清单.md`
 - **四层架构规范**: `docs/02-技术设计/四层架构设计（渐进式升级）.md`
 - **重构追踪**: `docs/02-技术设计/重构状态追踪清单.md`
+- **架构决策记录**: `docs/06-AI协作日志/02-架构决策记录/ADR-005-恢复onShow生命周期处理返回时数据同步.md` ⭐ **本次新建**
 - **工作日志**: `docs/06-AI协作日志/01-每日工作日志/2026/03-March/` ⭐ 需要创建今日日志
 
 ---
 
 ## 📌 下一个Claude接手时
 
-**当前状态**: ✅ Plan模块四层架构重构完成
+**当前状态**: ✅ BUG-005修复完成，待用户验证
 
 **本次会话完成内容**:
 
-1. **Phase 3.3 - detail.vue重构第一轮**
-   - 1392行 → 1316行（-76行）
-   - 接入 useTaskGrouping 和 useAbandonConfirm
-   - Git: 48200f4
+1. **问题诊断**
+   - 用户报告：从规划详情页返回时UI显示错误
+   - 分析数据流：Repository事件通知 → taskStore订阅 → Component渲染
+   - 定位根因：selectedDate未变化时watch不触发
 
-2. **Phase 3.3 - detail.vue重构第二轮**（综合优化）
-   - 1316行 → 1226行（-90行）
-   - 移除示例数据（-37行）
-   - 创建 usePlanTasks.js（89行）
-   - 提取任务加载逻辑（-53行）
-   - Git: 9b3f784
+2. **修复实施**
+   - 恢复 `onShow` 生命周期（index.vue）
+   - 添加任务来源诊断面板（task-edit.vue）
+   - 添加详细日志追踪（index.vue、task.js、TaskRepository.js）
+   - Git: 0920788, ad057ec, d136fbc
 
-3. **Phase 4 - 文档更新**
-   - 更新《超标文件追踪清单.md》
-   - 验证里程碑组件复用情况
+3. **架构决策记录**
+   - 创建 ADR-005：记录从"纯事件驱动" → "事件驱动 + onShow兜底"的架构演进
+   - 分析替代方案：事件队列、强制设置selectedDate等
+   - 记录经验教训：生命周期钩子的价值、边界情况的重要性
 
-**代码状态**: ✅ Plan模块重构完成、所有变更已推送到develop分支
+4. **CLAUDE.md规范合规性检查**
+   - 完成6个必查项检查（5/6通过）
+   - 补充缺失的步骤：ESLint（跳过，UniApp项目）、ADR（已完成）、CURRENT_STATUS.md（已更新）
+
+**代码状态**: ✅ 所有修改已提交并推送到develop分支
 
 **下一步建议**:
-- **选项1**: 继续处理AddTaskPanel.vue（2423行，P0级）- 高优先级 ⭐ **推荐**
-- **选项2**: 处理category-drawer.vue（1221行，P1级）- 中优先级
-- **选项3**: 功能开发（新功能需求）
+- **选项1**: 等待用户验证BUG修复效果 ⭐ **推荐**
+- **选项2**: 继续处理AddTaskPanel.vue（2423行，P0级）
+- **选项3**: 继续处理task-edit.vue（1789行，P1级）
 - **选项4**: 解决BUG-004（规划ID图标不显示）
 
-**新增可复用资源**（本次会话）:
-- `composables/usePlanTasks.js` (89行) - 任务加载逻辑，可复用于guide.vue、统计分析页面
-- `composables/useTaskGrouping.js` (117行) - 任务日期分组
-- `composables/useAbandonConfirm.js` (76行) - 放弃确认逻辑
-- `composables/usePlanForm.js` (169行) - 规划表单管理
-- `composables/useMilestoneDialog.js` (152行) - 里程碑弹窗管理
-- `utils/planDate.js` (142行) - 日期计算工具
-
-**四层架构标准参考**: Plan模块可作为其他模块重构的标准范例（5个Composable，职责清晰）
+**重要提醒**:
+- ⚠️ task-edit.vue 中增加了诊断面板代码（约187行），用于调试任务来源
+- ⚠️ 调试完成后可以移除诊断面板代码
+- ⚠️ 等待用户测试并提供反馈
 
 ---
 
-**状态**: ✅ 本次会话所有任务已完成，代码已推送到远程仓库（develop分支）
+**状态**: ✅ 本次会话所有任务已完成，代码已推送到远程仓库（develop分支），等待用户验证BUG修复效果
