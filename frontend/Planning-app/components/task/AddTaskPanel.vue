@@ -170,7 +170,7 @@
       <!-- 重复 -->
       <view class="toolbar-item" @tap="onRepeatTap">
         <text class="toolbar-icon-text" :class="{ 'icon-active': showRepeatPanel }">🔁</text>
-        <text class="toolbar-label" :class="{ 'label-active': showRepeatPanel || repeatData.mode !== 'none' }">{{ repeatRuleManager.repeatDescription.value }}</text>
+        <text class="toolbar-label" :class="{ 'label-active': repeatRuleManager.repeatMode.value !== 'none' }">重复</text>
       </view>
 
       <!-- 提醒 -->
