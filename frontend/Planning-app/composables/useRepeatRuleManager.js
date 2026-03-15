@@ -59,6 +59,49 @@ export function useRepeatRuleManager(options = {}) {
     return map[repeatMode.value] || '未开启'
   })
 
+  /**
+   * 重复规则的中文描述（用于工具栏显示）
+   * @example "每1天" / "每2周" / "每月1日" / "每年1月1日"
+   */
+  const repeatDescription = computed(() => {
+    if (repeatMode.value === 'none') {
+      return '重复'
+    }
+
+    if (repeatMode.value === 'daily') {
+      return `每${repeatInterval.value}天`
+    }
+
+    if (repeatMode.value === 'weekly') {
+      const weekLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+      if (repeatWeekDays.value.length === 0) {
+        return `每${repeatInterval.value}周`
+      }
+      const daysStr = repeatWeekDays.value.map(d => weekLabels[d - 1]).join(',')
+      return `每${repeatInterval.value}周 ${daysStr}`
+    }
+
+    if (repeatMode.value === 'monthly') {
+      if (monthlySubMode.value === 'day') {
+        if (monthlyDays.value.length === 0) {
+          return '每月'
+        }
+        const daysStr = monthlyDays.value.join(',')
+        return `每月${daysStr}日`
+      } else {
+        const weekNumLabels = ['第一个', '第二个', '第三个', '第四个', '最后一个']
+        const weekLabels = ['周一', '周二', '周三', '周四', '周五', '周六', '周日']
+        return `每月${weekNumLabels[monthlyWeekNum.value - 1]}${weekLabels[monthlyWeekday.value - 1]}`
+      }
+    }
+
+    if (repeatMode.value === 'yearly') {
+      return `每年${yearlyMonth.value}月${yearlyDay.value}日`
+    }
+
+    return '重复'
+  })
+
   // ============================================================
   // 方法
   // ============================================================
@@ -219,6 +262,7 @@ export function useRepeatRuleManager(options = {}) {
 
     // 计算属性
     repeatModeLabel,
+    repeatDescription,  // ⭐ 新增：重复规则的中文描述
 
     // 方法
     toggleWeekDay,
