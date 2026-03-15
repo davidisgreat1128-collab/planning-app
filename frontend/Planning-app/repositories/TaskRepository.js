@@ -424,12 +424,11 @@ class TaskRepository {
 
         // ✅ 调用后端 API（已启用）
         if (op.type === 'create') {
-          const response = await createTask(op.data)
-          console.log(`[TaskRepository] 操作 create 成功，服务器返回:`, response.data)
+          const serverTask = await createTask(op.data)  // ⭐ request.js已返回data字段
+          console.log(`[TaskRepository] 操作 create 成功，服务器返回:`, serverTask)
 
           // ⭐ 同步服务器返回的完整数据（包含 id、isRecurring 等字段）
-          if (response.data && response.data.id) {
-            const serverTask = response.data
+          if (serverTask && serverTask.id) {
             this.memoryCache.set(serverTask.id, serverTask)
             console.log(`[TaskRepository] 已更新内存缓存为服务器版本:`, serverTask.id)
           }
