@@ -31,6 +31,7 @@
 import { ref } from 'vue';
 import { useTaskStore } from '@/store/task';
 import { updateTaskRecurrence } from '@/api/task';
+import TaskRepository from '@/repositories/TaskRepository';
 
 // ============================================================
 // 象限配置
@@ -205,6 +206,11 @@ export function useTaskQuadrant() {
 
       // 临时方案：使用taskStore.updateTask仅更新当前实例
       await taskStore.updateTask(task.id, { isUrgent, isImportant });
+
+      // ⭐ 强制立即同步到服务器（避免防抖延迟导致fetchTasksByDate获取到旧数据）
+      // 原因：TaskRepository.update() 使用 _debouncedSync()，延迟500ms同步
+      //       如果不强制立即同步，fetchTasksByDate() 会查询到旧数据
+      await TaskRepository.sync();
 
       // ⭐ 重复任务特殊处理：需要重新获取当前日期的所有任务实例
       // 原因：更新重复任务后，后端会重新计算RRULE，可能影响多个日期的实例
