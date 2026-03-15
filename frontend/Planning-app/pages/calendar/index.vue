@@ -193,6 +193,7 @@
       :drag-state="dragDropComposable.dragState.value"
       :show-change-quadrant-dialog="quadrantComposable.showChangeQuadrantDialog.value"
       :change-quadrant-option="quadrantComposable.changeQuadrantOption.value"
+      :current-date="taskStore.selectedDate"
       @update:changeQuadrantOption="quadrantComposable.changeQuadrantOption.value = $event"
       @close-change-quadrant-dialog="quadrantComposable.closeChangeQuadrantDialog"
       @confirm-change-quadrant="confirmChangeQuadrant"

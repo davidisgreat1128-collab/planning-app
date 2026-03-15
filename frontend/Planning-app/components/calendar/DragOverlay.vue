@@ -44,7 +44,7 @@
           :class="{ active: changeQuadrantOption === 2 }"
           @tap="emit('update:changeQuadrantOption', 2)"
         >
-          <text class="option-text">更改当天及未来计划</text>
+          <text class="option-text">{{ option2Text }}</text>
           <text class="option-hint">不影响过去记录</text>
           <view v-if="changeQuadrantOption === 2" class="option-check">✓</view>
         </view>
@@ -65,7 +65,7 @@
 </template>
 
 <script setup>
-import { ref, toRefs } from 'vue';
+import { ref, computed, toRefs } from 'vue';
 import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 
 /**
@@ -114,6 +114,14 @@ const props = defineProps({
   changeQuadrantOption: {
     type: Number,
     default: 1
+  },
+  /**
+   * 当前选中的日期（格式：YYYY-MM-DD）
+   * 用于显示"更改X月X日及未来计划"文案
+   */
+  currentDate: {
+    type: String,
+    default: ''
   }
 });
 
@@ -130,7 +138,28 @@ const showDeleteTaskDialog = ref(false);
 const deleteTaskOption = ref(1);
 
 // Props 响应式解构
-const { dragState, showChangeQuadrantDialog, changeQuadrantOption } = toRefs(props);
+const { dragState, showChangeQuadrantDialog, changeQuadrantOption, currentDate } = toRefs(props);
+
+/**
+ * 计算选项2的文案（根据当前日期动态生成）
+ * 示例：2026-03-17 → "更改17号及未来计划"
+ */
+const option2Text = computed(() => {
+  if (!currentDate.value) {
+    return '更改当天及未来计划'; // 兜底文案
+  }
+
+  // 解析日期：YYYY-MM-DD → 月份 + 日期
+  const parts = currentDate.value.split('-');
+  if (parts.length !== 3) {
+    return '更改当天及未来计划'; // 格式错误时兜底
+  }
+
+  const month = parseInt(parts[1], 10); // 去掉前导0：03 → 3
+  const day = parseInt(parts[2], 10);   // 去掉前导0：17 → 17
+
+  return `更改${day}号及未来计划`;
+});
 
 /**
  * 关闭象限切换对话框
