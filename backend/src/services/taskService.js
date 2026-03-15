@@ -73,54 +73,82 @@ async function createTask(userId, data) {
 
 /**
  * 获取某天的任务列表
+ * ⭐ 架构升级（2026-03-15）：重复任务使用 RRULE 实时计算 + completion_records
+ *
  * @param {number} userId
  * @param {string} date - YYYY-MM-DD
  * @param {Object} options - 额外过滤选项
- * @returns {Promise<Object>} { single: Task[], range: Task[], recurring: TaskOccurrence[] }
+ * @returns {Promise<Object>} { single: Task[], range: Task[], recurring: Task[] }
  */
 async function getTasksByDate(userId, date, options = {}) {
   const { includeCompleted = true } = options;
 
   const statusFilter = includeCompleted ? {} : { status: 'pending' };
 
-  // 1. 单日任务
+  // 1. 单日任务（非重复）
   const singleTasks = await Task.findAll({
     where: {
       userId,
       dateType: 'single',
       taskDate: date,
+      isRecurring: false, // ⭐ 新增：排除重复任务
       ...statusFilter
     },
     order: [['startTime', 'ASC'], ['isUrgent', 'DESC'], ['isImportant', 'DESC']]
   });
 
-  // 2. 跨天任务（该日期在范围内）
+  // 2. 跨天任务（该日期在范围内，非重复）
   const rangeTasks = await Task.findAll({
     where: {
       userId,
       dateType: 'range',
       startDate: { [Op.lte]: date },
       endDate: { [Op.gte]: date },
+      isRecurring: false, // ⭐ 新增：排除重复任务
       ...statusFilter
     },
     order: [['startDate', 'ASC']]
   });
 
-  // 3. 重复任务实例
-  const recurringOccurrences = await TaskOccurrence.findAll({
+  // 3. 重复任务（使用 RRULE 实时计算）
+  // ⭐ 架构升级：不再查询 TaskOccurrence 表（已删除），改为查询 Task 表 + RRULE 计算
+  const allRecurringTasks = await Task.findAll({
     where: {
       userId,
-      occurDate: date,
-      ...(includeCompleted ? {} : { status: 'pending' })
-    },
-    include: [{ model: Task, as: 'task' }],
-    order: [['occurStartTime', 'ASC']]
+      isRecurring: true
+    }
   });
+
+  // 筛选出在该日期发生的重复任务
+  const recurringTasksOnDate = [];
+  for (const task of allRecurringTasks) {
+    const occurrences = rruleCalculationService.getOccurrences(
+      task.rrule,
+      date,
+      date,
+      task.exdate || [] // 排除日期
+    );
+
+    if (occurrences.includes(date)) {
+      // 获取该日期的完成记录（如果有）
+      const completionRecord = await completionRecordRepository.getByTaskAndDate(task.id, date);
+
+      // 为任务添加完成状态（用于前端显示）
+      const taskWithStatus = task.toJSON();
+      taskWithStatus.completionRecord = completionRecord;
+      taskWithStatus.status = completionRecord ? completionRecord.status : 'pending';
+
+      // 根据 includeCompleted 过滤
+      if (includeCompleted || taskWithStatus.status === 'pending') {
+        recurringTasksOnDate.push(taskWithStatus);
+      }
+    }
+  }
 
   return {
     single: singleTasks,
     range: rangeTasks,
-    recurring: recurringOccurrences
+    recurring: recurringTasksOnDate // ⭐ 新架构：返回 Task[] 而不是 TaskOccurrence[]
   };
 }
 

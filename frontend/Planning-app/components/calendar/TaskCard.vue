@@ -15,7 +15,8 @@
       <!-- 1. 主图标：根据任务类型显示不同图标 -->
 
       <!-- 1.1 重复任务：显示同心圆图标（替代普通圆圈） -->
-      <view v-if="task.isRecurring || task.title?.includes('重复')" class="icon-wrapper" @tap.stop="handleRecurringClick">
+      <!-- ⚠️ BUG修复（2026-03-15）：仅根据 isRecurring 字段判断，不再使用 task.title.includes('重复') -->
+      <view v-if="task.isRecurring" class="icon-wrapper" @tap.stop="handleRecurringClick">
         <view class="recurring-double-circle">
           <view
             class="recurring-outer-circle"
