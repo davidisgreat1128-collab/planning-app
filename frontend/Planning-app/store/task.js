@@ -224,9 +224,10 @@ export const useTaskStore = defineStore('task', () => {
 
       console.log('[TaskStore] fetchTasksByDate - 后端返回:', response)
 
-      // 处理后端返回的 { single, range, recurring } 三分结构
+      // 处理后端返回的 { date, single, range, recurring } 结构
       // ⭐ request.js 已经返回解包后的 data 字段，所以直接从 response 解构
-      const { single = [], range = [], recurring = [] } = response || {}
+      // ⭐ 注意：后端返回包含 date 字段，需要一起解构（避免解构失败）
+      const { date: _, single = [], range = [], recurring = [] } = response || {}
 
       // 合并三种类型的任务
       const allTasks = [...single, ...range, ...recurring]
