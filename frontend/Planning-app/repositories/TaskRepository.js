@@ -403,6 +403,7 @@ class TaskRepository {
 
   /**
    * 上传操作队列
+   * ⭐ BUG修复（2026-03-15）：启用后端API调用，解决任务不同步到服务器的问题
    * @private
    */
   async _uploadQueue() {
@@ -414,21 +415,31 @@ class TaskRepository {
 
     console.log('[TaskRepository] 上传队列，待处理操作:', pendingOps.length)
 
+    // ⭐ 动态导入 taskApi（避免循环依赖）
+    const taskApi = require('@/api/task')
+
     for (const op of pendingOps) {
       try {
         op.status = 'syncing'
 
-        // TODO: 调用后端 API（待后续集成）
-        // if (op.type === 'create') {
-        //   await taskApi.create(op.data)
-        // } else if (op.type === 'update') {
-        //   await taskApi.update(op.entityId, op.data)
-        // } else if (op.type === 'delete') {
-        //   await taskApi.delete(op.entityId)
-        // }
+        // ✅ 调用后端 API（已启用）
+        if (op.type === 'create') {
+          const response = await taskApi.createTask(op.data)
+          console.log(`[TaskRepository] 操作 create 成功，服务器返回:`, response.data)
 
-        // 模拟成功
-        console.log(`[TaskRepository] 操作 ${op.type} 成功:`, op.entityId)
+          // ⭐ 同步服务器返回的完整数据（包含 id、isRecurring 等字段）
+          if (response.data && response.data.id) {
+            const serverTask = response.data
+            this.memoryCache.set(serverTask.id, serverTask)
+            console.log(`[TaskRepository] 已更新内存缓存为服务器版本:`, serverTask.id)
+          }
+        } else if (op.type === 'update') {
+          await taskApi.updateTask(op.entityId, op.data)
+          console.log(`[TaskRepository] 操作 update 成功:`, op.entityId)
+        } else if (op.type === 'delete') {
+          await taskApi.deleteTask(op.entityId)
+          console.log(`[TaskRepository] 操作 delete 成功:`, op.entityId)
+        }
 
         // 成功 → 从队列移除
         this.operationQueue = this.operationQueue.filter(o => o.id !== op.id)

@@ -208,6 +208,7 @@ export const useTaskStore = defineStore('task', () => {
 
   /**
    * 加载指定日期的任务
+   * ⭐ BUG修复（2026-03-15）：调用后端API获取任务，支持重复任务实时计算
    *
    * @param {string} date - 日期字符串（YYYY-MM-DD）
    * @returns {Promise<void>}
@@ -217,12 +218,37 @@ export const useTaskStore = defineStore('task', () => {
     selectedDate.value = date
 
     try {
-      // 从 Repository 获取该日期的所有任务
-      const allTasks = TaskRepository.getByDate(date)
+      // ⭐ 调用后端 API 获取任务（包含重复任务的 RRULE 实时计算）
+      const taskApi = require('@/api/task')
+      const response = await taskApi.getTasks({ date })
 
-      // TODO: 当前 Repository 只返回本地缓存，未来需要从服务器获取
-      // const res = await taskApi.getTasks({ date })
+      console.log('[TaskStore] fetchTasksByDate - 后端返回:', response)
+
       // 处理后端返回的 { single, range, recurring } 三分结构
+      const { single = [], range = [], recurring = [] } = response.data || {}
+
+      // 合并三种类型的任务
+      const allTasks = [...single, ...range, ...recurring]
+
+      console.log('[TaskStore] fetchTasksByDate - 合并后任务数:', allTasks.length)
+      console.log('  - 单日任务:', single.length)
+      console.log('  - 跨天任务:', range.length)
+      console.log('  - 重复任务:', recurring.length)
+
+      // ⭐ 同步到本地 Repository（更新缓存）
+      allTasks.forEach(task => {
+        // 检查任务是否已存在
+        const existingTask = TaskRepository.getById(task.id)
+        if (!existingTask) {
+          // 新任务：直接添加到缓存
+          TaskRepository.memoryCache.set(task.id, task)
+          console.log('[TaskStore] 新任务已添加到缓存:', task.id, task.title)
+        } else if (task.updatedAt > existingTask.updatedAt) {
+          // 任务已存在但服务器版本更新：覆盖本地缓存
+          TaskRepository.memoryCache.set(task.id, task)
+          console.log('[TaskStore] 任务缓存已更新（服务器版本更新）:', task.id, task.title)
+        }
+      })
 
       tasks.value = allTasks
     } catch (err) {
