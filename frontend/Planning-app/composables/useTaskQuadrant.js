@@ -179,9 +179,8 @@ export function useTaskQuadrant() {
 
   /**
    * 确认更改象限
-   * @param {string} selectedDate - 当前选中日期
    */
-  async function confirmChangeQuadrant(selectedDate) {
+  async function confirmChangeQuadrant() {
     const task = currentTask.value;
     const newQuadrant = targetQuadrant.value;
     const option = changeQuadrantOption.value;
@@ -207,8 +206,11 @@ export function useTaskQuadrant() {
       // 临时方案：使用taskStore.updateTask仅更新当前实例
       await taskStore.updateTask(task.id, { isUrgent, isImportant });
 
-      // 刷新任务列表
-      await taskStore.fetchTasksByDate(selectedDate);
+      // ⭐ 刷新任务列表：从taskStore获取当前选中日期
+      const selectedDate = taskStore.selectedDate;
+      if (selectedDate) {
+        await taskStore.fetchTasksByDate(selectedDate);
+      }
 
       uni.showToast({
         title: option === 1 ? '已更改（当前实例）' : '已更改（当前实例）',
@@ -227,9 +229,8 @@ export function useTaskQuadrant() {
    * @param {object} task - 任务对象
    * @param {string} from - 来源象限
    * @param {string} to - 目标象限
-   * @param {string} selectedDate - 当前选中日期
    */
-  async function changeTaskQuadrant(task, from, to, selectedDate) {
+  async function changeTaskQuadrant(task, from, to) {
     if (from === to) {
       return;
     }
@@ -246,7 +247,13 @@ export function useTaskQuadrant() {
 
       try {
         await taskStore.updateTask(task.id, { isUrgent, isImportant });
-        await taskStore.fetchTasksByDate(selectedDate);
+
+        // ⭐ 刷新任务列表：从taskStore获取当前选中日期
+        const selectedDate = taskStore.selectedDate;
+        if (selectedDate) {
+          await taskStore.fetchTasksByDate(selectedDate);
+        }
+
         uni.showToast({ title: '已更改', icon: 'success' });
       } catch (err) {
         console.error('[useTaskQuadrant] 更改象限失败:', err);
