@@ -416,7 +416,7 @@ class TaskRepository {
     console.log('[TaskRepository] 上传队列，待处理操作:', pendingOps.length)
 
     // ⭐ 动态导入 taskApi（避免循环依赖）
-    const taskApi = require('@/api/task')
+    const { createTask, updateTask, deleteTask } = await import('@/api/task')
 
     for (const op of pendingOps) {
       try {
@@ -424,7 +424,7 @@ class TaskRepository {
 
         // ✅ 调用后端 API（已启用）
         if (op.type === 'create') {
-          const response = await taskApi.createTask(op.data)
+          const response = await createTask(op.data)
           console.log(`[TaskRepository] 操作 create 成功，服务器返回:`, response.data)
 
           // ⭐ 同步服务器返回的完整数据（包含 id、isRecurring 等字段）
@@ -434,10 +434,10 @@ class TaskRepository {
             console.log(`[TaskRepository] 已更新内存缓存为服务器版本:`, serverTask.id)
           }
         } else if (op.type === 'update') {
-          await taskApi.updateTask(op.entityId, op.data)
+          await updateTask(op.entityId, op.data)
           console.log(`[TaskRepository] 操作 update 成功:`, op.entityId)
         } else if (op.type === 'delete') {
-          await taskApi.deleteTask(op.entityId)
+          await deleteTask(op.entityId)
           console.log(`[TaskRepository] 操作 delete 成功:`, op.entityId)
         }
 

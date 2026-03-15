@@ -20,6 +20,7 @@
 import { defineStore } from 'pinia'
 import { ref, computed } from 'vue'
 import TaskRepository from '@/repositories/TaskRepository'
+import * as taskApi from '@/api/task' // ⭐ 新增：用于调用后端API
 
 export const useTaskStore = defineStore('task', () => {
   // ============================================================
@@ -219,7 +220,6 @@ export const useTaskStore = defineStore('task', () => {
 
     try {
       // ⭐ 调用后端 API 获取任务（包含重复任务的 RRULE 实时计算）
-      const taskApi = require('@/api/task')
       const response = await taskApi.getTasks({ date })
 
       console.log('[TaskStore] fetchTasksByDate - 后端返回:', response)
