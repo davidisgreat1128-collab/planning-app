@@ -323,6 +323,9 @@ export function useTaskForm(options = {}) {
     // ⭐ 判断任务类型（单日任务 vs 跨天任务）
     const isRangeTask = form.value.endDate && form.value.endDate !== form.value.taskDate
 
+    // ⭐ 生成 RRULE 规则（如果是重复任务）
+    const rrule = repeatRuleManager.generateRrule() || null
+
     // 组装任务数据
     const taskData = {
       title: form.value.title.trim(),
@@ -339,7 +342,8 @@ export function useTaskForm(options = {}) {
       ),
       startTime: form.value.startTime || null,
       endTime: form.value.endTime || null,
-      rrule: repeatRuleManager.generateRrule() || null,
+      isRecurring: !!rrule,  // ⭐ 新增：判断是否为重复任务
+      rrule,
       categoryId: form.value.categoryId || null,  // 🔥 新增：分类ID
       planId: form.value.planId || null,          // 规划ID
       reminderEnabled: form.value.reminderEnabled,
@@ -387,6 +391,9 @@ export function useTaskForm(options = {}) {
     // ⭐ 判断任务类型（单日任务 vs 跨天任务）
     const isRangeTask = form.value.endDate && form.value.endDate !== form.value.taskDate
 
+    // ⭐ 生成 RRULE 规则（如果是重复任务）
+    const rrule = repeatRuleManager.generateRrule() || null
+
     // 组装任务数据
     const taskData = {
       title: form.value.title.trim(),
@@ -403,7 +410,8 @@ export function useTaskForm(options = {}) {
       ),
       startTime: form.value.startTime || null,
       endTime: form.value.endTime || null,
-      rrule: repeatRuleManager.generateRrule() || null,
+      isRecurring: !!rrule,  // ⭐ 新增：判断是否为重复任务
+      rrule,
       categoryId: form.value.categoryId || null,  // 🔥 新增：分类ID
       planId: form.value.planId || null,          // 规划ID
       reminderEnabled: form.value.reminderEnabled,
