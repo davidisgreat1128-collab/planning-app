@@ -3,6 +3,8 @@
 const { Op } = require('sequelize');
 const { Task, TaskOccurrence } = require('../models');
 const { NotFoundError, ValidationError } = require('../utils/errors');
+const rruleCalculationService = require('./rruleCalculationService'); // ⭐ 新增：RRULE实时计算
+const completionRecordRepository = require('../repositories/completionRecordRepository'); // ⭐ 新增：完成记录查询
 
 /**
  * 任务Service
@@ -122,12 +124,8 @@ async function getTasksByDate(userId, date, options = {}) {
   // 筛选出在该日期发生的重复任务
   const recurringTasksOnDate = [];
   for (const task of allRecurringTasks) {
-    const occurrences = rruleCalculationService.getOccurrences(
-      task.rrule,
-      date,
-      date,
-      task.exdate || [] // 排除日期
-    );
+    // ⭐ 使用 calculateOccurrences 方法（接收 task 对象）
+    const occurrences = rruleCalculationService.calculateOccurrences(task, date, date);
 
     if (occurrences.includes(date)) {
       // 获取该日期的完成记录（如果有）
