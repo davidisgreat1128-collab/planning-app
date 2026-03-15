@@ -206,11 +206,7 @@ export function useTaskQuadrant() {
       // 临时方案：使用taskStore.updateTask仅更新当前实例
       await taskStore.updateTask(task.id, { isUrgent, isImportant });
 
-      // ⭐ 刷新任务列表：从taskStore获取当前选中日期
-      const selectedDate = taskStore.selectedDate;
-      if (selectedDate) {
-        await taskStore.fetchTasksByDate(selectedDate);
-      }
+      // ⭐ 无需手动刷新：Repository会发布'update'事件，自动触发UI更新
 
       uni.showToast({
         title: option === 1 ? '已更改（当前实例）' : '已更改（当前实例）',
@@ -248,11 +244,7 @@ export function useTaskQuadrant() {
       try {
         await taskStore.updateTask(task.id, { isUrgent, isImportant });
 
-        // ⭐ 刷新任务列表：从taskStore获取当前选中日期
-        const selectedDate = taskStore.selectedDate;
-        if (selectedDate) {
-          await taskStore.fetchTasksByDate(selectedDate);
-        }
+        // ⭐ 无需手动刷新：Repository会发布'update'事件，自动触发UI更新
 
         uni.showToast({ title: '已更改', icon: 'success' });
       } catch (err) {
