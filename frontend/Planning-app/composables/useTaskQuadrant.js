@@ -206,7 +206,12 @@ export function useTaskQuadrant() {
       // 临时方案：使用taskStore.updateTask仅更新当前实例
       await taskStore.updateTask(task.id, { isUrgent, isImportant });
 
-      // ⭐ 无需手动刷新：Repository会发布'update'事件，自动触发UI更新
+      // ⭐ 重复任务特殊处理：需要重新获取当前日期的所有任务实例
+      // 原因：更新重复任务后，后端会重新计算RRULE，可能影响多个日期的实例
+      const selectedDate = taskStore.selectedDate;
+      if (selectedDate) {
+        await taskStore.fetchTasksByDate(selectedDate);
+      }
 
       uni.showToast({
         title: option === 1 ? '已更改（当前实例）' : '已更改（当前实例）',
