@@ -511,7 +511,8 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
-   * 清空所有无分类的任务
+   * 清空所有无分类的任务（区分普通任务和重复任务）
+   * ⭐ 架构升级（2026-03-15）：删除重复任务时会级联删除 completion_records
    *
    * @returns {Promise<void>}
    *
@@ -520,39 +521,53 @@ export const useTaskStore = defineStore('task', () => {
    * 清空流程：
    * 1. 获取所有任务
    * 2. 筛选出 categoryId=null 且 planId=null 的任务
-   * 3. 删除这些任务
+   * 3. 删除这些任务（后端 DELETE /tasks/:id 会级联删除 completion_records）
    * 4. 刷新当前任务列表
    */
   async function clearUncategorizedTasks() {
-    console.log('[TaskStore] 清空无分类任务')
+    console.log('[TaskStore] 清空无分类任务');
 
     // 1. 获取所有任务
-    const allTasks = TaskRepository.getAll()
+    const allTasks = TaskRepository.getAll();
 
     // 2. 筛选无分类任务（categoryId=null 且 planId=null）
     const uncategorizedTasks = allTasks.filter(
       t => (t.categoryId === null || t.categoryId === undefined) &&
            (t.planId === null || t.planId === undefined)
-    )
+    );
 
-    console.log('[TaskStore] 找到无分类任务数量:', uncategorizedTasks.length)
+    console.log('[TaskStore] 找到无分类任务数量:', uncategorizedTasks.length);
 
-    // 3. 删除无分类任务
+    // 3. 删除无分类任务（区分任务类型，便于调试）
+    const recurringCount = uncategorizedTasks.filter(t => t.isRecurring).length;
+    const regularCount = uncategorizedTasks.length - recurringCount;
+
+    console.log(`[TaskStore] 任务分类：普通任务${regularCount}个，重复任务${recurringCount}个`);
+
     for (const task of uncategorizedTasks) {
       try {
-        await TaskRepository.delete(task.id)
-        console.log('[TaskStore] 已删除无分类任务:', task.id)
+        if (task.isRecurring) {
+          // ✅ 重复任务：删除任务定义（后端会级联删除 completion_records）
+          console.log('[TaskStore] 删除重复任务（含完成记录）:', task.id, task.title);
+        } else {
+          // ✅ 普通任务：直接删除
+          console.log('[TaskStore] 删除普通任务:', task.id, task.title);
+        }
+
+        // 统一调用 Repository.delete（后端会处理级联删除）
+        await TaskRepository.delete(task.id);
+
       } catch (e) {
-        console.error('[TaskStore] 删除任务失败:', task.id, e)
+        console.error('[TaskStore] 删除任务失败:', task.id, e);
       }
     }
 
     // 4. 如果当前页面正在显示任务，重新加载当前日期的任务
     if (selectedDate.value) {
-      await fetchTasksByDate(selectedDate.value)
+      await fetchTasksByDate(selectedDate.value);
     }
 
-    console.log('[TaskStore] 清空无分类任务完成')
+    console.log('[TaskStore] 清空无分类任务完成');
   }
 
   /**

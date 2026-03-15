@@ -236,6 +236,7 @@ import { useTaskFilter } from '@/composables/useTaskFilter';
 import { useSubtaskModal } from '@/composables/useSubtaskModal';
 import { getQuadrant, getQuadrantColor } from '@/utils/quadrant';
 import { formatDate, getToday } from '@/utils/date';
+import * as taskApi from '@/api/task'; // ⭐ 新增：用于调用新架构API
 import CalendarBar from '@/components/calendar/CalendarBar.vue';
 import TaskQuadrantView from '@/components/calendar/TaskQuadrantView.vue';
 import TimelineView from '@/components/calendar/TimelineView.vue';
@@ -427,9 +428,57 @@ function closeSubtaskPopup() {
   currentSubtaskParent.value = null;
 }
 
+/**
+ * 切换任务完成状态（区分普通任务和重复任务）
+ * ⭐ 架构升级（2026-03-15）：重复任务使用 completion_records，普通任务使用 task.status
+ */
 async function toggleTaskDone(task) {
-  const newStatus = task.status === 'completed' ? 'pending' : 'completed';
-  await taskStore.updateTask(task.id, { status: newStatus });
+  try {
+    if (task.isRecurring) {
+      // ✅ 重复任务：创建/更新 completion_record
+      const completionDate = calendarComposable.selectedDate.value; // 当前查看的日期
+
+      // 检查今天是否已有完成记录
+      const response = await taskApi.getCompletionRecords(task.id, {
+        start: completionDate,
+        end: completionDate
+      });
+
+      const records = response.data?.rows || [];
+
+      if (records.length > 0) {
+        // 已有记录 → 切换状态
+        const record = records[0];
+        const newStatus = record.status === 'completed' ? 'pending' : 'completed';
+        await taskApi.updateCompletionRecord(task.id, completionDate, { status: newStatus });
+        console.log('[index.vue] 重复任务状态已切换:', task.title, '→', newStatus);
+      } else {
+        // 无记录 → 创建完成记录
+        await taskApi.completeRecurringTask(task.id, {
+          completionDate,
+          status: 'completed',
+          subtaskCompletion: task.subtasks ? {} : null, // 子任务完成状态（初始为空对象）
+          note: null
+        });
+        console.log('[index.vue] 重复任务已标记完成:', task.title);
+      }
+    } else {
+      // ✅ 普通任务：直接更新 task.status
+      const newStatus = task.status === 'completed' ? 'pending' : 'completed';
+      await taskStore.updateTask(task.id, { status: newStatus });
+      console.log('[index.vue] 普通任务状态已切换:', task.title, '→', newStatus);
+    }
+
+    // 刷新任务列表
+    await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
+
+  } catch (error) {
+    console.error('[index.vue] toggleTaskDone失败:', error);
+    uni.showToast({
+      title: '操作失败',
+      icon: 'none'
+    });
+  }
 }
 
 async function toggleSubtask(subtask) {
@@ -482,38 +531,68 @@ async function confirmChangeQuadrant() {
 }
 
 /**
- * 处理删除任务确认 (删除对话框)
+ * 处理删除任务确认（区分普通任务和重复任务）
+ * ⭐ 架构升级（2026-03-15）：重复任务使用 EXDATE + skipped记录，不是删除实例
  * @param {number} option - 1=仅删除当天, 2=完整清空, 3=删除当天及未来
  */
 async function handleDeleteTaskConfirm(option) {
   const task = dragDropComposable.dragState.value.task;
+  const currentDate = calendarComposable.selectedDate.value;
 
   if (!task) {
     console.error('[index.vue] handleDeleteTaskConfirm - task为空');
     return;
   }
 
-  console.log('[index.vue] handleDeleteTaskConfirm - 删除选项:', option, ', 任务:', task.title);
+  console.log('[index.vue] handleDeleteTaskConfirm - 删除选项:', option, ', 任务:', task.title, ', 日期:', currentDate);
 
   try {
-    if (option === 1) {
-      // 仅删除当天计划
-      console.log('[index.vue] 仅删除当天任务:', task.id);
+    if (!task.isRecurring) {
+      // ✅ 普通任务：直接删除任务定义（所有选项效果相同）
+      console.log('[index.vue] 删除普通任务:', task.id);
       await taskStore.removeTask(task.id);
-    } else if (option === 2) {
-      // 完整清空此条重复计划 (删除整个重复系列)
-      console.log('[index.vue] 完整清空重复任务:', task.id);
-      // TODO: 调用后端API删除重复任务的所有实例
-      await taskStore.removeTask(task.id);
-    } else if (option === 3) {
-      // 删除当天及未来计划
-      console.log('[index.vue] 删除当天及未来任务:', task.id);
-      // TODO: 调用后端API删除指定日期之后的所有实例
-      await taskStore.removeTask(task.id);
+
+    } else {
+      // ✅ 重复任务：根据选项执行不同操作
+      if (option === 1) {
+        // 仅删除当天任务 → 创建 skipped completion_record
+        console.log('[index.vue] 重复任务-仅删除当天:', task.id, currentDate);
+        await taskApi.completeRecurringTask(task.id, {
+          completionDate: currentDate,
+          status: 'skipped', // 标记为跳过
+          note: '用户拖拽删除'
+        });
+
+      } else if (option === 2) {
+        // 完整清空重复计划 → 删除任务定义（后端会级联删除所有 completion_records）
+        console.log('[index.vue] 重复任务-完整清空:', task.id);
+        await taskStore.removeTask(task.id);
+
+      } else if (option === 3) {
+        // 删除当天及未来任务 → 添加 EXDATE 条目（从今天到 rrule.until）
+        console.log('[index.vue] 重复任务-删除当天及未来:', task.id);
+
+        // 获取任务的所有未来发生日期（限制1年内，避免性能问题）
+        const rruleUntil = task.rruleUntil || formatDate(new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000)); // 默认1年后
+        const maxDate = rruleUntil > currentDate ? rruleUntil : currentDate; // 取较大值
+
+        const response = await taskApi.getTaskOccurrences(task.id, currentDate, maxDate);
+        const futureOccurrences = response.data?.occurrences || [];
+
+        console.log('[index.vue] 未来发生日期数量:', futureOccurrences.length);
+
+        // 将所有未来日期加入 EXDATE
+        const currentExdate = task.exdate || [];
+        const newExdate = [...new Set([...currentExdate, ...futureOccurrences])]; // 去重
+
+        // 更新任务的 exdate 字段
+        await taskStore.updateTask(task.id, { exdate: newExdate });
+        console.log('[index.vue] 已添加EXDATE条目数量:', futureOccurrences.length);
+      }
     }
 
     // 刷新任务列表
-    await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
+    await taskStore.fetchTasksByDate(currentDate);
 
     uni.showToast({
       title: '已删除',

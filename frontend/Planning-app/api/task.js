@@ -85,7 +85,15 @@ export const updateTask = (id, data) =>
   put(`/tasks/${id}`, data);
 
 /**
- * 更新重复任务的单个实例状态
+ * @deprecated 已废弃（2026-03-15）：请使用 completeRecurringTask + updateCompletionRecord
+ *
+ * 旧架构：基于 task_occurrences 表（已删除）
+ * 新架构：基于 task_completion_records 表 + RRULE实时计算
+ *
+ * 迁移指南：
+ * - 完成任务：completeRecurringTask(taskId, { completionDate, status: 'completed' })
+ * - 更新状态：updateCompletionRecord(taskId, date, { status })
+ *
  * @param {number} occurrenceId - 实例ID
  * @param {string} status - 'completed' | 'pending' | 'skipped'
  * @returns {Promise<object>}
@@ -118,7 +126,15 @@ export const deleteCategoryTasks = (categoryId) =>
   del(`/tasks/category/${categoryId}`);
 
 /**
- * 更新重复任务的象限属性（批量更新）
+ * @deprecated 已废弃（2026-03-15）：请直接使用 updateTask + EXDATE
+ *
+ * 旧架构：批量更新所有 task_occurrences 实例
+ * 新架构：修改任务定义本身（task表），使用 EXDATE 排除特定日期
+ *
+ * 迁移指南：
+ * - 修改任务象限：updateTask(taskId, { isUrgent, isImportant })
+ * - 排除某些日期：updateTask(taskId, { exdate: ['2026-03-01', '2026-03-02'] })
+ *
  * @param {number} taskId - 原始任务ID
  * @param {object} data - 更新数据 { isUrgent, isImportant }
  * @param {string} scope - 更新范围 'all'（全部更改）| 'future'（当天及未来）
@@ -126,3 +142,56 @@ export const deleteCategoryTasks = (categoryId) =>
  */
 export const updateTaskRecurrence = (taskId, data, scope) =>
   patch(`/tasks/${taskId}/recurrence`, { ...data, scope });
+
+// ============================================================
+// ⭐ 新架构API（2026-03-15）：基于RRULE + completion_records
+// ============================================================
+
+/**
+ * 获取重复任务在指定日期范围内的所有发生日期
+ * @param {number} taskId - 任务ID
+ * @param {string} start - 起始日期 YYYY-MM-DD
+ * @param {string} end - 结束日期 YYYY-MM-DD
+ * @returns {Promise<object>} { taskId, occurrences: ['2026-03-01', '2026-03-02', ...] }
+ */
+export const getTaskOccurrences = (taskId, start, end) =>
+  get(`/tasks/${taskId}/occurrences`, { start, end });
+
+/**
+ * 完成重复任务的某一天（创建 completion_record）
+ * @param {number} taskId - 任务ID
+ * @param {object} data - 完成记录数据
+ * @param {string} data.completionDate - 完成日期 YYYY-MM-DD（必填）
+ * @param {string} [data.status='completed'] - 状态：'completed' | 'pending' | 'skipped'
+ * @param {object} [data.subtaskCompletion] - 子任务完成状态 { subtask_0: true, subtask_1: false }
+ * @param {string} [data.note] - 备注
+ * @returns {Promise<object>} 创建的 completion_record
+ */
+export const completeRecurringTask = (taskId, data) =>
+  post(`/tasks/${taskId}/complete`, data);
+
+/**
+ * 获取重复任务的完成记录列表
+ * @param {number} taskId - 任务ID
+ * @param {object} params - 查询参数
+ * @param {string} [params.start] - 起始日期 YYYY-MM-DD
+ * @param {string} [params.end] - 结束日期 YYYY-MM-DD
+ * @param {number} [params.page=1] - 页码
+ * @param {number} [params.pageSize=20] - 每页条数
+ * @returns {Promise<object>} { taskId, records: [...], pagination }
+ */
+export const getCompletionRecords = (taskId, params = {}) =>
+  get(`/tasks/${taskId}/completion-records`, params);
+
+/**
+ * 更新重复任务的完成记录
+ * @param {number} taskId - 任务ID
+ * @param {string} date - 完成日期 YYYY-MM-DD
+ * @param {object} data - 更新数据
+ * @param {string} [data.status] - 状态：'completed' | 'pending' | 'skipped'
+ * @param {object} [data.subtaskCompletion] - 子任务完成状态
+ * @param {string} [data.note] - 备注
+ * @returns {Promise<object>} 更新后的 completion_record
+ */
+export const updateCompletionRecord = (taskId, date, data) =>
+  put(`/tasks/${taskId}/completion-records/${date}`, data);
