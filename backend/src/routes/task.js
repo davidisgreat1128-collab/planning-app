@@ -76,6 +76,10 @@ const idParamSchema = Joi.object({
   id: Joi.number().integer().positive().required()
 });
 
+const taskIdParamSchema = Joi.object({
+  taskId: Joi.number().integer().positive().required()
+});
+
 const planIdParamSchema = Joi.object({
   planId: Joi.string().max(50).required()  // 修改：前端规划ID是字符串类型
 });
@@ -149,7 +153,7 @@ router.delete('/category/:categoryId', validateParams(categoryIdParamSchema), ta
 // GET /api/v1/tasks/:taskId/occurrences?start=2026-03-01&end=2026-03-31
 // 获取重复任务在指定日期范围内的所有发生日期
 router.get('/:taskId/occurrences',
-  validateParams(idParamSchema),
+  validateParams(taskIdParamSchema),
   validateQuery(getOccurrencesQuerySchema),
   taskController.getTaskOccurrences
 );
@@ -157,7 +161,7 @@ router.get('/:taskId/occurrences',
 // POST /api/v1/tasks/:taskId/complete
 // 创建任务完成记录
 router.post('/:taskId/complete',
-  validateParams(idParamSchema),
+  validateParams(taskIdParamSchema),
   validate(completeTaskSchema),
   taskController.completeTask
 );
@@ -165,7 +169,7 @@ router.post('/:taskId/complete',
 // GET /api/v1/tasks/:taskId/completion-records?start=2026-03-01&end=2026-03-31
 // 获取任务的完成记录列表
 router.get('/:taskId/completion-records',
-  validateParams(idParamSchema),
+  validateParams(taskIdParamSchema),
   validateQuery(getCompletionRecordsQuerySchema),
   taskController.getCompletionRecords
 );

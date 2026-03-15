@@ -3,8 +3,9 @@
 const taskService = require('../services/taskService');
 const completionRecordRepository = require('../repositories/CompletionRecordRepository');
 const rruleCalculationService = require('../services/RRuleCalculationService');
+const { Task } = require('../models');
 const { success, created } = require('../utils/response');
-const { ValidationError } = require('../utils/errors');
+const { ValidationError, NotFoundError } = require('../utils/errors');
 
 /**
  * POST /api/v1/tasks
@@ -175,7 +176,10 @@ async function getTaskOccurrences(req, res, next) {
     }
 
     // 获取任务
-    const task = await taskService.getTaskById(taskId, req.user.id);
+    const task = await Task.findOne({ where: { id: taskId, userId: req.user.id } });
+    if (!task) {
+      throw new NotFoundError('任务');
+    }
 
     if (!task.isRecurring || !task.rrule) {
       return success(res, { occurrences: [] }, '任务不是重复任务');
@@ -206,7 +210,10 @@ async function completeTask(req, res, next) {
     }
 
     // 验证任务是否存在
-    const task = await taskService.getTaskById(taskId, req.user.id);
+    const task = await Task.findOne({ where: { id: taskId, userId: req.user.id } });
+    if (!task) {
+      throw new NotFoundError('任务');
+    }
 
     // 如果是重复任务，检查该日期是否有效
     if (task.isRecurring && task.rrule) {
@@ -243,7 +250,10 @@ async function getCompletionRecords(req, res, next) {
     const { start, end, page = 1, pageSize = 20 } = req.query;
 
     // 验证任务是否存在
-    await taskService.getTaskById(taskId, req.user.id);
+    const task = await Task.findOne({ where: { id: taskId, userId: req.user.id } });
+    if (!task) {
+      throw new NotFoundError('任务');
+    }
 
     // 获取完成记录
     const { rows, count } = await completionRecordRepository.getByTask(taskId, {
@@ -283,7 +293,10 @@ async function updateCompletionRecord(req, res, next) {
     }
 
     // 验证任务是否存在
-    await taskService.getTaskById(taskId, req.user.id);
+    const task = await Task.findOne({ where: { id: taskId, userId: req.user.id } });
+    if (!task) {
+      throw new NotFoundError('任务');
+    }
 
     // 更新完成记录
     const record = await completionRecordRepository.update(taskId, completionDate, req.body);

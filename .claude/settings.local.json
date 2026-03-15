@@ -26,7 +26,14 @@
       "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DROP TABLE IF EXISTS task_occurrences;\")",
       "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SHOW COLUMNS FROM tasks LIKE ''exdate'';\")",
       "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"ALTER TABLE tasks ADD COLUMN exdate TEXT DEFAULT NULL COMMENT ''例外日期JSON数组'';\")",
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SHOW TABLES; DESC task_completion_records;\")"
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SHOW TABLES; DESC task_completion_records;\")",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(cmd //c \"taskkill /PID 11736 /F\")",
+      "Bash(npm run dev:*)",
+      "Bash(curl:*)",
+      "Bash(export TOKEN:*)"
     ],
     "deny": [],
     "ask": []

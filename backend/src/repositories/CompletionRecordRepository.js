@@ -5,6 +5,7 @@
  * 职责: 任务完成记录的数据访问层
  */
 
+const { Op } = require('sequelize');
 const { CompletionRecord, Task, User } = require('../models');
 const { NotFoundError, ValidationError } = require('../utils/errors');
 
@@ -81,8 +82,8 @@ class CompletionRecordRepository {
     // 日期范围过滤
     if (startDate || endDate) {
       where.completionDate = {};
-      if (startDate) where.completionDate.$gte = startDate;
-      if (endDate) where.completionDate.$lte = endDate;
+      if (startDate) where.completionDate[Op.gte] = startDate;
+      if (endDate) where.completionDate[Op.lte] = endDate;
     }
 
     const { rows, count } = await CompletionRecord.findAndCountAll({
@@ -108,8 +109,8 @@ class CompletionRecordRepository {
       where: {
         userId,
         completionDate: {
-          $gte: startDate,
-          $lte: endDate
+          [Op.gte]: startDate,
+          [Op.lte]: endDate
         }
       },
       include: [{ model: Task, as: 'task' }],

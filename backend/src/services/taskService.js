@@ -58,13 +58,15 @@ async function createTask(userId, data) {
     rruleUntil: isRecurring ? rruleUntil : null,
     planId,
     categoryId,  // 保存分类ID到数据库
-    sourceType: planId ? 'from_plan' : 'manual'
+    sourceType: planId ? 'from_plan' : 'manual',
+    subtasks: data.subtasks || null  // 添加：保存子任务
   });
 
-  // 如果是重复任务，生成近3个月的实例
-  if (isRecurring && rrule) {
-    await generateOccurrences(task, 90);
-  }
+  // ⚠️ 重复任务重构：不再预生成TaskOccurrence实例
+  // 改为按需使用RRULE规则实时计算（见RRuleCalculationService）
+  // if (isRecurring && rrule) {
+  //   await generateOccurrences(task, 90);
+  // }
 
   return task;
 }
