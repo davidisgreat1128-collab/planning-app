@@ -320,6 +320,9 @@ export function useTaskForm(options = {}) {
       throw new Error(errors[0])
     }
 
+    // ⭐ 判断任务类型（单日任务 vs 跨天任务）
+    const isRangeTask = form.value.endDate && form.value.endDate !== form.value.taskDate
+
     // 组装任务数据
     const taskData = {
       title: form.value.title.trim(),
@@ -328,8 +331,12 @@ export function useTaskForm(options = {}) {
       isImportant: form.value.isImportant,
       isAllDay: form.value.isAllDay,
       hasTimeRange: form.value.hasTimeRange,
-      taskDate: form.value.taskDate,
-      endDate: form.value.endDate || null,
+      dateType: isRangeTask ? 'range' : 'single',  // ⭐ 新增：任务类型
+      // ⭐ 根据任务类型发送不同的日期字段
+      ...(isRangeTask
+        ? { startDate: form.value.taskDate, endDate: form.value.endDate }
+        : { taskDate: form.value.taskDate }
+      ),
       startTime: form.value.startTime || null,
       endTime: form.value.endTime || null,
       rrule: repeatRuleManager.generateRrule() || null,
@@ -377,6 +384,9 @@ export function useTaskForm(options = {}) {
       throw new Error(errors[0])
     }
 
+    // ⭐ 判断任务类型（单日任务 vs 跨天任务）
+    const isRangeTask = form.value.endDate && form.value.endDate !== form.value.taskDate
+
     // 组装任务数据
     const taskData = {
       title: form.value.title.trim(),
@@ -385,8 +395,12 @@ export function useTaskForm(options = {}) {
       isImportant: form.value.isImportant,
       isAllDay: form.value.isAllDay,
       hasTimeRange: form.value.hasTimeRange,
-      taskDate: form.value.taskDate,
-      endDate: form.value.endDate || null,
+      dateType: isRangeTask ? 'range' : 'single',  // ⭐ 新增：任务类型
+      // ⭐ 根据任务类型发送不同的日期字段
+      ...(isRangeTask
+        ? { startDate: form.value.taskDate, endDate: form.value.endDate }
+        : { taskDate: form.value.taskDate }
+      ),
       startTime: form.value.startTime || null,
       endTime: form.value.endTime || null,
       rrule: repeatRuleManager.generateRrule() || null,
