@@ -102,7 +102,7 @@ class RecurringTaskService {
         isAllDay: updates.isAllDay !== undefined ? updates.isAllDay : originalTask.isAllDay,
         isRecurring: true,
         rrule: this._updateRRuleStartDate(originalTask.rrule, splitDate),
-        rruleUntil: originalTask.rruleUntil, // 保留原结束日期（如果有）
+        rruleUntil: null, // ⭐ 新任务永久重复，不继承原UNTIL
         exdate: '[]', // 新任务不继承EXDATE
         categoryId: originalTask.categoryId,
         planId: originalTask.planId,
@@ -328,9 +328,11 @@ class RecurringTaskService {
       const rrule = rrulestr(rruleString);
       const options = rrule.options;
 
+      // ⭐ 创建新RRULE：更新开始日期，移除UNTIL参数（新任务应该永久重复）
       const newRRule = new RRule({
         ...options,
-        dtstart: new Date(newStartDate + 'T00:00:00Z')
+        dtstart: new Date(newStartDate + 'T00:00:00Z'),
+        until: null // ⭐ 移除UNTIL参数，新任务永久重复
       });
 
       return newRRule.toString();
