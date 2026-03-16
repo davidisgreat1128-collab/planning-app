@@ -5,6 +5,7 @@ const { Task, TaskOccurrence } = require('../models');
 const { NotFoundError, ValidationError } = require('../utils/errors');
 const rruleCalculationService = require('./rruleCalculationService'); // ⭐ 新增：RRULE实时计算
 const completionRecordRepository = require('../repositories/completionRecordRepository'); // ⭐ 新增：完成记录查询
+const taskOverrideRepository = require('../repositories/TaskOverrideRepository'); // ⭐ 新增：单日覆盖查询
 
 /**
  * 任务Service
@@ -122,23 +123,48 @@ async function getTasksByDate(userId, date, options = {}) {
   });
 
   // 筛选出在该日期发生的重复任务
+  // ⭐ 架构升级（2026-03-16）：应用优先级流程（删除标记 → 覆盖 → 默认规则）
   const recurringTasksOnDate = [];
   for (const task of allRecurringTasks) {
-    // ⭐ 使用 calculateOccurrences 方法（接收 task 对象）
+    // ⭐ 优先级1：检查 EXDATE（删除标记）
+    // calculateOccurrences 内部已处理 EXDATE，如果该日期在 EXDATE 中，不会包含在 occurrences 中
     const occurrences = rruleCalculationService.calculateOccurrences(task, date, date);
 
     if (occurrences.includes(date)) {
+      // ⭐ 优先级2：检查单日覆盖（task_overrides）
+      const override = await taskOverrideRepository.getByTaskAndDate(task.id, date);
+
+      // 创建任务实例（基础数据来自任务规则）
+      const taskInstance = task.toJSON();
+
+      // 应用单日覆盖（如果存在）
+      if (override) {
+        // NULL 字段表示"不覆盖"，保留默认值
+        if (override.title !== null) taskInstance.title = override.title;
+        if (override.description !== null) taskInstance.description = override.description;
+        if (override.isUrgent !== null) taskInstance.isUrgent = override.isUrgent;
+        if (override.isImportant !== null) taskInstance.isImportant = override.isImportant;
+        if (override.startTime !== null) taskInstance.startTime = override.startTime;
+        if (override.endTime !== null) taskInstance.endTime = override.endTime;
+        if (override.isAllDay !== null) taskInstance.isAllDay = override.isAllDay;
+
+        // 标记该实例已被覆盖（用于前端显示）
+        taskInstance.isOverridden = true;
+        taskInstance.overrideId = override.id;
+      }
+
+      // ⭐ 优先级3：使用默认任务规则（已在 taskInstance 中）
+
       // 获取该日期的完成记录（如果有）
       const completionRecord = await completionRecordRepository.getByTaskAndDate(task.id, date);
 
-      // 为任务添加完成状态（用于前端显示）
-      const taskWithStatus = task.toJSON();
-      taskWithStatus.completionRecord = completionRecord;
-      taskWithStatus.status = completionRecord ? completionRecord.status : 'pending';
+      // 添加完成状态（用于前端显示）
+      taskInstance.completionRecord = completionRecord;
+      taskInstance.status = completionRecord ? completionRecord.status : 'pending';
 
       // 根据 includeCompleted 过滤
-      if (includeCompleted || taskWithStatus.status === 'pending') {
-        recurringTasksOnDate.push(taskWithStatus);
+      if (includeCompleted || taskInstance.status === 'pending') {
+        recurringTasksOnDate.push(taskInstance);
       }
     }
   }
@@ -410,6 +436,111 @@ async function deleteCategoryTasks(userId, categoryId) {
   return result;
 }
 
+// ============================================================
+// ⭐ 新增（2026-03-15）：重复任务批量更新Service
+// ============================================================
+
+/**
+ * 更新重复任务的未来实例（保留过去记录）
+ *
+ * @param {number} taskId - 任务ID
+ * @param {number} userId - 用户ID
+ * @param {object} updateData - 要更新的字段（如 isUrgent, isImportant）
+ * @param {string} scope - 更新范围（目前仅支持'future'）
+ * @param {string} currentDate - 当前日期（YYYY-MM-DD），作为未来的分界点
+ * @returns {Promise<Task>} 更新后的任务对象
+ *
+ * 实现逻辑：
+ * 1. 更新Task表（影响所有日期的RRULE定义）
+ * 2. 删除未来的CompletionRecord（currentDate及之后的记录）
+ * 3. 保留过去的CompletionRecord（currentDate之前的记录）
+ */
+async function updateTaskRecurrence(taskId, userId, updateData, scope, currentDate) {
+  // 1. 查询任务（验证权限和存在性）
+  const task = await Task.findOne({
+    where: { id: taskId, userId }
+  });
+
+  if (!task) {
+    throw new NotFoundError('任务');
+  }
+
+  if (!task.isRecurring) {
+    throw new ValidationError('该任务不是重复任务');
+  }
+
+  // 2. 更新Task表（影响所有日期）
+  await task.update(updateData);
+
+  // 3. 清理未来的CompletionRecord（保留过去记录）
+  if (scope === 'future') {
+    await completionRecordRepository.deleteFutureRecords(taskId, currentDate);
+    console.log(`[TaskService] 已清理未来CompletionRecord: taskId=${taskId}, date>=${currentDate}`);
+  }
+
+  return task;
+}
+
+/**
+ * 仅更新重复任务的单个日期实例（象限覆盖）
+ *
+ * @param {number} taskId - 任务ID
+ * @param {number} userId - 用户ID
+ * @param {object} updateData - 要更新的字段（如 isUrgent, isImportant）
+ * @param {string} date - 指定日期（YYYY-MM-DD）
+ * @returns {Promise<object>} 更新后的 CompletionRecord 对象
+ *
+ * 实现逻辑：
+ * 1. 查询该日期的CompletionRecord
+ * 2. 如果存在 → 在note字段中存储象限覆盖信息
+ * 3. 如果不存在 → 创建新的CompletionRecord，存储象限覆盖
+ */
+async function updateTaskOccurrence(taskId, userId, updateData, date) {
+  // 1. 查询任务（验证权限和存在性）
+  const task = await Task.findOne({
+    where: { id: taskId, userId }
+  });
+
+  if (!task) {
+    throw new NotFoundError('任务');
+  }
+
+  if (!task.isRecurring) {
+    throw new ValidationError('该任务不是重复任务');
+  }
+
+  // 2. 查询该日期的CompletionRecord
+  let record = await completionRecordRepository.getByTaskAndDate(taskId, date);
+
+  // 3. 构建象限覆盖信息（存储在note字段的JSON中）
+  const noteData = record?.note ? JSON.parse(record.note) : {};
+  noteData.overrides = {
+    ...(noteData.overrides || {}),
+    ...updateData
+  };
+
+  const newNote = JSON.stringify(noteData);
+
+  if (record) {
+    // 记录已存在 → 更新note字段
+    await completionRecordRepository.update(taskId, date, { note: newNote });
+    console.log(`[TaskService] 已更新单日实例覆盖: taskId=${taskId}, date=${date}`);
+  } else {
+    // 记录不存在 → 创建新记录
+    record = await completionRecordRepository.create({
+      taskId,
+      userId,
+      completionDate: date,
+      status: 'pending',
+      note: newNote
+    });
+    console.log(`[TaskService] 已创建单日实例覆盖: taskId=${taskId}, date=${date}`);
+  }
+
+  // 重新查询最新记录
+  return await completionRecordRepository.getByTaskAndDate(taskId, date);
+}
+
 module.exports = {
   createTask,
   getTasksByDate,
@@ -420,5 +551,8 @@ module.exports = {
   getSubtasksByPlan,
   generateOccurrences,
   updateCategoryTasksToUncategorized,
-  deleteCategoryTasks
+  deleteCategoryTasks,
+  // ⭐ 新增（2026-03-15）
+  updateTaskRecurrence,
+  updateTaskOccurrence
 };

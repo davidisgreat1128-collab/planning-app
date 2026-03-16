@@ -8,6 +8,7 @@ const initHolidayModel = require('./holiday');
 const initTaskModel = require('./task');
 const initWorkDayModel = require('./workDay');
 const initTaskOccurrenceModel = require('./taskOccurrence');
+const initTaskOverrideModel = require('./TaskOverride');
 const initAlarmSoundModel = require('./alarmSound');
 const initAlarmModel = require('./alarm');
 const initJournalLogModel = require('./journalLog');
@@ -50,6 +51,7 @@ const WorkDay = initWorkDayModel(sequelize);
 const Holiday = initHolidayModel(sequelize);
 const Task = initTaskModel(sequelize);
 const TaskOccurrence = initTaskOccurrenceModel(sequelize);
+const TaskOverride = initTaskOverrideModel(sequelize);
 const AlarmSound = initAlarmSoundModel(sequelize);
 const Alarm = initAlarmModel(sequelize);
 const JournalLog = initJournalLogModel(sequelize);
@@ -108,6 +110,13 @@ CompletionRecord.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
 User.hasMany(CompletionRecord, { foreignKey: 'userId', as: 'completionRecords' });
 CompletionRecord.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// TaskOverride 关联（新增）
+Task.hasMany(TaskOverride, { foreignKey: 'taskId', as: 'overrides' });
+TaskOverride.belongsTo(Task, { foreignKey: 'taskId', as: 'task' });
+
+User.hasMany(TaskOverride, { foreignKey: 'userId', as: 'taskOverrides' });
+TaskOverride.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
 const db = {
   sequelize,
   Sequelize,
@@ -118,6 +127,7 @@ const db = {
   Holiday,
   Task,
   TaskOccurrence,
+  TaskOverride,
   AlarmSound,
   Alarm,
   JournalLog,
