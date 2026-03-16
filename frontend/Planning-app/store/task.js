@@ -291,35 +291,41 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
-   * 更新重复任务的未来实例（保留过去记录）⭐ 新增（2026-03-15）
+   * 修改重复任务未来实例（拆分规则）⭐ RRULE架构升级（2026-03-16）
    *
    * @param {string} id - 任务 ID
    * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
-   * @param {string} currentDate - 当前日期（格式：YYYY-MM-DD），作为"未来"的分界点
-   * @returns {Promise<object>} 更新后的任务对象
+   * @param {string} splitDate - 拆分日期（格式：YYYY-MM-DD），从这天开始应用新规则
+   * @returns {Promise<object>} { oldTask, newTask }
    */
-  async function updateTaskFuture(id, data, currentDate) {
-    const updated = await TaskRepository.updateFuture(id, data, currentDate)
+  async function updateTaskFuture(id, data, splitDate) {
+    const result = await TaskRepository.updateTaskFuture(id, data, splitDate)
 
-    // ⭐ 无需手动更新 tasks.value，Repository 会发布 'update' 事件，自动触发更新
+    // ⭐ 刷新当前日期的任务列表（因为拆分会影响显示）
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
 
-    return updated
+    return result
   }
 
   /**
-   * 仅更新重复任务的单个日期实例（象限覆盖）⭐ 新增（2026-03-15）
+   * 修改重复任务的单日实例（创建task_overrides记录）⭐ RRULE架构升级（2026-03-16）
    *
    * @param {string} id - 任务 ID
-   * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
-   * @param {string} date - 指定日期（格式：YYYY-MM-DD）
-   * @returns {Promise<object>} 更新后的 CompletionRecord 对象
+   * @param {object} data - 要更新的字段（如 isUrgent, isImportant, title, description等）
+   * @param {string} date - 目标日期（格式：YYYY-MM-DD）
+   * @returns {Promise<object>} task_overrides记录
    */
-  async function updateTaskOnce(id, data, date) {
-    const updated = await TaskRepository.updateOnce(id, data, date)
+  async function updateTaskSingleDay(id, data, date) {
+    const override = await TaskRepository.updateTaskSingleDay(id, data, date)
 
-    // ⭐ 无需手动更新 tasks.value，Repository 会发布 'update' 事件，自动触发更新
+    // ⭐ 刷新当前日期的任务列表（因为覆盖会影响显示）
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
 
-    return updated
+    return override
   }
 
   /**
@@ -716,7 +722,7 @@ export const useTaskStore = defineStore('task', () => {
     addTask,
     updateTask,
     updateTaskFuture,                // ⭐ 新增（2026-03-15）：更新未来实例
-    updateTaskOnce,                  // ⭐ 新增（2026-03-15）：仅更新单日实例
+    updateTaskSingleDay,                  // ⭐ 新增（2026-03-15）：仅更新单日实例
     toggleDone,
     removeTask,
     updateQuadrant,

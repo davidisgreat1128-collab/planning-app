@@ -319,6 +319,106 @@ class TaskRepository {
   }
 
   /**
+   * 修改重复任务的单日实例（创建task_overrides记录）⭐ RRULE架构升级（2026-03-16）
+   *
+   * @param {string} id - 任务 ID
+   * @param {object} data - 要更新的字段（如 isUrgent, isImportant, title, description等）
+   * @param {string} date - 目标日期（格式：YYYY-MM-DD）
+   * @returns {Promise<object>} task_overrides记录
+   *
+   * 实现逻辑：
+   * 1. 调用后端API：POST /api/v1/tasks/:id/modify-single-day
+   * 2. 后端会：创建task_overrides记录（所有字段支持NULL覆盖机制）
+   * 3. 不更新本地缓存（Task表未改变）
+   * 4. 通知订阅者触发重新查询
+   */
+  async updateTaskSingleDay(id, data, date) {
+    const task = this.memoryCache.get(id)
+    if (!task) {
+      throw new Error(`任务不存在：${id}`)
+    }
+
+    console.log('[TaskRepository] 修改单日实例（task_overrides）:', task.title || task.id, '日期:', date, '更新:', data)
+
+    try {
+      // 调用后端API（POST /tasks/:id/modify-single-day）
+      const override = await request({
+        url: `/tasks/${id}/modify-single-day`,
+        method: 'POST',
+        data: {
+          date,      // 目标日期
+          updates: data  // 要覆盖的字段
+        }
+      })
+
+      // ⭐ 不更新本地缓存（Task表未改变）
+      // ⭐ 但仍然通知订阅者（触发重新查询getTasksByDate）
+      this._notify('updateSingleDay', { taskId: id, date, override })
+
+      return override
+    } catch (error) {
+      console.error('[TaskRepository] 修改单日实例失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 修改重复任务未来实例（拆分规则）⭐ RRULE架构升级（2026-03-16）
+   *
+   * @param {string} id - 任务 ID
+   * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
+   * @param {string} splitDate - 拆分日期（格式：YYYY-MM-DD），从这天开始应用新规则
+   * @returns {Promise<object>} { oldTask, newTask }
+   *
+   * 实现逻辑：
+   * 1. 调用后端API：POST /api/v1/tasks/:id/modify-future
+   * 2. 后端会：拆分任务规则（旧任务UNTIL截止，新任务继承属性+应用更新）
+   * 3. 更新本地缓存（新旧两个任务）
+   * 4. 通知订阅者
+   */
+  async updateTaskFuture(id, data, splitDate) {
+    const task = this.memoryCache.get(id)
+    if (!task) {
+      throw new Error(`任务不存在：${id}`)
+    }
+
+    console.log('[TaskRepository] 修改未来实例（拆分规则）:', task.title || task.id, '拆分日期:', splitDate, '更新:', data)
+
+    try {
+      // 调用后端API（POST /tasks/:id/modify-future）
+      const result = await request({
+        url: `/tasks/${id}/modify-future`,
+        method: 'POST',
+        data: {
+          splitDate,  // 拆分日期
+          updates: data  // 要更新的字段
+        }
+      })
+
+      // result = { oldTask, newTask }
+      const { oldTask, newTask } = result
+
+      // 更新旧任务缓存（UNTIL已修改）
+      this.memoryCache.set(oldTask.id, oldTask)
+
+      // 添加新任务到缓存
+      this.memoryCache.set(newTask.id, newTask)
+
+      // 持久化
+      this._saveToLocalStorage()
+
+      // ⭐ 发布事件：通知订阅者任务已更新
+      this._notify('updateTaskFuture', { oldTask, newTask })
+
+      return result
+    } catch (error) {
+      console.error('[TaskRepository] 修改未来实例失败:', error)
+      throw error
+    }
+  }
+
+
+  /**
    * 删除任务
    *
    * @param {string} id - 任务 ID
