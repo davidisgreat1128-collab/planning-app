@@ -31,6 +31,7 @@
     <view class="modal-content" @tap.stop>
       <text class="modal-title">选择更改范围</text>
       <view class="modal-options">
+        <!-- 选项1：完整更改此条重复计划 -->
         <view
           class="modal-option"
           :class="{ active: changeQuadrantOption === 1 }"
@@ -39,14 +40,27 @@
           <text class="option-text">完整更改此条重复计划</text>
           <view v-if="changeQuadrantOption === 1" class="option-check">✓</view>
         </view>
+
+        <!-- 选项2：更改当天及未来计划 -->
         <view
           class="modal-option"
           :class="{ active: changeQuadrantOption === 2 }"
           @tap="emit('update:changeQuadrantOption', 2)"
         >
-          <text class="option-text">{{ option2Text }}</text>
+          <text class="option-text">更改当天及未来计划</text>
           <text class="option-hint">不影响过去记录</text>
           <view v-if="changeQuadrantOption === 2" class="option-check">✓</view>
+        </view>
+
+        <!-- 选项3：只更新当天计划 ⭐ 新增 -->
+        <view
+          class="modal-option"
+          :class="{ active: changeQuadrantOption === 3 }"
+          @tap="emit('update:changeQuadrantOption', 3)"
+        >
+          <text class="option-text">只更新当天计划</text>
+          <text class="option-hint">不影响过去记录和未来记录</text>
+          <view v-if="changeQuadrantOption === 3" class="option-check">✓</view>
         </view>
       </view>
       <view class="modal-actions">
@@ -110,14 +124,14 @@ const props = defineProps({
     type: Boolean,
     default: false
   },
-  // 当前选中的象限切换选项（1=全部更改, 2=仅未来）
+  // 当前选中的象限切换选项（1=全部更改, 2=当天及未来, 3=仅当天）⭐ 新增选项3
   changeQuadrantOption: {
     type: Number,
     default: 1
   },
   /**
    * 当前选中的日期（格式：YYYY-MM-DD）
-   * 用于显示"更改X月X日及未来计划"文案
+   * 用于后端API调用（区分"当天及未来"的分界点）
    */
   currentDate: {
     type: String,
@@ -139,27 +153,6 @@ const deleteTaskOption = ref(1);
 
 // Props 响应式解构
 const { dragState, showChangeQuadrantDialog, changeQuadrantOption, currentDate } = toRefs(props);
-
-/**
- * 计算选项2的文案（根据当前日期动态生成）
- * 示例：2026-03-17 → "更改17号及未来计划"
- */
-const option2Text = computed(() => {
-  if (!currentDate.value) {
-    return '更改当天及未来计划'; // 兜底文案
-  }
-
-  // 解析日期：YYYY-MM-DD → 月份 + 日期
-  const parts = currentDate.value.split('-');
-  if (parts.length !== 3) {
-    return '更改当天及未来计划'; // 格式错误时兜底
-  }
-
-  const month = parseInt(parts[1], 10); // 去掉前导0：03 → 3
-  const day = parseInt(parts[2], 10);   // 去掉前导0：17 → 17
-
-  return `更改${day}号及未来计划`;
-});
 
 /**
  * 关闭象限切换对话框

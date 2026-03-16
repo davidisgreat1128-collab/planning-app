@@ -14,7 +14,7 @@ const { Solar, Lunar } = require('lunar-javascript');
  * @returns {Promise<Array>} 节日列表，每项含 solarDate 字段（YYYY-MM-DD）
  */
 async function getHolidaysByYear(year) {
-    const holidays = await Holiday.findAll({
+  const holidays = await Holiday.findAll({
     where: { isActive: true },
     order: [['type', 'ASC'], ['month', 'ASC'], ['day', 'ASC']]
   });
@@ -68,7 +68,7 @@ async function getHolidaysByMonth(year, month) {
   const monthStr = `${year}-${String(month).padStart(2, '0')}`;
 
   const map = {};
-    for (const h of allHolidays) {
+  for (const h of allHolidays) {
     if (h.solarDate && h.solarDate.startsWith(monthStr)) {
       if (!map[h.solarDate]) map[h.solarDate] = [];
       map[h.solarDate].push(h);
@@ -84,7 +84,7 @@ async function getHolidaysByMonth(year, month) {
  * @returns {Promise<Object>} key=YYYY-MM-DD, value=节日信息数组
  */
 async function getHolidaysByRange(startDate, endDate) {
-    const startYear = parseInt(startDate.substring(0, 4));
+  const startYear = parseInt(startDate.substring(0, 4));
   const endYear = parseInt(endDate.substring(0, 4));
 
   let allHolidays = [];
@@ -94,7 +94,7 @@ async function getHolidaysByRange(startDate, endDate) {
   }
 
   const map = {};
-    for (const h of allHolidays) {
+  for (const h of allHolidays) {
     if (h.solarDate && h.solarDate >= startDate && h.solarDate <= endDate) {
       if (!map[h.solarDate]) map[h.solarDate] = [];
       map[h.solarDate].push(h);

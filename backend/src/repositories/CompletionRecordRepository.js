@@ -171,6 +171,26 @@ class CompletionRecordRepository {
   }
 
   /**
+   * 删除未来的完成记录（批量删除）⭐ 新增（2026-03-15）
+   * @param {number} taskId - 任务ID
+   * @param {string} fromDate - 起始日期（YYYY-MM-DD），包含此日期
+   * @returns {Promise<number>} 删除的记录数
+   */
+  async deleteFutureRecords(taskId, fromDate) {
+    const result = await CompletionRecord.destroy({
+      where: {
+        taskId,
+        completionDate: {
+          [Op.gte]: fromDate  // 大于等于fromDate
+        }
+      }
+    });
+
+    console.log(`[CompletionRecordRepository] 删除未来记录: taskId=${taskId}, date>=${fromDate}, count=${result}`);
+    return result;
+  }
+
+  /**
    * 获取任务的完成统计
    * @param {number} taskId - 任务ID
    * @returns {Promise<object>} 统计数据

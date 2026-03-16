@@ -3,6 +3,7 @@
 const taskService = require('../services/taskService');
 const completionRecordRepository = require('../repositories/CompletionRecordRepository');
 const rruleCalculationService = require('../services/RRuleCalculationService');
+const recurringTaskService = require('../services/RecurringTaskService'); // ⭐ 新增（2026-03-16）
 const { Task } = require('../models');
 const { success, created } = require('../utils/response');
 const { ValidationError, NotFoundError } = require('../utils/errors');
@@ -308,6 +309,191 @@ async function updateCompletionRecord(req, res, next) {
   }
 }
 
+// ============================================================
+// ⭐ 新增（2026-03-15）：重复任务批量更新Controller
+// ============================================================
+
+/**
+ * PUT /api/v1/tasks/:id/recurrence?scope=future&date=YYYY-MM-DD
+ * 更新重复任务的未来实例（保留过去记录）
+ */
+async function updateTaskRecurrence(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const { scope, date } = req.query;
+    const updateData = req.body;
+
+    console.log(`[TaskController] 更新重复任务 taskId=${taskId}, scope=${scope}, date=${date}`);
+
+    const task = await taskService.updateTaskRecurrence(taskId, userId, updateData, scope, date);
+
+    return success(res, task, '未来实例已更新');
+  } catch (err) {
+    console.error('[TaskController] 更新未来实例失败:', err);
+    next(err);
+  }
+}
+
+/**
+ * PUT /api/v1/tasks/:id/occurrences/:date
+ * 仅更新重复任务的单个日期实例（象限覆盖）
+ */
+async function updateTaskOccurrence(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.taskId || req.params.id);
+    const userId = req.user.id;
+    const { date } = req.params;
+    const updateData = req.body;
+
+    console.log(`[TaskController] 更新单日实例 taskId=${taskId}, date=${date}`);
+
+    const record = await taskService.updateTaskOccurrence(taskId, userId, updateData, date);
+
+    return success(res, record, '当天实例已更新');
+  } catch (err) {
+    console.error('[TaskController] 更新单日实例失败:', err);
+    next(err);
+  }
+}
+
+// ============================================================
+// ⭐ RRULE架构完善 - 阶段一Day3新增（2026-03-16）
+// 重复任务的四种核心操作
+// ============================================================
+
+/**
+ * POST /api/v1/tasks/:id/modify-single-day
+ * 操作1：修改当天 - 创建单日覆盖
+ * @param {number} req.params.id - 任务ID
+ * @param {string} req.body.date - 日期（YYYY-MM-DD）
+ * @param {object} req.body.updates - 要覆盖的字段
+ */
+async function modifyRecurringTaskSingleDay(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const { date, updates } = req.body;
+
+    // 参数验证
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new ValidationError('日期格式需为 YYYY-MM-DD');
+    }
+    if (!updates || typeof updates !== 'object') {
+      throw new ValidationError('updates 必须是对象');
+    }
+
+    console.log(`[TaskController] 修改当天 taskId=${taskId}, date=${date}`);
+
+    // 调用RecurringTaskService
+    const override = await recurringTaskService.modifySingleDay(
+      taskId,
+      userId,
+      date,
+      updates
+    );
+
+    return created(res, override, '单日覆盖创建成功');
+  } catch (err) {
+    console.error('[TaskController] 修改当天失败:', err);
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/tasks/:id/modify-future
+ * 操作2：修改未来 - 拆分任务规则
+ * @param {number} req.params.id - 任务ID
+ * @param {string} req.body.splitDate - 拆分起始日期（YYYY-MM-DD）
+ * @param {object} req.body.updates - 新规则的字段更新
+ */
+async function modifyRecurringTaskFuture(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.id);
+    const userId = req.user.id;
+    const { splitDate, updates } = req.body;
+
+    // 参数验证
+    if (!splitDate || !/^\d{4}-\d{2}-\d{2}$/.test(splitDate)) {
+      throw new ValidationError('splitDate格式需为 YYYY-MM-DD');
+    }
+    if (!updates || typeof updates !== 'object') {
+      throw new ValidationError('updates 必须是对象');
+    }
+
+    console.log(`[TaskController] 修改未来 taskId=${taskId}, splitDate=${splitDate}`);
+
+    // 调用RecurringTaskService
+    const result = await recurringTaskService.modifyFuture(
+      taskId,
+      userId,
+      splitDate,
+      updates
+    );
+
+    return success(res, result, '规则拆分成功');
+  } catch (err) {
+    console.error('[TaskController] 修改未来失败:', err);
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/tasks/:id/delete-single-day
+ * 操作4：删除当天 - 添加到EXDATE
+ * @param {number} req.params.id - 任务ID
+ * @param {string} req.body.date - 日期（YYYY-MM-DD）
+ */
+async function deleteRecurringTaskSingleDay(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.id);
+    const { date } = req.body;
+
+    // 参数验证
+    if (!date || !/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+      throw new ValidationError('日期格式需为 YYYY-MM-DD');
+    }
+
+    console.log(`[TaskController] 删除当天 taskId=${taskId}, date=${date}`);
+
+    // 调用RecurringTaskService
+    const task = await recurringTaskService.deleteSingleDay(taskId, date);
+
+    return success(res, task, '已添加到例外日期');
+  } catch (err) {
+    console.error('[TaskController] 删除当天失败:', err);
+    next(err);
+  }
+}
+
+/**
+ * POST /api/v1/tasks/:id/delete-future
+ * 操作6：删除当天及未来 - 修改UNTIL
+ * @param {number} req.params.id - 任务ID
+ * @param {string} req.body.endDate - 结束日期（YYYY-MM-DD）
+ */
+async function deleteRecurringTaskFuture(req, res, next) {
+  try {
+    const taskId = parseInt(req.params.id);
+    const { endDate } = req.body;
+
+    // 参数验证
+    if (!endDate || !/^\d{4}-\d{2}-\d{2}$/.test(endDate)) {
+      throw new ValidationError('endDate格式需为 YYYY-MM-DD');
+    }
+
+    console.log(`[TaskController] 删除未来 taskId=${taskId}, endDate=${endDate}`);
+
+    // 调用RecurringTaskService
+    const task = await recurringTaskService.deleteFuture(taskId, endDate);
+
+    return success(res, task, '已修改规则结束时间');
+  } catch (err) {
+    console.error('[TaskController] 删除未来失败:', err);
+    next(err);
+  }
+}
+
 module.exports = {
   createTask,
   getTasks,
@@ -321,5 +507,13 @@ module.exports = {
   getTaskOccurrences,
   completeTask,
   getCompletionRecords,
-  updateCompletionRecord
+  updateCompletionRecord,
+  // ⭐ 新增（2026-03-15）
+  updateTaskRecurrence,
+  updateTaskOccurrence,
+  // ⭐ RRULE架构完善 - 阶段一Day3新增（2026-03-16）
+  modifyRecurringTaskSingleDay,
+  modifyRecurringTaskFuture,
+  deleteRecurringTaskSingleDay,
+  deleteRecurringTaskFuture
 };

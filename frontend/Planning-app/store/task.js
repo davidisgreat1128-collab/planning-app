@@ -291,6 +291,38 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
+   * 更新重复任务的未来实例（保留过去记录）⭐ 新增（2026-03-15）
+   *
+   * @param {string} id - 任务 ID
+   * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
+   * @param {string} currentDate - 当前日期（格式：YYYY-MM-DD），作为"未来"的分界点
+   * @returns {Promise<object>} 更新后的任务对象
+   */
+  async function updateTaskFuture(id, data, currentDate) {
+    const updated = await TaskRepository.updateFuture(id, data, currentDate)
+
+    // ⭐ 无需手动更新 tasks.value，Repository 会发布 'update' 事件，自动触发更新
+
+    return updated
+  }
+
+  /**
+   * 仅更新重复任务的单个日期实例（象限覆盖）⭐ 新增（2026-03-15）
+   *
+   * @param {string} id - 任务 ID
+   * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
+   * @param {string} date - 指定日期（格式：YYYY-MM-DD）
+   * @returns {Promise<object>} 更新后的 CompletionRecord 对象
+   */
+  async function updateTaskOnce(id, data, date) {
+    const updated = await TaskRepository.updateOnce(id, data, date)
+
+    // ⭐ 无需手动更新 tasks.value，Repository 会发布 'update' 事件，自动触发更新
+
+    return updated
+  }
+
+  /**
    * 切换任务完成状态
    *
    * @param {string} id - 任务 ID
@@ -683,6 +715,8 @@ export const useTaskStore = defineStore('task', () => {
     fetchTasksByDate,
     addTask,
     updateTask,
+    updateTaskFuture,                // ⭐ 新增（2026-03-15）：更新未来实例
+    updateTaskOnce,                  // ⭐ 新增（2026-03-15）：仅更新单日实例
     toggleDone,
     removeTask,
     updateQuadrant,

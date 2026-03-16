@@ -179,7 +179,7 @@ export function useTaskQuadrant() {
   }
 
   /**
-   * 确认更改象限
+   * 确认更改象限（支持3种更新策略）⭐ 架构升级（2026-03-15）
    */
   async function confirmChangeQuadrant() {
     const task = currentTask.value;
@@ -194,35 +194,33 @@ export function useTaskQuadrant() {
     try {
       // 对于重复任务,使用 taskId (原始任务ID),否则使用 id
       const taskIdToUpdate = task.taskId || task.id;
+      const selectedDate = taskStore.selectedDate; // 当前选中的日期
 
-      // ⚠️ 临时方案：后端API /tasks/:id/recurrence 尚未实现
-      // 目前使用普通updateTask，仅更新当前实例
-      // TODO: 待后端实现批量更新API后，恢复以下代码：
-      // if (option === 1) {
-      //   await updateTaskRecurrence(taskIdToUpdate, { isUrgent, isImportant }, 'all');
-      // } else if (option === 2) {
-      //   await updateTaskRecurrence(taskIdToUpdate, { isUrgent, isImportant }, 'future');
-      // }
+      // ⭐ 根据用户选择调用不同的更新策略
+      if (option === 1) {
+        // 选项1：完整更改此条重复计划 → 更新Task表（影响所有日期）
+        await taskStore.updateTask(taskIdToUpdate, { isUrgent, isImportant });
 
-      // 临时方案：使用taskStore.updateTask仅更新当前实例
-      await taskStore.updateTask(task.id, { isUrgent, isImportant });
+        // 强制立即同步到服务器（避免防抖延迟）
+        await TaskRepository.sync();
 
-      // ⭐ 强制立即同步到服务器（避免防抖延迟导致fetchTasksByDate获取到旧数据）
-      // 原因：TaskRepository.update() 使用 _debouncedSync()，延迟500ms同步
-      //       如果不强制立即同步，fetchTasksByDate() 会查询到旧数据
-      await TaskRepository.sync();
+        uni.showToast({ title: '已更改所有实例', icon: 'success' });
+      } else if (option === 2) {
+        // 选项2：更改当天及未来计划 → 调用后端API（更新Task表 + 保留过去记录）
+        await taskStore.updateTaskFuture(taskIdToUpdate, { isUrgent, isImportant }, selectedDate);
 
-      // ⭐ 重复任务特殊处理：需要重新获取当前日期的所有任务实例
-      // 原因：更新重复任务后，后端会重新计算RRULE，可能影响多个日期的实例
-      const selectedDate = taskStore.selectedDate;
+        uni.showToast({ title: '已更改未来实例', icon: 'success' });
+      } else if (option === 3) {
+        // 选项3：只更新当天计划 → 仅创建/更新CompletionRecord（象限覆盖）
+        await taskStore.updateTaskOnce(taskIdToUpdate, { isUrgent, isImportant }, selectedDate);
+
+        uni.showToast({ title: '已更改当天实例', icon: 'success' });
+      }
+
+      // ⭐ 重新获取当前日期的所有任务实例（刷新UI）
       if (selectedDate) {
         await taskStore.fetchTasksByDate(selectedDate);
       }
-
-      uni.showToast({
-        title: option === 1 ? '已更改（当前实例）' : '已更改（当前实例）',
-        icon: 'success'
-      });
     } catch (err) {
       console.error('[useTaskQuadrant] 更改象限失败:', err);
       uni.showToast({ title: '更改失败', icon: 'none' });

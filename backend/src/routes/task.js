@@ -118,6 +118,17 @@ const taskIdAndDateParamsSchema = Joi.object({
   date: dateStr.required()
 });
 
+// ⭐ 新增（2026-03-15）：重复任务批量更新相关Schema
+const updateRecurrenceQuerySchema = Joi.object({
+  scope: Joi.string().valid('future').required(),  // 当前仅支持 'future'
+  date: dateStr.required()  // 分界日期
+});
+
+const updateOccurrenceSchema = Joi.object({
+  isUrgent: Joi.boolean(),
+  isImportant: Joi.boolean()
+}).min(1);
+
 // ---- Routes ----
 
 router.use(authenticate);
@@ -180,6 +191,102 @@ router.put('/:taskId/completion-records/:date',
   validateParams(taskIdAndDateParamsSchema),
   validate(updateCompletionRecordSchema),
   taskController.updateCompletionRecord
+);
+
+// ============================================================
+// ⭐ 新增（2026-03-15）：重复任务批量更新API
+// ============================================================
+
+// PUT /api/v1/tasks/:id/recurrence?scope=future&date=YYYY-MM-DD
+// 更新重复任务的未来实例（保留过去记录）
+router.put('/:id/recurrence',
+  validateParams(idParamSchema),
+  validateQuery(updateRecurrenceQuerySchema),
+  validate(updateOccurrenceSchema),
+  taskController.updateTaskRecurrence
+);
+
+// PUT /api/v1/tasks/:id/occurrences/:date
+// 仅更新重复任务的单个日期实例（象限覆盖）
+router.put('/:id/occurrences/:date',
+  validateParams(taskIdAndDateParamsSchema),
+  validate(updateOccurrenceSchema),
+  taskController.updateTaskOccurrence
+);
+
+// ============================================================
+// ⭐ RRULE架构完善 - 阶段一Day3新增（2026-03-16）
+// 重复任务的四种核心操作
+// ============================================================
+
+// 新增Schema：修改当天（创建单日覆盖）
+const modifySingleDaySchema = Joi.object({
+  date: dateStr.required(),
+  updates: Joi.object({
+    title: Joi.string().trim().min(1).max(500),
+    description: Joi.string().trim().max(2000).allow('', null),
+    isUrgent: Joi.boolean(),
+    isImportant: Joi.boolean(),
+    startTime: timeStr.allow(null),
+    endTime: timeStr.allow(null),
+    isAllDay: Joi.boolean()
+  }).min(1).required()
+});
+
+// 新增Schema：修改未来（拆分规则）
+const modifyFutureSchema = Joi.object({
+  splitDate: dateStr.required(),
+  updates: Joi.object({
+    title: Joi.string().trim().min(1).max(500),
+    description: Joi.string().trim().max(2000).allow('', null),
+    isUrgent: Joi.boolean(),
+    isImportant: Joi.boolean(),
+    startTime: timeStr.allow(null),
+    endTime: timeStr.allow(null),
+    isAllDay: Joi.boolean()
+  }).min(1).required()
+});
+
+// 新增Schema：删除当天（添加EXDATE）
+const deleteSingleDaySchema = Joi.object({
+  date: dateStr.required()
+});
+
+// 新增Schema：删除未来（修改UNTIL）
+const deleteFutureSchema = Joi.object({
+  endDate: dateStr.required()
+});
+
+// POST /api/v1/tasks/:id/modify-single-day
+// 操作1：修改当天 - 创建单日覆盖
+router.post('/:id/modify-single-day',
+  validateParams(idParamSchema),
+  validate(modifySingleDaySchema),
+  taskController.modifyRecurringTaskSingleDay
+);
+
+// POST /api/v1/tasks/:id/modify-future
+// 操作2：修改未来 - 拆分任务规则
+router.post('/:id/modify-future',
+  validateParams(idParamSchema),
+  validate(modifyFutureSchema),
+  taskController.modifyRecurringTaskFuture
+);
+
+// POST /api/v1/tasks/:id/delete-single-day
+// 操作4：删除当天 - 添加到EXDATE
+router.post('/:id/delete-single-day',
+  validateParams(idParamSchema),
+  validate(deleteSingleDaySchema),
+  taskController.deleteRecurringTaskSingleDay
+);
+
+// POST /api/v1/tasks/:id/delete-future
+// 操作6：删除当天及未来 - 修改UNTIL
+router.post('/:id/delete-future',
+  validateParams(idParamSchema),
+  validate(deleteFutureSchema),
+  taskController.deleteRecurringTaskFuture
 );
 
 module.exports = router;

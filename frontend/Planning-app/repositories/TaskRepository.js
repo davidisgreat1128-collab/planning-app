@@ -29,6 +29,8 @@
  * @date 2026-03-04
  */
 
+import request from '@/utils/request' // ⭐ 新增（2026-03-15）：直接调用后端API
+
 // 配置常量
 const STORAGE_KEY = 'planning_app_tasks'
 const QUEUE_KEY = 'planning_app_task_queue'
@@ -225,6 +227,95 @@ class TaskRepository {
     this._notify('update', updated)
 
     return updated
+  }
+
+  /**
+   * 更新重复任务的未来实例（保留过去记录）⭐ 新增（2026-03-15）
+   *
+   * @param {string} id - 任务 ID
+   * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
+   * @param {string} currentDate - 当前日期（格式：YYYY-MM-DD），作为"未来"的分界点
+   * @returns {Promise<object>} 更新后的任务对象
+   *
+   * 实现逻辑：
+   * 1. 调用后端API：PUT /api/v1/tasks/:id/recurrence?scope=future&date=:date
+   * 2. 后端会：更新Task表 + 清理未来CompletionRecord（保留过去记录）
+   * 3. 更新本地缓存
+   * 4. 通知订阅者
+   */
+  async updateFuture(id, data, currentDate) {
+    const task = this.memoryCache.get(id)
+    if (!task) {
+      throw new Error(`任务不存在：${id}`)
+    }
+
+    console.log('[TaskRepository] 更新未来实例:', task.title || task.id, '分界日期:', currentDate)
+
+    try {
+      // 调用后端API（scope=future）
+      // ⚠️ 注意：query参数需要手动拼接到URL中
+      const url = `/tasks/${id}/recurrence?scope=future&date=${currentDate}`
+      const updated = await request({
+        url,
+        method: 'PUT',
+        data
+      })
+
+      // 更新缓存
+      this.memoryCache.set(id, updated)
+
+      // 持久化
+      this._saveToLocalStorage()
+
+      // ⭐ 发布事件：通知订阅者任务已更新
+      this._notify('update', updated)
+
+      return updated
+    } catch (error) {
+      console.error('[TaskRepository] 更新未来实例失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 仅更新重复任务的单个日期实例（象限覆盖）⭐ 新增（2026-03-15）
+   *
+   * @param {string} id - 任务 ID
+   * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
+   * @param {string} date - 指定日期（格式：YYYY-MM-DD）
+   * @returns {Promise<object>} 更新后的 CompletionRecord 对象
+   *
+   * 实现逻辑：
+   * 1. 调用后端API：PUT /api/v1/tasks/:id/occurrences/:date
+   * 2. 后端会：创建/更新CompletionRecord，在note字段中存储象限覆盖信息
+   * 3. 不更新本地缓存（因为只影响单个日期）
+   * 4. 通知订阅者（触发重新查询）
+   */
+  async updateOnce(id, data, date) {
+    const task = this.memoryCache.get(id)
+    if (!task) {
+      throw new Error(`任务不存在：${id}`)
+    }
+
+    console.log('[TaskRepository] 更新单日实例:', task.title || task.id, '日期:', date)
+
+    try {
+      // 调用后端API
+      const completionRecord = await request({
+        url: `/tasks/${id}/occurrences/${date}`,
+        method: 'PUT',
+        data
+      })
+
+      // ⭐ 不更新本地缓存（Task表未改变）
+      // ⭐ 但仍然通知订阅者（触发重新查询getTasksByDate）
+      this._notify('updateOnce', { taskId: id, date, record: completionRecord })
+
+      return completionRecord
+    } catch (error) {
+      console.error('[TaskRepository] 更新单日实例失败:', error)
+      throw error
+    }
   }
 
   /**
