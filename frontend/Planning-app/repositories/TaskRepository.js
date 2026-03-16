@@ -368,7 +368,7 @@ class TaskRepository {
    * @param {string} id - 任务 ID
    * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
    * @param {string} splitDate - 拆分日期（格式：YYYY-MM-DD），从这天开始应用新规则
-   * @returns {Promise<object>} { oldTask, newTask }
+   * @returns {Promise<object>} { originalTask, newTask }
    *
    * 实现逻辑：
    * 1. 调用后端API：POST /api/v1/tasks/:id/modify-future
@@ -395,11 +395,11 @@ class TaskRepository {
         }
       })
 
-      // result = { oldTask, newTask }
-      const { oldTask, newTask } = result
+      // result = { originalTask, newTask }
+      const { originalTask, newTask } = result
 
       // 更新旧任务缓存（UNTIL已修改）
-      this.memoryCache.set(oldTask.id, oldTask)
+      this.memoryCache.set(originalTask.id, originalTask)
 
       // 添加新任务到缓存
       this.memoryCache.set(newTask.id, newTask)
@@ -408,7 +408,7 @@ class TaskRepository {
       this._saveToLocalStorage()
 
       // ⭐ 发布事件：通知订阅者任务已更新
-      this._notify('updateTaskFuture', { oldTask, newTask })
+      this._notify('updateTaskFuture', { originalTask, newTask })
 
       return result
     } catch (error) {

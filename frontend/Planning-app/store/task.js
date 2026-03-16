@@ -296,7 +296,7 @@ export const useTaskStore = defineStore('task', () => {
    * @param {string} id - 任务 ID
    * @param {object} data - 要更新的字段（如 isUrgent, isImportant）
    * @param {string} splitDate - 拆分日期（格式：YYYY-MM-DD），从这天开始应用新规则
-   * @returns {Promise<object>} { oldTask, newTask }
+   * @returns {Promise<object>} { originalTask, newTask }
    */
   async function updateTaskFuture(id, data, splitDate) {
     const result = await TaskRepository.updateTaskFuture(id, data, splitDate)
