@@ -180,13 +180,27 @@ export function useTaskQuadrant() {
 
   /**
    * 确认更改象限（支持3种更新策略）⭐ 架构升级（2026-03-15）
+   * ⭐ 新增日志标记（2026-03-16）：测试时根据日志判定执行路径
    */
   async function confirmChangeQuadrant() {
     const task = currentTask.value;
     const newQuadrant = targetQuadrant.value;
     const option = changeQuadrantOption.value;
 
-    if (!task || !newQuadrant) return;
+    console.log('🔵 [useTaskQuadrant] confirmChangeQuadrant 开始执行', {
+      taskId: task?.id,
+      taskTitle: task?.title,
+      isRecurring: task?.isRecurring,
+      currentQuadrant: task ? getTaskQuadrant(task) : null,
+      targetQuadrant: newQuadrant,
+      selectedOption: option,
+      selectedDate: taskStore.selectedDate
+    });
+
+    if (!task || !newQuadrant) {
+      console.warn('⚠️ [useTaskQuadrant] 参数校验失败：task或newQuadrant为空');
+      return;
+    }
 
     // 根据目标象限获取属性
     const { isUrgent, isImportant } = getQuadrantProperties(newQuadrant);
@@ -199,33 +213,59 @@ export function useTaskQuadrant() {
       // ⭐ 根据用户选择调用不同的更新策略
       if (option === 1) {
         // 选项1：完整更改此条重复计划 → 更新Task表（影响所有日期）
+        console.log('🟢 [useTaskQuadrant] 选项1：完整更改此条重复计划', {
+          taskId: taskIdToUpdate,
+          updates: { isUrgent, isImportant },
+          说明: '将调用 taskStore.updateTask() → 更新 tasks 表 → 影响所有历史和未来日期'
+        });
+
         await taskStore.updateTask(taskIdToUpdate, { isUrgent, isImportant });
 
         // 强制立即同步到服务器（避免防抖延迟）
         await TaskRepository.sync();
 
+        console.log('✅ [useTaskQuadrant] 选项1执行成功：已更新tasks表，已同步到服务器');
         uni.showToast({ title: '已更改所有实例', icon: 'success' });
       } else if (option === 2) {
-        // 选项2：更改当天及未来计划 → 调用后端API（更新Task表 + 保留过去记录）
+        // 选项2：更改当天及未来计划 → 调用后端API（拆分任务规则 + 保留过去记录）
+        console.log('🟡 [useTaskQuadrant] 选项2：更改当天及未来计划', {
+          taskId: taskIdToUpdate,
+          updates: { isUrgent, isImportant },
+          splitDate: selectedDate,
+          说明: '将调用 taskStore.updateTaskFuture() → 后端拆分规则(POST /tasks/:id/modify-future) → 保留过去记录'
+        });
+
         await taskStore.updateTaskFuture(taskIdToUpdate, { isUrgent, isImportant }, selectedDate);
 
+        console.log('✅ [useTaskQuadrant] 选项2执行成功：已拆分任务规则，过去记录已保留');
         uni.showToast({ title: '已更改未来实例', icon: 'success' });
       } else if (option === 3) {
-        // 选项3：只更新当天计划 → 仅创建/更新CompletionRecord（象限覆盖）
-        await taskStore.updateTaskOnce(taskIdToUpdate, { isUrgent, isImportant }, selectedDate);
+        // 选项3：只更新当天计划 → 创建单日覆盖记录（task_overrides表）
+        console.log('🟣 [useTaskQuadrant] 选项3：只更新当天计划', {
+          taskId: taskIdToUpdate,
+          updates: { isUrgent, isImportant },
+          targetDate: selectedDate,
+          说明: '将调用 taskStore.updateTaskSingleDay() → 后端创建 task_overrides 记录(POST /tasks/:id/modify-single-day) → 不影响其他日期'
+        });
 
+        await taskStore.updateTaskSingleDay(taskIdToUpdate, { isUrgent, isImportant }, selectedDate);
+
+        console.log('✅ [useTaskQuadrant] 选项3执行成功：已创建单日覆盖，仅影响当天');
         uni.showToast({ title: '已更改当天实例', icon: 'success' });
       }
 
       // ⭐ 重新获取当前日期的所有任务实例（刷新UI）
       if (selectedDate) {
+        console.log('🔄 [useTaskQuadrant] 刷新任务列表', { selectedDate });
         await taskStore.fetchTasksByDate(selectedDate);
+        console.log('✅ [useTaskQuadrant] 任务列表刷新成功');
       }
     } catch (err) {
-      console.error('[useTaskQuadrant] 更改象限失败:', err);
+      console.error('❌ [useTaskQuadrant] 更改象限失败:', err);
       uni.showToast({ title: '更改失败', icon: 'none' });
     }
 
+    console.log('🔵 [useTaskQuadrant] confirmChangeQuadrant 执行完毕，关闭对话框');
     closeChangeQuadrantDialog();
   }
 
