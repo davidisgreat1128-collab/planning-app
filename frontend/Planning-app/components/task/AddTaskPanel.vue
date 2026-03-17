@@ -3,7 +3,11 @@
   <view v-if="visible" class="panel-mask" @tap="onMaskTap"></view>
 
   <!-- 底部面板 -->
-  <view class="add-task-panel" :class="{ visible: visible }">
+  <view
+    class="add-task-panel"
+    :class="{ visible: visible }"
+    :style="{ '--tabbar-height': tabBarHeight + 'rpx' }"
+  >
 
     <!-- ① 顶部日期 Tab -->
     <view class="date-tabs">
@@ -484,6 +488,7 @@ import QuadrantPicker from './QuadrantPicker.vue';
 import DayPicker from './DayPicker.vue';
 import { useTaskForm } from '@/composables/useTaskForm.js';
 import { useCategoryManager } from '@/composables/useCategoryManager.js';
+import { useSystemLayout } from '@/composables/useSystemLayout.js';
 import { formatDate, timeDiffMinutes, formatDuration, formatDateWithWeekday, getRelativeDateLabel } from '@/utils/date.js';
 import { buildRrule } from '@/utils/rruleBuilder.js';
 import { syncCategoryFields } from '@/utils/categorySync.js';
@@ -516,6 +521,11 @@ const emit = defineEmits(['close', 'submitted']);
 // ============================================================
 const taskStore = useTaskStore();
 const categoryStore = useCategoryStore();
+
+// ============================================================
+// 系统布局信息（获取Tabbar高度等）
+// ============================================================
+const { tabBarHeight } = useSystemLayout();
 
 // ============================================================
 // 阶段3：初始化 useTaskForm（创建模式）
@@ -1347,7 +1357,8 @@ watch(() => props.visible, (newVal) => {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  /* ✅ 修复：底部边界 = Tabbar 上边线，避免被遮挡 */
+  bottom: var(--tabbar-height, 100rpx); /* 默认100rpx（H5端Tabbar高度，降级值） */
   background-color: #FFFFFF;
   border-radius: 32rpx 32rpx 0 0;
   z-index: 901;
@@ -1616,13 +1627,14 @@ watch(() => props.visible, (newVal) => {
   display: flex;
   flex-direction: row;
   align-items: center;
-  padding: 20rpx 24rpx 60rpx;
-  /* 60rpx 为安全区底部预留（H5端加高，防止被浏览器底栏遮住） */
+  /* ✅ 优化：因面板已上移避开Tabbar，减少padding */
+  padding: 20rpx 24rpx 24rpx;
 }
 
 /* #ifdef APP-PLUS */
 .toolbar {
-  padding-bottom: calc(40rpx + env(safe-area-inset-bottom));
+  /* ✅ App端保留底部安全区适配 */
+  padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
 }
 /* #endif */
 
