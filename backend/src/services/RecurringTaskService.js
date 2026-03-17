@@ -70,6 +70,9 @@ class RecurringTaskService {
         throw new ValidationError('该任务不是重复任务，无法拆分规则');
       }
 
+      // ⭐ 保存原始RRULE（在修改旧任务之前），用于创建新任务
+      const originalRRuleString = originalTask.rrule;
+
       // 计算拆分前一天
       const splitDateObj = new Date(splitDate);
       const dayBeforeSplit = new Date(splitDateObj);
@@ -101,7 +104,7 @@ class RecurringTaskService {
         endTime: updates.endTime !== undefined ? updates.endTime : originalTask.endTime,
         isAllDay: updates.isAllDay !== undefined ? updates.isAllDay : originalTask.isAllDay,
         isRecurring: true,
-        rrule: this._updateRRuleStartDate(originalTask.rrule, splitDate),
+        rrule: this._updateRRuleStartDate(originalRRuleString, splitDate), // ⭐ 使用保存的原始RRULE，不是修改后的
         rruleUntil: null, // ⭐ 新任务永久重复，不继承原UNTIL
         exdate: '[]', // 新任务不继承EXDATE
         categoryId: originalTask.categoryId,
