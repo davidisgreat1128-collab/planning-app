@@ -36,6 +36,7 @@ import { TaskSyncQueue } from './sync/TaskSyncQueue' // ⭐ 新增（2026-03-17�
 // 配置常量
 const STORAGE_KEY = 'planning_app_tasks'
 const QUEUE_KEY = 'planning_app_task_queue'
+const DEBOUNCE_DELAY = 500 // Debounce延迟（ms）
 
 /**
  * 任务 Repository（单例模式）
