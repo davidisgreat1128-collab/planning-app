@@ -46,7 +46,12 @@
       "Bash(npm test:*)",
       "Bash(cmd //c \"taskkill /PID 9692 /F\")",
       "Bash(export:*)",
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT id, title, is_recurring, rrule FROM tasks WHERE is_recurring = 1 AND deleted_at IS NULL LIMIT 5;\")"
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT id, title, is_recurring, rrule FROM tasks WHERE is_recurring = 1 AND deleted_at IS NULL LIMIT 5;\")",
+      "Bash(git checkout:*)",
+      "Bash(if [ -f .claude/CURRENT_STATUS.md ])",
+      "Bash(then echo \"✅ 文件已成功创建\")",
+      "Bash(else echo \"❌ 文件创建失败\")",
+      "Bash(fi)"
     ],
     "deny": [],
     "ask": []
