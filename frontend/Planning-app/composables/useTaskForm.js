@@ -134,7 +134,8 @@ export function useTaskForm(options = {}) {
     const monthlySubMode = repeatRuleManager.monthlySubMode.value
     const monthlyDays = repeatRuleManager.monthlyDays.value
 
-    const currentRrule = repeatRuleManager.generateRrule() || ''
+    // ⭐ 修复（2026-03-18）：传入 taskDate 参数以生成包含 DTSTART 的 RRULE
+    const currentRrule = repeatRuleManager.generateRrule(form.value.taskDate) || ''
     const originalRrule = originalForm.value.rrule || ''
     const changed = currentRrule !== originalRrule
 
@@ -324,7 +325,8 @@ export function useTaskForm(options = {}) {
     const isRangeTask = form.value.endDate && form.value.endDate !== form.value.taskDate
 
     // ⭐ 生成 RRULE 规则（如果是重复任务）
-    const rrule = repeatRuleManager.generateRrule() || null
+    // ⭐ 修复（2026-03-18）：传入 taskDate 参数以生成包含 DTSTART 的 RRULE
+    const rrule = repeatRuleManager.generateRrule(form.value.taskDate) || null
 
     // 组装任务数据
     const taskData = {
@@ -392,7 +394,8 @@ export function useTaskForm(options = {}) {
     const isRangeTask = form.value.endDate && form.value.endDate !== form.value.taskDate
 
     // ⭐ 生成 RRULE 规则（如果是重复任务）
-    const rrule = repeatRuleManager.generateRrule() || null
+    // ⭐ 修复（2026-03-18）：传入 taskDate 参数以生成包含 DTSTART 的 RRULE
+    const rrule = repeatRuleManager.generateRrule(form.value.taskDate) || null
 
     // 组装任务数据
     const taskData = {

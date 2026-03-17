@@ -140,10 +140,19 @@ export function useRepeatRuleManager(options = {}) {
 
   /**
    * 生成 RRULE 字符串
-   * @returns {string} RRULE字符串
+   * ⭐ 修复（2026-03-18）：添加 taskDate 参数，生成包含 DTSTART 的完整 RRULE 字符串
+   *
+   * @param {string} taskDate - 任务开始日期（YYYY-MM-DD格式），如 '2026-04-10'
+   * @returns {string} RRULE字符串，格式如 'DTSTART:20260410T000000Z\nRRULE:FREQ=DAILY;INTERVAL=1'
+   *
+   * 修复原因：
+   * - 旧版本生成的 RRULE 没有 DTSTART 参数
+   * - 后端 rrulestr() 解析时使用默认 DTSTART，导致所有重复任务从固定日期开始
+   * - 新版本添加 DTSTART 参数，确保重复任务从用户选择的日期开始
    */
-  function generateRrule() {
+  function generateRrule(taskDate) {
     console.log('[generateRrule] 开始生成 RRULE，当前状态:', {
+      taskDate,  // ⭐ 新增日志
       repeatMode: repeatMode.value,
       repeatInterval: repeatInterval.value,
       repeatWeekDays: repeatWeekDays.value,
@@ -157,8 +166,16 @@ export function useRepeatRuleManager(options = {}) {
       return ''
     }
 
-    // TODO: 实现完整的 RRULE 生成逻辑
-    // 这里简化处理，实际需要根据 repeatMode、repeatInterval、repeatWeekDays 等参数生成标准 RRULE 字符串
+    // ⭐ 步骤1：生成 DTSTART 参数（如果提供了 taskDate）
+    let rruleString = ''
+    if (taskDate) {
+      // 将 YYYY-MM-DD 格式转换为 YYYYMMDD 格式（RRULE 标准格式）
+      const dtstart = taskDate.replace(/-/g, '')
+      rruleString = `DTSTART:${dtstart}T000000Z\nRRULE:`
+      console.log('[generateRrule] 添加 DTSTART:', dtstart)
+    }
+
+    // ⭐ 步骤2：生成 RRULE 参数（保留原有逻辑）
     let rrule = `FREQ=${repeatMode.value.toUpperCase()};INTERVAL=${repeatInterval.value}`
 
     if (repeatMode.value === 'weekly' && repeatWeekDays.value.length > 0) {
@@ -189,8 +206,11 @@ export function useRepeatRuleManager(options = {}) {
       rrule += `;UNTIL=${endDateFormatted}`
     }
 
-    console.log('[useRepeatRuleManager] RRULE 已生成:', rrule)
-    return rrule
+    // ⭐ 步骤3：拼接完整的 RRULE 字符串
+    rruleString += rrule
+
+    console.log('[useRepeatRuleManager] RRULE 已生成:', rruleString)
+    return rruleString
   }
 
   /**
