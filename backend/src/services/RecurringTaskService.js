@@ -331,14 +331,16 @@ class RecurringTaskService {
       const rrule = rrulestr(rruleString);
       const options = rrule.options;
 
-      // ⭐ 从options中排除until和dtstart字段（防止继承）
-      const { until, dtstart, ...cleanOptions } = options;
+      // ⭐ 只排除dtstart字段，保留until字段（如果原始RRULE有的话）
+      // 这样可以保持原任务的结束日期
+      const { dtstart, ...cleanOptions } = options;
 
-      // ⭐ 创建新RRULE：只设置新的dtstart，不包含until（新任务永久重复）
+      // ⭐ 创建新RRULE：更新dtstart，保留原始until（如果存在）
+      // - 如果原任务有UNTIL → 新任务保留这个UNTIL（维持原结束日期）
+      // - 如果原任务无UNTIL → 新任务也无UNTIL（继续永久重复）
       const newRRule = new RRule({
-        ...cleanOptions,
+        ...cleanOptions,  // 包含原始的until（如果有）
         dtstart: new Date(newStartDate + 'T00:00:00Z')
-        // 不设置until字段 = 永久重复
       });
 
       return newRRule.toString();
