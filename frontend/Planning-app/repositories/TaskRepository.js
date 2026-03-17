@@ -573,10 +573,11 @@ class TaskRepository {
 
     try {
       // 调用后端API（POST /tasks/:id/delete-future）
+      // ⚠️ 后端API参数名为endDate（语义："从此日期开始停止"）
       const result = await request({
         url: `/tasks/${id}/delete-future`,
         method: 'POST',
-        data: { fromDate }
+        data: { endDate: fromDate }  // ⭐ 修复：后端API期望endDate参数
       })
 
       // 更新本地缓存（更新rrule和rruleUntil字段）
