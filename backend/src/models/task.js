@@ -149,22 +149,37 @@ function initTaskModel(sequelize) {
         type: DataTypes.TEXT,
         allowNull: true,
         defaultValue: null,
-        comment: '排除日期列表，逗号分隔的日期字符串（如"2026-03-20,2026-04-15"）',
+        comment: '例外日期JSON数组（如\'["2026-03-20","2026-04-15"]\'）⭐ RRULE架构（2026-03-17）',
         get() {
           const rawValue = this.getDataValue('exdate');
           if (!rawValue) return [];
-          // 解析逗号分隔的日期字符串为数组
-          return rawValue.split(',').map(d => d.trim()).filter(d => d);
+          try {
+            // ⭐ 解析JSON数组格式
+            const parsed = JSON.parse(rawValue);
+            return Array.isArray(parsed) ? parsed : [];
+          } catch (err) {
+            console.error('[Task Model] exdate JSON解析失败:', rawValue, err);
+            return [];
+          }
         },
         set(value) {
           if (!value || value.length === 0) {
             this.setDataValue('exdate', null);
           } else if (Array.isArray(value)) {
-            // 数组转为逗号分隔字符串
-            this.setDataValue('exdate', value.join(','));
+            // ⭐ 数组转为JSON字符串
+            this.setDataValue('exdate', JSON.stringify(value));
           } else if (typeof value === 'string') {
-            // 字符串直接存储
-            this.setDataValue('exdate', value);
+            // ⭐ 如果是JSON字符串，验证后直接存储
+            try {
+              const parsed = JSON.parse(value);
+              if (Array.isArray(parsed)) {
+                this.setDataValue('exdate', value);
+              } else {
+                this.setDataValue('exdate', null);
+              }
+            } catch (err) {
+              this.setDataValue('exdate', null);
+            }
           } else {
             this.setDataValue('exdate', null);
           }
