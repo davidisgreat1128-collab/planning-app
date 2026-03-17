@@ -463,17 +463,22 @@ class TaskRepository {
   }
 
   /**
-   * 删除重复任务的单日实例（添加到EXDATE）⭐ RRULE架构升级（2026-03-17）
+   * 删除重复任务的单日实例（标记is_deleted=true）⭐ RRULE架构升级（2026-03-17）
+   *
+   * 设计变更：
+   * - 旧方案：将日期添加到tasks.exdate数组
+   * - 新方案：后端创建task_overrides记录（is_deleted=true）
+   * - 原理：删除 = 阻止实例生成（非修改数据）
    *
    * @param {string} id - 任务 ID
    * @param {string} date - 目标日期（格式：YYYY-MM-DD）
-   * @returns {Promise<object>} 更新后的任务对象（包含exdate数组）
+   * @returns {Promise<object>} 返回{ taskId, date, isDeleted: true }
    *
    * 实现逻辑：
    * 1. 调用后端API：POST /api/v1/tasks/:id/delete-single-day
-   * 2. 后端会：将日期添加到tasks.exdate数组
-   * 3. 更新本地缓存（Task表的exdate字段）
-   * 4. 通知订阅者触发重新查询
+   * 2. 后端会：创建task_overrides记录（is_deleted=true）
+   * 3. ⚠️ 不更新本地缓存（task对象不变）
+   * 4. 通知订阅者触发重新查询（重新计算RRULE实例）
    */
   async deleteTaskSingleDay(id, date) {
     const task = this.memoryCache.get(id)
@@ -481,7 +486,7 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 删除单日实例（EXDATE）:', task.title || task.id, '日期:', date)
+    console.log('[TaskRepository] 删除单日实例（is_deleted）:', task.title || task.id, '日期:', date)
 
     try {
       // 调用后端API（POST /tasks/:id/delete-single-day）
@@ -491,15 +496,14 @@ class TaskRepository {
         data: { date }
       })
 
-      // 更新本地缓存（更新exdate字段）
-      const updatedTask = { ...task, exdate: result.exdate }
-      this.memoryCache.set(id, updatedTask)
+      // ⚠️ 关键变更：不再更新task.exdate字段（后端已改用task_overrides表）
+      // 删除标记存储在独立表中，task对象本身不变
 
-      // 持久化
+      // 持久化（虽然task未变，但仍执行以保持一致性）
       this._saveToLocalStorage()
 
-      // ⭐ 通知订阅者
-      this._notify('deleteTaskSingleDay', { taskId: id, date, exdate: result.exdate })
+      // ⭐ 通知订阅者：触发重新查询（后端会应用is_deleted过滤）
+      this._notify('deleteTaskSingleDay', { taskId: id, date, isDeleted: result.isDeleted })
 
       return result
     } catch (error) {

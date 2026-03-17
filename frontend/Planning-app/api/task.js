@@ -129,11 +129,11 @@ export const deleteCategoryTasks = (categoryId) =>
  * @deprecated 已废弃（2026-03-15）：请直接使用 updateTask + EXDATE
  *
  * 旧架构：批量更新所有 task_occurrences 实例
- * 新架构：修改任务定义本身（task表），使用 EXDATE 排除特定日期
+ * 新架构（2026-03-17）：修改任务定义本身（task表），删除日期使用task_overrides.is_deleted
  *
  * 迁移指南：
  * - 修改任务象限：updateTask(taskId, { isUrgent, isImportant })
- * - 排除某些日期：updateTask(taskId, { exdate: ['2026-03-01', '2026-03-02'] })
+ * - 删除某些日期：调用deleteTaskSingleDay(taskId, date)创建is_deleted标记
  *
  * @param {number} taskId - 原始任务ID
  * @param {object} data - 更新数据 { isUrgent, isImportant }
