@@ -80,6 +80,22 @@ function initTaskOverrideModel(sequelize) {
         comment: '覆盖日期（YYYY-MM-DD）'
       },
 
+      /**
+       * 删除标记（最高优先级）
+       * true = 该日期不生成实例（阻止实例生成）
+       * false = 正常生成实例
+       *
+       * 设计原则：删除 = 阻止实例生成，而非修改数据
+       * 优先级流程：is_deleted（最高）→ 字段覆盖 → 完成记录 → 默认规则
+       */
+      isDeleted: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false,
+        field: 'is_deleted',
+        comment: '删除标记（true=该日期不生成实例）'
+      },
+
       // ========================================
       // ⭐ 可覆盖的字段（NULL = 不覆盖）
       // ========================================
