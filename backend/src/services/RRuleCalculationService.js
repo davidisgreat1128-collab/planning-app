@@ -25,8 +25,17 @@ class RRuleCalculationService {
     }
 
     try {
+      // ⭐ 测试日志：记录任务信息和RRULE字符串
+      console.log(`\n========== [RRuleCalculationService] 开始计算任务发生日期 ==========`);
+      console.log(`任务ID: ${task.id}`);
+      console.log(`任务标题: ${task.title}`);
+      console.log(`RRULE字符串: ${task.rrule}`);
+      console.log(`EXDATE: ${JSON.stringify(task.exdate)}`);
+      console.log(`日期范围: ${startDate} - ${endDate}`);
+
       // 解析RRULE字符串
       const rule = rrulestr(task.rrule);
+      console.log(`✅ RRULE解析成功`);
 
       // 计算日期范围（UTC时间）
       const start = new Date(startDate + 'T00:00:00Z');
@@ -48,8 +57,23 @@ class RRuleCalculationService {
       const occurrences = rruleSet.between(start, end, true);
 
       // 转换为YYYY-MM-DD格式
-      return occurrences.map(date => this._formatDate(date));
+      const formattedDates = occurrences.map(date => this._formatDate(date));
+      console.log(`✅ 计算完成，共 ${formattedDates.length} 个发生日期: ${formattedDates.join(', ')}`);
+      console.log(`========== [RRuleCalculationService] 计算结束 ==========\n`);
+
+      return formattedDates;
     } catch (error) {
+      // ⭐ 测试日志：记录详细错误信息
+      console.error(`\n❌ ========== [RRuleCalculationService] RRULE解析失败 ==========`);
+      console.error(`任务ID: ${task.id}`);
+      console.error(`任务标题: ${task.title}`);
+      console.error(`RRULE字符串: ${task.rrule}`);
+      console.error(`EXDATE: ${JSON.stringify(task.exdate)}`);
+      console.error(`错误类型: ${error.name}`);
+      console.error(`错误消息: ${error.message}`);
+      console.error(`错误堆栈: ${error.stack}`);
+      console.error(`========== [RRuleCalculationService] 错误详情结束 ==========\n`);
+
       throw new ValidationError('RRULE解析失败: ' + error.message, 'rrule');
     }
   }
