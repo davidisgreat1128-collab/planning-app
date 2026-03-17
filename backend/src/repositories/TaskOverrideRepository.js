@@ -158,6 +158,114 @@ class TaskOverrideRepository {
   }
 
   /**
+   * 标记某日为已删除（选项1：删除当天实例）
+   * 原理：删除 = 阻止实例生成（非修改数据）
+   * 实现：创建或更新task_overrides记录，设置is_deleted=true
+   *
+   * @param {number} taskId - 任务ID
+   * @param {number} userId - 用户ID
+   * @param {string} date - 删除日期（YYYY-MM-DD格式）
+   * @returns {Promise<object>} 创建/更新的覆盖记录
+   * @throws {ValidationError} 如果参数无效
+   */
+  async markAsDeleted(taskId, userId, date) {
+    try {
+      // 参数验证
+      if (!taskId || !userId || !date) {
+        throw new ValidationError('taskId、userId、date为必填字段');
+      }
+
+      // 日期格式验证（YYYY-MM-DD）
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) {
+        throw new ValidationError(`日期格式错误：${date}，应为YYYY-MM-DD格式`);
+      }
+
+      // 查询是否已存在覆盖记录
+      let override = await this.getByTaskAndDate(taskId, date);
+
+      if (override) {
+        // ⭐ 已存在 → 更新is_deleted=true（优先级最高）
+        override.isDeleted = true;
+        await override.save();
+        console.log(`[TaskOverrideRepository] 已更新is_deleted=true: taskId=${taskId}, date=${date}`);
+      } else {
+        // ⭐ 不存在 → 创建新记录（只设置is_deleted，其他字段为null）
+        override = await TaskOverride.create({
+          taskId,
+          userId,
+          overrideDate: date,
+          isDeleted: true,
+          // 其他覆盖字段全部为null（表示不覆盖）
+          title: null,
+          description: null,
+          isUrgent: null,
+          isImportant: null,
+          startTime: null,
+          endTime: null,
+          isAllDay: null
+        });
+        console.log(`[TaskOverrideRepository] 已创建is_deleted=true: taskId=${taskId}, date=${date}`);
+      }
+
+      return override;
+    } catch (error) {
+      if (error instanceof ValidationError) {
+        throw error;
+      }
+      console.error('[TaskOverrideRepository] markAsDeleted失败:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * 批量查询已删除日期集合（用于过滤RRULE计算结果）
+   * 实现：查询task_overrides表中is_deleted=true的记录
+   *
+   * @param {number} taskId - 任务ID
+   * @param {string[]} dates - 候选日期数组（RRULE计算结果）
+   * @returns {Promise<Set<string>>} 已删除日期集合（Set结构，便于快速查找）
+   */
+  async getDeletedDates(taskId, dates) {
+    try {
+      // 空数组直接返回空Set
+      if (!dates || dates.length === 0) {
+        return new Set();
+      }
+
+      const { Op } = require('sequelize');
+
+      // 查询is_deleted=true的记录
+      const deletedOverrides = await TaskOverride.findAll({
+        where: {
+          taskId,
+          overrideDate: {
+            [Op.in]: dates // 只查询候选日期范围内的记录
+          },
+          isDeleted: true // ⭐ 关键过滤条件
+        },
+        attributes: ['overrideDate'], // 只查询日期字段（优化性能）
+        raw: true // 返回纯对象（无Sequelize实例开销）
+      });
+
+      // 转换为Set结构（O(1)查找性能）
+      const deletedDatesSet = new Set(
+        deletedOverrides.map(record => record.overrideDate)
+      );
+
+      console.log(
+        `[TaskOverrideRepository] getDeletedDates - taskId=${taskId}, ` +
+        `候选日期数=${dates.length}, 已删除日期数=${deletedDatesSet.size}, ` +
+        `已删除日期=${Array.from(deletedDatesSet).join(', ')}`
+      );
+
+      return deletedDatesSet;
+    } catch (error) {
+      console.error('[TaskOverrideRepository] getDeletedDates失败:', error);
+      throw error;
+    }
+  }
+
+  /**
    * 批量查询指定日期范围内的所有覆盖记录
    * @param {number} userId - 用户ID
    * @param {string} startDate - 起始日期（YYYY-MM-DD）
