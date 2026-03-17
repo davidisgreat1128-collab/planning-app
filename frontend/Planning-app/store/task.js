@@ -329,6 +329,57 @@ export const useTaskStore = defineStore('task', () => {
   }
 
   /**
+   * 删除重复任务的单日实例（添加到EXDATE）⭐ RRULE架构升级（2026-03-17）
+   *
+   * @param {string} id - 任务 ID
+   * @param {string} date - 目标日期（格式：YYYY-MM-DD）
+   * @returns {Promise<object>} 更新后的任务对象
+   */
+  async function deleteTaskSingleDay(id, date) {
+    const result = await TaskRepository.deleteTaskSingleDay(id, date)
+
+    // ⭐ 刷新当前日期的任务列表（因为删除会影响显示）
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
+
+    return result
+  }
+
+  /**
+   * 删除重复任务的全部实例（软删除任务）⭐ RRULE架构升级（2026-03-17）
+   *
+   * @param {string} id - 任务 ID
+   * @returns {Promise<void>}
+   */
+  async function deleteTaskAll(id) {
+    await TaskRepository.deleteTaskAll(id)
+
+    // ⭐ 刷新当前日期的任务列表
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
+  }
+
+  /**
+   * 删除重复任务的未来实例（修改UNTIL）⭐ RRULE架构升级（2026-03-17）
+   *
+   * @param {string} id - 任务 ID
+   * @param {string} fromDate - 从哪天开始删除（格式：YYYY-MM-DD）
+   * @returns {Promise<object>} 更新后的任务对象
+   */
+  async function deleteTaskFuture(id, fromDate) {
+    const result = await TaskRepository.deleteTaskFuture(id, fromDate)
+
+    // ⭐ 刷新当前日期的任务列表（因为删除会影响显示）
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
+
+    return result
+  }
+
+  /**
    * 切换任务完成状态
    *
    * @param {string} id - 任务 ID
@@ -723,6 +774,9 @@ export const useTaskStore = defineStore('task', () => {
     updateTask,
     updateTaskFuture,                // ⭐ 新增（2026-03-15）：更新未来实例
     updateTaskSingleDay,                  // ⭐ 新增（2026-03-15）：仅更新单日实例
+    deleteTaskSingleDay,             // ⭐ 新增（2026-03-17）：删除单日实例
+    deleteTaskAll,                   // ⭐ 新增（2026-03-17）：删除全部实例
+    deleteTaskFuture,                // ⭐ 新增（2026-03-17）：删除未来实例
     toggleDone,
     removeTask,
     updateQuadrant,

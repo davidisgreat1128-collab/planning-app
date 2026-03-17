@@ -70,17 +70,58 @@
     </view>
   </view>
 
-  <!-- 删除任务确认对话框 -->
-  <DeleteTaskDialog
-    v-model:show="showDeleteTaskDialog"
-    v-model:selectedOption="deleteTaskOption"
-    @confirm="handleDeleteConfirm"
-  />
+  <!-- ⭐ 删除重复任务确认对话框（RRULE架构升级，2026-03-17）-->
+  <view
+    v-if="showDeleteDialog"
+    class="modal-overlay"
+    @tap="closeDeleteDialog"
+  >
+    <view class="modal-content modal-content-delete" @tap.stop>
+      <text class="modal-title modal-title-delete">选择删除范围</text>
+      <view class="modal-options">
+        <!-- 选项1：删除单日实例（添加到EXDATE）-->
+        <view
+          class="modal-option modal-option-delete"
+          :class="{ active: deleteOption === 1 }"
+          @tap="emit('update:deleteOption', 1)"
+        >
+          <text class="option-text">仅删除当天计划</text>
+          <text class="option-hint">不影响其他日期</text>
+          <view v-if="deleteOption === 1" class="option-check">✓</view>
+        </view>
+
+        <!-- 选项2：删除全部实例（软删除任务）-->
+        <view
+          class="modal-option modal-option-delete"
+          :class="{ active: deleteOption === 2 }"
+          @tap="emit('update:deleteOption', 2)"
+        >
+          <text class="option-text">完整删除此条重复计划</text>
+          <text class="option-hint">所有历史和未来记录都删除</text>
+          <view v-if="deleteOption === 2" class="option-check">✓</view>
+        </view>
+
+        <!-- 选项3：删除未来实例（修改UNTIL）-->
+        <view
+          class="modal-option modal-option-delete"
+          :class="{ active: deleteOption === 3 }"
+          @tap="emit('update:deleteOption', 3)"
+        >
+          <text class="option-text">删除当天及未来计划</text>
+          <text class="option-hint">保留过去记录</text>
+          <view v-if="deleteOption === 3" class="option-check">✓</view>
+        </view>
+      </view>
+      <view class="modal-actions">
+        <text class="modal-btn modal-btn-cancel" @tap="closeDeleteDialog">取消</text>
+        <text class="modal-btn modal-btn-confirm modal-btn-delete" @tap="confirmDelete">删除</text>
+      </view>
+    </view>
+  </view>
 </template>
 
 <script setup>
 import { ref, computed, toRefs } from 'vue';
-import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
 
 /**
  * DragOverlay - 拖拽蒙层组件
@@ -89,20 +130,25 @@ import DeleteTaskDialog from '@/components/DeleteTaskDialog.vue';
  * - 显示拖拽中的任务浮层
  * - 显示删除区域（拖拽到底部删除）
  * - 管理重复任务象限切换对话框
- * - 管理删除任务确认对话框
+ * - ⭐ 管理重复任务删除确认对话框（RRULE架构升级，2026-03-17）
  *
  * 使用方式:
  * <DragOverlay
  *   :drag-state="dragDropComposable.dragState.value"
  *   :show-change-quadrant-dialog="quadrantComposable.showChangeQuadrantDialog.value"
  *   :change-quadrant-option="quadrantComposable.changeQuadrantOption.value"
+ *   :show-delete-dialog="quadrantComposable.showDeleteDialog.value"
+ *   :delete-option="quadrantComposable.deleteOption.value"
  *   @update:changeQuadrantOption="quadrantComposable.changeQuadrantOption.value = $event"
+ *   @update:deleteOption="quadrantComposable.deleteOption.value = $event"
  *   @confirm-change-quadrant="confirmChangeQuadrant"
- *   @confirm-delete="handleDeleteTaskConfirm"
+ *   @close-delete-dialog="quadrantComposable.closeDeleteDialog"
+ *   @confirm-delete="confirmDelete"
  * />
  *
  * @author Claude Sonnet 4.5
  * @date 2026-03-06
+ * @updated 2026-03-17 - 新增删除对话框
  */
 
 // Props
@@ -129,6 +175,16 @@ const props = defineProps({
     type: Number,
     default: 1
   },
+  // ⭐ 是否显示删除确认对话框（2026-03-17新增）
+  showDeleteDialog: {
+    type: Boolean,
+    default: false
+  },
+  // ⭐ 删除选项（1=单日实例, 2=全部实例, 3=未来实例）（2026-03-17新增）
+  deleteOption: {
+    type: Number,
+    default: 1
+  },
   /**
    * 当前选中的日期（格式：YYYY-MM-DD）
    * 用于后端API调用（区分"当天及未来"的分界点）
@@ -144,15 +200,20 @@ const emit = defineEmits([
   'update:changeQuadrantOption',
   'close-change-quadrant-dialog',
   'confirm-change-quadrant',
-  'confirm-delete'
+  'update:deleteOption',          // ⭐ 新增（2026-03-17）
+  'close-delete-dialog',          // ⭐ 新增（2026-03-17）
+  'confirm-delete'               // ⭐ 新增（2026-03-17）
 ]);
 
-// 内部状态（删除对话框）
-const showDeleteTaskDialog = ref(false);
-const deleteTaskOption = ref(1);
-
 // Props 响应式解构
-const { dragState, showChangeQuadrantDialog, changeQuadrantOption, currentDate } = toRefs(props);
+const {
+  dragState,
+  showChangeQuadrantDialog,
+  changeQuadrantOption,
+  showDeleteDialog,      // ⭐ 新增（2026-03-17）
+  deleteOption,          // ⭐ 新增（2026-03-17）
+  currentDate
+} = toRefs(props);
 
 /**
  * 关闭象限切换对话框
@@ -170,27 +231,19 @@ function confirmChangeQuadrant() {
 }
 
 /**
- * 处理删除确认
- * @param {number} option - 删除选项（1=仅当天, 2=完整清空, 3=删除未来）
+ * ⭐ 关闭删除确认对话框（2026-03-17新增）
  */
-function handleDeleteConfirm(option) {
-  emit('confirm-delete', option);
-  // 关闭对话框
-  showDeleteTaskDialog.value = false;
-  deleteTaskOption.value = 1;
+function closeDeleteDialog() {
+  emit('close-delete-dialog');
+  emit('update:deleteOption', 1); // 重置选项
 }
 
 /**
- * 暴露方法供父组件调用
+ * ⭐ 确认删除（2026-03-17新增）
  */
-defineExpose({
-  /**
-   * 显示删除任务对话框（由父组件调用）
-   */
-  showDeleteDialog() {
-    showDeleteTaskDialog.value = true;
-  }
-});
+function confirmDelete() {
+  emit('confirm-delete', deleteOption.value);
+}
 </script>
 
 <style scoped>
@@ -387,6 +440,31 @@ defineExpose({
 
 .modal-btn-confirm {
   background: #597EF7;
+  color: #FFFFFF;
+}
+
+/* ============================================
+   ⭐ 删除对话框红色主题（2026-03-17新增）
+   ============================================ */
+.modal-content-delete {
+  border: 2rpx solid #FF4D4F;
+}
+
+.modal-title-delete {
+  color: #FF4D4F;
+}
+
+.modal-option-delete.active {
+  background: rgba(255, 77, 79, 0.1);
+  border-color: #FF4D4F;
+}
+
+.modal-option-delete.active .option-check {
+  background: #FF4D4F;
+}
+
+.modal-btn-delete {
+  background: #FF4D4F;
   color: #FFFFFF;
 }
 </style>

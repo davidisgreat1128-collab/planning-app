@@ -463,6 +463,144 @@ class TaskRepository {
   }
 
   /**
+   * 删除重复任务的单日实例（添加到EXDATE）⭐ RRULE架构升级（2026-03-17）
+   *
+   * @param {string} id - 任务 ID
+   * @param {string} date - 目标日期（格式：YYYY-MM-DD）
+   * @returns {Promise<object>} 更新后的任务对象（包含exdate数组）
+   *
+   * 实现逻辑：
+   * 1. 调用后端API：POST /api/v1/tasks/:id/delete-single-day
+   * 2. 后端会：将日期添加到tasks.exdate数组
+   * 3. 更新本地缓存（Task表的exdate字段）
+   * 4. 通知订阅者触发重新查询
+   */
+  async deleteTaskSingleDay(id, date) {
+    const task = this.memoryCache.get(id)
+    if (!task) {
+      throw new Error(`任务不存在：${id}`)
+    }
+
+    console.log('[TaskRepository] 删除单日实例（EXDATE）:', task.title || task.id, '日期:', date)
+
+    try {
+      // 调用后端API（POST /tasks/:id/delete-single-day）
+      const result = await request({
+        url: `/tasks/${id}/delete-single-day`,
+        method: 'POST',
+        data: { date }
+      })
+
+      // 更新本地缓存（更新exdate字段）
+      const updatedTask = { ...task, exdate: result.exdate }
+      this.memoryCache.set(id, updatedTask)
+
+      // 持久化
+      this._saveToLocalStorage()
+
+      // ⭐ 通知订阅者
+      this._notify('deleteTaskSingleDay', { taskId: id, date, exdate: result.exdate })
+
+      return result
+    } catch (error) {
+      console.error('[TaskRepository] 删除单日实例失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 删除重复任务的全部实例（软删除任务）⭐ RRULE架构升级（2026-03-17）
+   *
+   * @param {string} id - 任务 ID
+   * @returns {Promise<void>}
+   *
+   * 实现逻辑：
+   * 1. 调用后端API：DELETE /api/v1/tasks/:id
+   * 2. 后端会：软删除Task表记录 + 级联删除task_overrides记录
+   * 3. 从本地缓存中移除任务
+   * 4. 通知订阅者触发UI刷新
+   */
+  async deleteTaskAll(id) {
+    const task = this.memoryCache.get(id)
+    if (!task) {
+      throw new Error(`任务不存在：${id}`)
+    }
+
+    console.log('[TaskRepository] 删除全部实例（软删除）:', task.title || task.id)
+
+    try {
+      // 调用后端API（DELETE /tasks/:id）
+      await request({
+        url: `/tasks/${id}`,
+        method: 'DELETE'
+      })
+
+      // 从内存缓存中移除
+      this.memoryCache.delete(id)
+      console.log('[TaskRepository] 已从内存缓存中移除:', id)
+
+      // 持久化
+      this._saveToLocalStorage()
+
+      // ⭐ 通知订阅者
+      this._notify('deleteTaskAll', { taskId: id })
+    } catch (error) {
+      console.error('[TaskRepository] 删除全部实例失败:', error)
+      throw error
+    }
+  }
+
+  /**
+   * 删除重复任务的未来实例（修改UNTIL）⭐ RRULE架构升级（2026-03-17）
+   *
+   * @param {string} id - 任务 ID
+   * @param {string} fromDate - 从哪天开始删除（格式：YYYY-MM-DD）
+   * @returns {Promise<object>} 更新后的任务对象（包含新的rrule和rruleUntil）
+   *
+   * 实现逻辑：
+   * 1. 调用后端API：POST /api/v1/tasks/:id/delete-future
+   * 2. 后端会：修改RRULE的UNTIL参数为fromDate前一天
+   * 3. 更新本地缓存（Task表的rrule和rruleUntil字段）
+   * 4. 通知订阅者触发重新查询
+   */
+  async deleteTaskFuture(id, fromDate) {
+    const task = this.memoryCache.get(id)
+    if (!task) {
+      throw new Error(`任务不存在：${id}`)
+    }
+
+    console.log('[TaskRepository] 删除未来实例（修改UNTIL）:', task.title || task.id, '开始日期:', fromDate)
+
+    try {
+      // 调用后端API（POST /tasks/:id/delete-future）
+      const result = await request({
+        url: `/tasks/${id}/delete-future`,
+        method: 'POST',
+        data: { fromDate }
+      })
+
+      // 更新本地缓存（更新rrule和rruleUntil字段）
+      const updatedTask = {
+        ...task,
+        rrule: result.rrule,
+        rruleUntil: result.rruleUntil
+      }
+      this.memoryCache.set(id, updatedTask)
+
+      // 持久化
+      this._saveToLocalStorage()
+
+      // ⭐ 通知订阅者
+      this._notify('deleteTaskFuture', { taskId: id, fromDate, rrule: result.rrule })
+
+      return result
+    } catch (error) {
+      console.error('[TaskRepository] 删除未来实例失败:', error)
+      throw error
+    }
+  }
+
+  /**
    * 同步到服务器
    * @returns {Promise<void>}
    */

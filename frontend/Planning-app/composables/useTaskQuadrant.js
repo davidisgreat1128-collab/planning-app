@@ -269,6 +269,140 @@ export function useTaskQuadrant() {
     closeChangeQuadrantDialog();
   }
 
+  // ============================================================
+  // ⭐ 删除重复任务逻辑（RRULE架构升级，2026-03-17）
+  // ============================================================
+
+  /** 删除确认对话框 */
+  const showDeleteDialog = ref(false);
+
+  /** 删除选项: 1=删除单日实例, 2=删除全部实例, 3=删除未来实例 */
+  const deleteOption = ref(1);
+
+  /** 待删除任务 */
+  const taskToDelete = ref(null);
+
+  /**
+   * 打开删除确认对话框
+   * @param {object} task - 任务对象
+   */
+  function openDeleteDialog(task) {
+    console.log('🔴 [useTaskQuadrant] 打开删除对话框', {
+      taskId: task?.id,
+      taskTitle: task?.title,
+      isRecurring: task?.isRecurring
+    });
+
+    taskToDelete.value = task;
+    deleteOption.value = 1; // 默认选项1
+    showDeleteDialog.value = true;
+  }
+
+  /**
+   * 关闭删除确认对话框
+   */
+  function closeDeleteDialog() {
+    console.log('🔴 [useTaskQuadrant] 关闭删除对话框');
+    showDeleteDialog.value = false;
+    deleteOption.value = 1;
+    taskToDelete.value = null;
+  }
+
+  /**
+   * 确认删除（支持3种删除策略）⭐ RRULE架构升级（2026-03-17）
+   *
+   * 删除选项说明：
+   * - 选项1：删除单日实例（添加到EXDATE）- 只影响当天，其他日期正常显示
+   * - 选项2：删除全部实例（软删除任务）- 所有历史和未来日期都不显示
+   * - 选项3：删除未来实例（修改UNTIL）- 今天开始的所有未来日期不显示，过去的保留
+   *
+   * 后端API对应：
+   * - 选项1 → POST /tasks/:id/delete-single-day
+   * - 选项2 → DELETE /tasks/:id
+   * - 选项3 → POST /tasks/:id/delete-future
+   */
+  async function confirmDelete() {
+    const task = taskToDelete.value;
+    const option = deleteOption.value;
+    const selectedDate = taskStore.selectedDate;
+
+    console.log('🔴 [useTaskQuadrant] confirmDelete 开始执行', {
+      taskId: task?.id,
+      taskTitle: task?.title,
+      deleteOption: option,
+      selectedDate,
+      说明: option === 1 ? '删除单日实例(EXDATE)' : option === 2 ? '删除全部实例(软删除)' : '删除未来实例(修改UNTIL)'
+    });
+
+    if (!task) {
+      console.warn('⚠️ [useTaskQuadrant] 参数校验失败：task为空');
+      return;
+    }
+
+    try {
+      // 对于重复任务,使用 taskId (原始任务ID),否则使用 id
+      const taskIdToDelete = task.taskId || task.id;
+
+      // ⭐ 根据用户选择调用不同的删除策略
+      if (option === 1) {
+        // 选项1：删除单日实例（添加到EXDATE）
+        console.log('🟢 [useTaskQuadrant] 选项1：删除单日实例', {
+          taskId: taskIdToDelete,
+          date: selectedDate,
+          说明: '将调用 taskStore.deleteTaskSingleDay() → 后端添加到EXDATE → 仅当天不显示'
+        });
+
+        await taskStore.deleteTaskSingleDay(taskIdToDelete, selectedDate);
+
+        console.log('✅ [useTaskQuadrant] 选项1执行成功：已添加到EXDATE，当天已隐藏');
+        uni.showToast({ title: '已删除当天实例', icon: 'success' });
+
+      } else if (option === 2) {
+        // 选项2：删除全部实例（软删除任务）
+        console.log('🟡 [useTaskQuadrant] 选项2：删除全部实例', {
+          taskId: taskIdToDelete,
+          说明: '将调用 taskStore.deleteTaskAll() → 后端软删除(DELETE /tasks/:id) → 所有日期不显示'
+        });
+
+        await taskStore.deleteTaskAll(taskIdToDelete);
+
+        console.log('✅ [useTaskQuadrant] 选项2执行成功：任务已软删除，所有日期已隐藏');
+        uni.showToast({ title: '已删除全部实例', icon: 'success' });
+
+      } else if (option === 3) {
+        // 选项3：删除未来实例（修改UNTIL）
+        console.log('🟣 [useTaskQuadrant] 选项3：删除未来实例', {
+          taskId: taskIdToDelete,
+          fromDate: selectedDate,
+          说明: '将调用 taskStore.deleteTaskFuture() → 后端修改UNTIL(POST /tasks/:id/delete-future) → 未来日期不显示，过去保留'
+        });
+
+        await taskStore.deleteTaskFuture(taskIdToDelete, selectedDate);
+
+        console.log('✅ [useTaskQuadrant] 选项3执行成功：已修改UNTIL，未来实例已隐藏');
+        uni.showToast({ title: '已删除未来实例', icon: 'success' });
+      }
+
+      // ⭐ 重新获取当前日期的所有任务实例（刷新UI）
+      if (selectedDate) {
+        console.log('🔄 [useTaskQuadrant] 刷新任务列表', { selectedDate });
+        await taskStore.fetchTasksByDate(selectedDate);
+        console.log('✅ [useTaskQuadrant] 任务列表刷新成功');
+      }
+
+    } catch (err) {
+      console.error('❌ [useTaskQuadrant] 删除失败:', err);
+      uni.showToast({ title: '删除失败', icon: 'none' });
+    }
+
+    console.log('🔴 [useTaskQuadrant] confirmDelete 执行完毕，关闭对话框');
+    closeDeleteDialog();
+  }
+
+  // ============================================================
+  // 象限变更逻辑（继续保留）
+  // ============================================================
+
   /**
    * 更改任务象限 (入口函数)
    * @param {object} task - 任务对象
@@ -330,20 +464,30 @@ export function useTaskQuadrant() {
     // 配置
     quadrants,
 
-    // 状态
+    // 状态 - 象限变更
     showChangeQuadrantDialog,
     changeQuadrantOption,
     targetQuadrant,
     currentTask,
     fromQuadrant,
 
-    // 方法
+    // ⭐ 状态 - 删除功能（2026-03-17新增）
+    showDeleteDialog,
+    deleteOption,
+    taskToDelete,
+
+    // 方法 - 象限变更
     openChangeQuadrantDialog,
     closeChangeQuadrantDialog,
     confirmChangeQuadrant,
     changeTaskQuadrant,
     getQuadrantLabel,
     getQuadrantColor,
+
+    // ⭐ 方法 - 删除功能（2026-03-17新增）
+    openDeleteDialog,
+    closeDeleteDialog,
+    confirmDelete,
 
     // 工具函数
     getTaskQuadrant,

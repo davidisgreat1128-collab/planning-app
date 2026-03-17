@@ -193,11 +193,15 @@
       :drag-state="dragDropComposable.dragState.value"
       :show-change-quadrant-dialog="quadrantComposable.showChangeQuadrantDialog.value"
       :change-quadrant-option="quadrantComposable.changeQuadrantOption.value"
+      :show-delete-dialog="quadrantComposable.showDeleteDialog.value"
+      :delete-option="quadrantComposable.deleteOption.value"
       :current-date="taskStore.selectedDate"
       @update:changeQuadrantOption="quadrantComposable.changeQuadrantOption.value = $event"
+      @update:deleteOption="quadrantComposable.deleteOption.value = $event"
       @close-change-quadrant-dialog="quadrantComposable.closeChangeQuadrantDialog"
       @confirm-change-quadrant="confirmChangeQuadrant"
-      @confirm-delete="handleDeleteTaskConfirm"
+      @close-delete-dialog="quadrantComposable.closeDeleteDialog"
+      @confirm-delete="confirmDelete"
     />
 
     <!-- 新建任务底部弹窗 -->
@@ -496,14 +500,24 @@ async function toggleSubtask(subtask) {
  * @param {string} fromQuadrant - 来源象限
  * @param {string|null} toQuadrant - 目标象限 (null表示删除)
  * @param {object} options - 附加选项 { shouldDelete: boolean }
+ *
+ * ⭐ RRULE架构升级（2026-03-17）：拖拽删除时打开删除对话框
  */
 async function handleDragEnd(task, fromQuadrant, toQuadrant, options = {}) {
   console.log('[index.vue] handleDragEnd - 任务:', task?.title, ', 从:', fromQuadrant, ', 到:', toQuadrant, ', 选项:', options);
 
-  // 场景1: 拖拽到删除区域
+  // 场景1: 拖拽到删除区域 → 打开删除对话框
   if (options.shouldDelete || toQuadrant === null) {
-    console.log('[index.vue] handleDragEnd - 触发删除流程');
-    dragOverlayRef.value?.showDeleteDialog();
+    console.log('[index.vue] handleDragEnd - 触发删除流程，打开删除对话框');
+    // ⭐ 如果是重复任务，打开删除选项对话框；否则直接删除
+    if (task.isRecurring || task.rrule) {
+      quadrantComposable.openDeleteDialog(task);
+    } else {
+      // 普通任务直接删除
+      await taskStore.removeTask(task.id);
+      await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
+      uni.showToast({ title: '已删除', icon: 'success' });
+    }
     return;
   }
 
@@ -532,80 +546,16 @@ async function confirmChangeQuadrant() {
 }
 
 /**
- * 处理删除任务确认（区分普通任务和重复任务）
- * ⭐ 架构升级（2026-03-15）：重复任务使用 EXDATE + skipped记录，不是删除实例
- * @param {number} option - 1=仅删除当天, 2=完整清空, 3=删除当天及未来
+ * ⭐ 确认删除重复任务（RRULE架构升级，2026-03-17）
+ *
+ * 调用Composable层的confirmDelete方法，该方法会根据deleteOption调用Store的3个删除方法：
+ * - 选项1：deleteTaskSingleDay (添加到EXDATE)
+ * - 选项2：deleteTaskAll (软删除任务)
+ * - 选项3：deleteTaskFuture (修改UNTIL)
  */
-async function handleDeleteTaskConfirm(option) {
-  const task = dragDropComposable.dragState.value.task;
-  const currentDate = calendarComposable.selectedDate.value;
-
-  if (!task) {
-    console.error('[index.vue] handleDeleteTaskConfirm - task为空');
-    return;
-  }
-
-  console.log('[index.vue] handleDeleteTaskConfirm - 删除选项:', option, ', 任务:', task.title, ', 日期:', currentDate);
-
-  try {
-    if (!task.isRecurring) {
-      // ✅ 普通任务：直接删除任务定义（所有选项效果相同）
-      console.log('[index.vue] 删除普通任务:', task.id);
-      await taskStore.removeTask(task.id);
-
-    } else {
-      // ✅ 重复任务：根据选项执行不同操作
-      if (option === 1) {
-        // 仅删除当天任务 → 创建 skipped completion_record
-        console.log('[index.vue] 重复任务-仅删除当天:', task.id, currentDate);
-        await taskApi.completeRecurringTask(task.id, {
-          completionDate: currentDate,
-          status: 'skipped', // 标记为跳过
-          note: '用户拖拽删除'
-        });
-
-      } else if (option === 2) {
-        // 完整清空重复计划 → 删除任务定义（后端会级联删除所有 completion_records）
-        console.log('[index.vue] 重复任务-完整清空:', task.id);
-        await taskStore.removeTask(task.id);
-
-      } else if (option === 3) {
-        // 删除当天及未来任务 → 添加 EXDATE 条目（从今天到 rrule.until）
-        console.log('[index.vue] 重复任务-删除当天及未来:', task.id);
-
-        // 获取任务的所有未来发生日期（限制1年内，避免性能问题）
-        const rruleUntil = task.rruleUntil || formatDate(new Date(new Date().getTime() + 365 * 24 * 60 * 60 * 1000)); // 默认1年后
-        const maxDate = rruleUntil > currentDate ? rruleUntil : currentDate; // 取较大值
-
-        const response = await taskApi.getTaskOccurrences(task.id, currentDate, maxDate);
-        const futureOccurrences = response.data?.occurrences || [];
-
-        console.log('[index.vue] 未来发生日期数量:', futureOccurrences.length);
-
-        // 将所有未来日期加入 EXDATE
-        const currentExdate = task.exdate || [];
-        const newExdate = [...new Set([...currentExdate, ...futureOccurrences])]; // 去重
-
-        // 更新任务的 exdate 字段
-        await taskStore.updateTask(task.id, { exdate: newExdate });
-        console.log('[index.vue] 已添加EXDATE条目数量:', futureOccurrences.length);
-      }
-    }
-
-    // 刷新任务列表
-    await taskStore.fetchTasksByDate(currentDate);
-
-    uni.showToast({
-      title: '已删除',
-      icon: 'success'
-    });
-  } catch (err) {
-    console.error('[index.vue] handleDeleteTaskConfirm - 删除失败:', err);
-    uni.showToast({
-      title: '删除失败',
-      icon: 'none'
-    });
-  }
+async function confirmDelete() {
+  await quadrantComposable.confirmDelete();
+  // Composable内部已刷新任务列表，这里无需再刷新
 }
 
 /**
