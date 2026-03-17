@@ -456,10 +456,11 @@ async function deleteRecurringTaskSingleDay(req, res, next) {
 
     console.log(`[TaskController] 删除当天 taskId=${taskId}, date=${date}`);
 
-    // 调用RecurringTaskService
-    const task = await recurringTaskService.deleteSingleDay(taskId, date);
+    // 调用RecurringTaskService（新方案：返回{ taskId, date, isDeleted: true }）
+    const result = await recurringTaskService.deleteSingleDay(taskId, date);
 
-    return success(res, task, '已添加到例外日期');
+    // ⭐ 返回新格式（非task对象，而是删除结果）
+    return success(res, result, '已删除当天实例');
   } catch (err) {
     console.error('[TaskController] 删除当天失败:', err);
     next(err);
