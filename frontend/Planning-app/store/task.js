@@ -238,16 +238,17 @@ export const useTaskStore = defineStore('task', () => {
       console.log('  - 重复任务:', recurring.length)
 
       // ⭐ 同步到本地 Repository（更新缓存）
+      // ⭐ 修复（2026-03-17）：改用TaskRepository.updateCache()公共方法，避免直接访问memoryCache
       allTasks.forEach(task => {
         // 检查任务是否已存在
         const existingTask = TaskRepository.getById(task.id)
         if (!existingTask) {
           // 新任务：直接添加到缓存
-          TaskRepository.memoryCache.set(task.id, task)
+          TaskRepository.updateCache(task)
           console.log('[TaskStore] 新任务已添加到缓存:', task.id, task.title)
         } else if (task.updatedAt > existingTask.updatedAt) {
           // 任务已存在但服务器版本更新：覆盖本地缓存
-          TaskRepository.memoryCache.set(task.id, task)
+          TaskRepository.updateCache(task)
           console.log('[TaskStore] 任务缓存已更新（服务器版本更新）:', task.id, task.title)
         }
       })

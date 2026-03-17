@@ -633,6 +633,31 @@ class TaskRepository {
     }
   }
 
+  /**
+   * 更新缓存中的任务
+   * ⭐ 新增（2026-03-17）：提供公共方法更新缓存，避免外部直接访问memoryCache
+   *
+   * @param {object} task - 任务对象
+   * @returns {void}
+   *
+   * 使用场景：
+   * - Store层从后端获取到最新任务数据，需要更新本地缓存
+   * - 不触发操作队列（因为数据来自服务器，不需要同步回服务器）
+   */
+  updateCache(task) {
+    if (!task || !task.id) {
+      console.error('[TaskRepository] updateCache 参数无效:', task)
+      return
+    }
+
+    // 直接更新缓存（不添加到操作队列）
+    this.cacheManager.set(task.id, task)
+    console.log('[TaskRepository] 缓存已更新:', task.id, task.title)
+
+    // 持久化到 localStorage
+    this._saveToLocalStorage()
+  }
+
   // ========== 私有方法 ==========
   // ⭐ 注意（2026-03-17）：_loadFromLocalStorage 方法已删除
   // 该职责已委托给 TaskCacheManager.loadFromLocalStorage() 和 TaskSyncQueue.loadQueueFromLocalStorage()
