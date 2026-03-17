@@ -157,49 +157,50 @@ class RecurringTaskService {
   }
 
   /**
-   * 操作4：删除当天 - 添加到EXDATE
+   * 操作4：删除当天 - 标记为is_deleted=true（新方案）
+   * 原理：删除 = 阻止实例生成（非修改数据）
+   * 实现：调用TaskOverrideRepository.markAsDeleted()创建删除标记
+   *
+   * 设计变更：
+   * - 旧方案：添加到tasks.exdate数组
+   * - 新方案：创建task_overrides记录（is_deleted=true）
+   * - 优势：统一管理覆盖和删除，优先级清晰（is_deleted优先级最高）
+   *
    * @param {number} taskId - 任务ID
    * @param {string} date - 日期（YYYY-MM-DD）
-   * @returns {Promise<object>} 更新后的任务对象
+   * @returns {Promise<object>} 返回{ taskId, date, isDeleted: true }
+   * @throws {NotFoundError} 任务不存在
+   * @throws {ValidationError} 参数无效或任务非重复任务
    */
   async deleteSingleDay(taskId, date) {
     try {
+      const taskOverrideRepository = require('../repositories/TaskOverrideRepository');
+
+      // 步骤1：查询任务，验证是否为重复任务
       const task = await Task.findByPk(taskId);
       if (!task) {
         throw new NotFoundError('任务不存在');
       }
       if (!task.isRecurring || !task.rrule) {
-        throw new ValidationError('该任务不是重复任务，无法使用EXDATE');
+        throw new ValidationError('该任务不是重复任务，无法删除单日实例');
       }
 
-      // 解析现有EXDATE
-      let exdateArray = [];
-      if (task.exdate) {
-        try {
-          exdateArray = JSON.parse(task.exdate);
-          if (!Array.isArray(exdateArray)) {
-            exdateArray = [];
-          }
-        } catch (err) {
-          exdateArray = [];
-        }
-      }
+      console.log(`[RecurringTaskService] 删除单日实例 - taskId=${taskId}, date=${date}, userId=${task.userId}`);
 
-      // 检查是否已存在
-      if (exdateArray.includes(date)) {
-        throw new ValidationError(`日期 ${date} 已在排除列表中`);
-      }
+      // 步骤2：调用Repository标记为已删除
+      await taskOverrideRepository.markAsDeleted(taskId, task.userId, date);
 
-      // 添加新日期
-      exdateArray.push(date);
-      exdateArray.sort(); // 保持排序
-
-      task.exdate = JSON.stringify(exdateArray);
-      await task.save();
-
-      return task;
+      // 步骤3：返回删除结果（新格式，非task对象）
+      return {
+        taskId,
+        date,
+        isDeleted: true
+      };
     } catch (error) {
-      console.error('删除当天失败:', error);
+      if (error instanceof NotFoundError || error instanceof ValidationError) {
+        throw error;
+      }
+      console.error('[RecurringTaskService] deleteSingleDay失败:', error);
       throw error;
     }
   }

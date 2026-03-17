@@ -123,18 +123,27 @@ async function getTasksByDate(userId, date, options = {}) {
   });
 
   // 筛选出在该日期发生的重复任务
-  // ⭐ 架构升级（2026-03-16）：应用优先级流程（删除标记 → 覆盖 → 默认规则）
+  // ⭐⭐ 架构升级（2026-03-17）：应用优先级流程（is_deleted → 覆盖 → 完成记录 → 默认规则）
   const recurringTasksOnDate = [];
   for (const task of allRecurringTasks) {
-    // ⭐ 优先级1：检查 EXDATE（删除标记）
-    // calculateOccurrences 内部已处理 EXDATE，如果该日期在 EXDATE 中，不会包含在 occurrences 中
+    // ⭐ 步骤1：RRULE计算候选日期
     const occurrences = rruleCalculationService.calculateOccurrences(task, date, date);
 
     if (occurrences.includes(date)) {
-      // ⭐ 优先级2：检查单日覆盖（task_overrides）
+      // ⭐⭐ 步骤2：检查is_deleted标记（最高优先级）
+      // 如果该日期被标记为已删除（is_deleted=true），直接跳过不生成实例
       const override = await taskOverrideRepository.getByTaskAndDate(task.id, date);
 
-      // 创建任务实例（基础数据来自任务规则）
+      if (override && override.isDeleted === true) {
+        // ⭐⭐ 关键判断：is_deleted=true → 跳过，不生成实例
+        console.log(
+          `[TaskService] 跳过已删除日期 - taskId=${task.id}, ` +
+          `title=${task.title}, date=${date}, is_deleted=true`
+        );
+        continue; // ⭐ 跳出循环，不添加到 recurringTasksOnDate
+      }
+
+      // ⭐ 步骤3：创建任务实例（基础数据来自任务规则）
       const taskInstance = task.toJSON();
 
       // 应用单日覆盖（如果存在）
