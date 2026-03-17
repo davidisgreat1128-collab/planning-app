@@ -1,9 +1,9 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-17（修复RRULE架构选项2两个关键BUG - 时间区间拆分）
+> **最后更新**: 2026-03-17（修复BUG-009 UNTIL参数继承错误 - 彻底解决）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: de0210e (fix(recurring-task): 修复BUG-008时间区间拆分逻辑错误)
+> **最新commit**: 0ffc79d (fix(rrule): 修复BUG-009 UNTIL参数继承导致DTSTART>UNTIL错误)
 > **Git状态**: ✅ 已提交
 
 ---
@@ -11,13 +11,13 @@
 ## 🎯 当前阶段
 
 **阶段名称**: 🚀 RRULE架构完善 - 阶段一Day7（BUG修复）
-**进度**: **90%**（BUG-007、BUG-008已修复，等待用户测试验证）
+**进度**: **95%**（BUG-007、BUG-008、BUG-009已修复，等待用户测试验证）
 
 **本次会话完成**:
 
-### BUG-007和BUG-008修复：选项2关键BUG ✅
+### BUG-007、BUG-008、BUG-009修复：选项2关键BUG ✅
 
-**修复的两个BUG**：
+**修复的三个BUG**：
 
 #### BUG-007：前端键名不匹配（oldTask vs originalTask）
 - **问题**：后端返回 `{originalTask, newTask}`，前端期望 `{oldTask, newTask}`
@@ -30,15 +30,29 @@
 - **用户反馈（关键）**："就任务与新任务的RRule正确的方式不是 继承，而是 拆分时间区间；两个规则应该是独立的"
 - **修复**：
   - **第一次修复（259a7d4）**：添加 `until: null`，但仍使用已修改的RRULE（不完整）
-  - **第二次修复（de0210e）**：实现时间区间拆分 ⭐ 正确修复
+  - **第二次修复（de0210e）**：实现时间区间拆分（仍有UNTIL继承问题）
     - 第74行：保存原始RRULE（在修改旧任务之前）
     - 第107行：使用原始RRULE创建新任务（不是修改后的）
-- **Git commit**: 259a7d4（第一次）+ de0210e（第二次，正确）
+- **Git commit**: 259a7d4（第一次）+ de0210e（第二次）
+
+#### BUG-009：UNTIL参数通过`...options`展开运算符错误继承 ⭐ 根本原因
+- **现象**：GET /api/v1/tasks?date=2026-03-17 返回400错误
+- **问题**：任务ID=110的RRULE包含 DTSTART=2026-03-21 > UNTIL=2026-03-20
+- **根本原因**：
+  - `_updateRRuleStartDate`方法中，第336行`...options`展开所有参数（包括until）
+  - 即使第338行设置`until: null`，RRule构造函数不接受null值
+  - 导致新任务继承了旧任务的UNTIL=2026-03-20
+- **修复**：
+  - 使用ES6解构赋值排除until和dtstart字段：`const { until, dtstart, ...cleanOptions } = options;`
+  - 新RRule对象中不包含until字段 = 永久重复
+  - 修正EXDATE字段值：`exdate: null`（而不是`'[]'`字符串）
+- **数据清理**：删除错误任务（ID=110）
+- **Git commit**: 09ee75e（测试日志）+ 0ffc79d（BUG-009修复）⭐ 彻底解决
 
 **修复后的正确逻辑（时间区间拆分）**：
 - 旧任务（独立区间1）：DTSTART=2026-03-17, FREQ=DAILY, UNTIL=2026-03-20 ✅
-- 新任务（独立区间2）：DTSTART=2026-03-21, FREQ=DAILY, 无UNTIL（基于原始RRULE）✅
-- 两个规则完全独立，不是继承关系 ✅
+- 新任务（独立区间2）：DTSTART=2026-03-21, FREQ=DAILY, **无UNTIL**（基于原始RRULE，不继承UNTIL）✅
+- 两个规则完全独立，无时间交叉，无DTSTART > UNTIL错误 ✅
 
 **架构符合性**：
 - ✅ 遵循四层架构（前端Repository层 + 后端Service层）
@@ -202,6 +216,7 @@
 - **工作日志**:
   - Day5-6: `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-16-RRULE架构完善阶段一Day5-6前端层完整实现.md`
   - BUG-007&008修复: `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-17-修复RRULE架构选项2两个关键BUG.md`
+  - BUG-009修复: `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-17-修复BUG-009-UNTIL参数继承错误.md`
 - **文档导航**: `.claude/文档导航.md` - 已登记新文档
 - **未解决问题清单**: `.claude/未解决或待办.md`
 - **超标文件追踪**: `docs/02-技术设计/超标文件追踪清单.md`
@@ -211,33 +226,44 @@
 
 ## 📌 下一个Claude接手时
 
-**当前状态**: ✅ RRULE架构完善阶段一Day7 BUG-007&008已修复（90%），等待用户测试验证
+**当前状态**: ✅ RRULE架构完善阶段一Day7 BUG-007&008&009已修复（95%），等待用户测试验证
 
 **本次会话完成内容**:
 
 1. **BUG-007修复**（前端键名不匹配）
    - 问题：后端返回 `{originalTask, newTask}`，前端期望 `{oldTask, newTask}`
    - 修复：TaskRepository.js 替换所有 `oldTask` 为 `originalTask`（4处）
-   - 修复：task.js Store 更新JSDoc注释
    - Git commit: cf70dcd
    - 文件：`frontend/Planning-app/repositories/TaskRepository.js`、`frontend/Planning-app/store/task.js`
 
 2. **BUG-008修复**（时间区间拆分逻辑错误）
    - 问题：新任务RRULE基于已修改的旧RRULE创建，违反时间区间拆分原则
-   - 根因：第104行使用了已修改的`originalTask.rrule`（第92行已添加UNTIL）
-   - 用户反馈：正确的方式不是继承，而是拆分时间区间，两个规则应该独立
    - 修复（两次）：
      - 第一次（259a7d4）：添加 `until: null`，但仍使用已修改的RRULE（不完整）
-     - 第二次（de0210e）：实现时间区间拆分 ⭐ 正确修复
-       - 第74行：保存原始RRULE（在修改旧任务之前）
-       - 第107行：使用原始RRULE创建新任务（不是修改后的）
+     - 第二次（de0210e）：保存原始RRULE，使用原始RRULE创建新任务（仍有UNTIL继承问题）
    - 文件：`backend/src/services/RecurringTaskService.js`
 
-3. **文档更新**
-   - 创建工作日志：`docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-17-修复RRULE架构选项2两个关键BUG.md`
+3. **BUG-009修复**（UNTIL参数继承错误）⭐ 根本原因修复
+   - 现象：GET /api/v1/tasks?date=2026-03-17 返回400，任务ID=110的DTSTART > UNTIL
+   - 根本原因：`...options`展开运算符继承了UNTIL参数
+   - 修复：
+     - 添加测试日志（09ee75e）：定位具体问题任务和RRULE
+     - 解构排除字段（0ffc79d）：`const { until, dtstart, ...cleanOptions } = options;`
+     - 修正EXDATE：`exdate: null`（而不是`'[]'`字符串）
+     - 数据清理：删除错误任务（ID=110）
+   - 文件：`backend/src/services/RRuleCalculationService.js`、`backend/src/services/RecurringTaskService.js`
+
+4. **文档更新**
+   - BUG-007&008日志：`2026-03-17-修复RRULE架构选项2两个关键BUG.md`
+   - BUG-009日志：`2026-03-17-修复BUG-009-UNTIL参数继承错误.md`
    - 更新CURRENT_STATUS.md（本文件）
 
-**Git状态**: ✅ 已提交（commit cf70dcd + commit 259a7d4 + commit de0210e）
+**Git状态**: ✅ 已提交
+- cf70dcd（BUG-007）
+- 259a7d4（BUG-008第一次）
+- de0210e（BUG-008第二次）
+- 09ee75e（测试日志）
+- 0ffc79d（BUG-009修复）⭐ 彻底解决
 
 **下一步建议**:
 

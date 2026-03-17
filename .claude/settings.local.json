@@ -51,7 +51,8 @@
       "Bash(if [ -f .claude/CURRENT_STATUS.md ])",
       "Bash(then echo \"✅ 文件已成功创建\")",
       "Bash(else echo \"❌ 文件创建失败\")",
-      "Bash(fi)"
+      "Bash(fi)",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT id, title, rrule, rrule_until, exdate FROM tasks WHERE id IN (109, 110) OR parent_task_id IN (109, 110);\")"
     ],
     "deny": [],
     "ask": []
