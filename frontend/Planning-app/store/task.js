@@ -264,14 +264,26 @@ export const useTaskStore = defineStore('task', () => {
 
   /**
    * 创建任务
+   * ⭐ 修复（2026-03-18）：立即同步到服务器，确保任务创建后立即显示
    *
    * @param {object} data - 任务数据
    * @returns {Promise<object>} 创建的任务对象
+   *
+   * 修复原因：
+   * - 旧逻辑：Repository.create() 有500ms延迟才同步到服务器
+   * - 导致问题：创建任务后立即查询后端，但此时任务还未保存到数据库
+   * - 新逻辑：创建任务后立即同步，等待同步完成，然后刷新任务列表
    */
   async function addTask(data) {
     const newTask = await TaskRepository.create(data)
 
-    // ⭐ 无需手动更新 tasks.value，Repository 会发布 'create' 事件，自动触发更新
+    // ⭐ 立即同步到服务器（跳过500ms延迟）
+    await TaskRepository.sync()
+
+    // ⭐ 刷新当前日期的任务列表（确保新任务立即显示）
+    if (selectedDate.value) {
+      await fetchTasksByDate(selectedDate.value)
+    }
 
     return newTask
   }
