@@ -106,7 +106,7 @@ class RecurringTaskService {
         isRecurring: true,
         rrule: this._updateRRuleStartDate(originalRRuleString, splitDate), // ⭐ 使用保存的原始RRULE，不是修改后的
         rruleUntil: null, // ⭐ 新任务永久重复，不继承原UNTIL
-        exdate: '[]', // 新任务不继承EXDATE
+        exdate: null, // ⭐ 新任务不继承EXDATE（null会被Model getter转换为空数组[]）
         categoryId: originalTask.categoryId,
         planId: originalTask.planId,
         parentTaskId: originalTask.id, // 标记父任务ID
@@ -331,11 +331,14 @@ class RecurringTaskService {
       const rrule = rrulestr(rruleString);
       const options = rrule.options;
 
-      // ⭐ 创建新RRULE：更新开始日期，移除UNTIL参数（新任务应该永久重复）
+      // ⭐ 从options中排除until和dtstart字段（防止继承）
+      const { until, dtstart, ...cleanOptions } = options;
+
+      // ⭐ 创建新RRULE：只设置新的dtstart，不包含until（新任务永久重复）
       const newRRule = new RRule({
-        ...options,
-        dtstart: new Date(newStartDate + 'T00:00:00Z'),
-        until: null // ⭐ 移除UNTIL参数，新任务永久重复
+        ...cleanOptions,
+        dtstart: new Date(newStartDate + 'T00:00:00Z')
+        // 不设置until字段 = 永久重复
       });
 
       return newRRule.toString();
