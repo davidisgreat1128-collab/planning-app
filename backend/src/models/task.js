@@ -156,7 +156,20 @@ function initTaskModel(sequelize) {
           try {
             // ⭐ 解析JSON数组格式
             const parsed = JSON.parse(rawValue);
-            return Array.isArray(parsed) ? parsed : [];
+            if (!Array.isArray(parsed)) return [];
+
+            // ⭐⭐ 过滤掉损坏的EXDATE元素（如"[]"空数组字符串）
+            // 正常的EXDATE元素应该是日期字符串（如"2026-03-20"）
+            // 损坏的数据可能是："[]", "", null等
+            const validDates = parsed.filter(item => {
+              if (typeof item !== 'string') return false;
+              if (item.length === 0) return false;
+              if (item === '[]') return false;  // 过滤空数组字符串
+              // 验证是否是有效的日期格式（YYYY-MM-DD）
+              return /^\d{4}-\d{2}-\d{2}$/.test(item);
+            });
+
+            return validDates;
           } catch (err) {
             console.error('[Task Model] exdate JSON解析失败:', rawValue, err);
             return [];
