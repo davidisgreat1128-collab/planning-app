@@ -221,8 +221,9 @@ export function useTaskQuadrant() {
 
         await taskStore.updateTask(taskIdToUpdate, { isUrgent, isImportant });
 
+        // ✅ 修复（2026-03-17）：通过Store调用同步，符合四层架构
         // 强制立即同步到服务器（避免防抖延迟）
-        await TaskRepository.sync();
+        await taskStore.syncToServer();
 
         console.log('✅ [useTaskQuadrant] 选项1执行成功：已更新tasks表，已同步到服务器');
         uni.showToast({ title: '已更改所有实例', icon: 'success' });

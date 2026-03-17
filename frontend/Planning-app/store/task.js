@@ -748,6 +748,17 @@ export const useTaskStore = defineStore('task', () => {
     return report
   }
 
+  /**
+   * 强制同步到服务器
+   * 用途：Composable层需要立即同步时调用（如重要操作后）
+   * @returns {Promise<void>}
+   */
+  async function syncToServer() {
+    console.log('[TaskStore] 强制同步到服务器...')
+    await TaskRepository.sync()
+    console.log('[TaskStore] 同步完成')
+  }
+
   // ============================================================
   // 导出
   // ============================================================
@@ -783,6 +794,7 @@ export const useTaskStore = defineStore('task', () => {
     batchUpdate,
     clearTasks,
     sync,
+    syncToServer,                    // ⭐ 新增（2026-03-17）：强制同步到服务器
     getTaskById,
     getAllTasks,
     updateTasksAfterPlanDelete,

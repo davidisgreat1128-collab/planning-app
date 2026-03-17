@@ -30,12 +30,12 @@
  */
 
 import request from '@/utils/request' // ⭐ 新增（2026-03-15）：直接调用后端API
+import { TaskCacheManager } from './cache/TaskCacheManager' // ⭐ 新增（2026-03-17）：缓存管理器
+import { TaskSyncQueue } from './sync/TaskSyncQueue' // ⭐ 新增（2026-03-17）：同步队列管理器
 
 // 配置常量
 const STORAGE_KEY = 'planning_app_tasks'
 const QUEUE_KEY = 'planning_app_task_queue'
-const DEBOUNCE_DELAY = 500
-const MAX_RETRY = 5
 
 /**
  * 任务 Repository（单例模式）
@@ -46,14 +46,9 @@ const MAX_RETRY = 5
  */
 class TaskRepository {
   constructor() {
-    // 内存缓存（Map: id → task）
-    this.memoryCache = new Map()
-
-    // 离线操作队列
-    this.operationQueue = []
-
-    // Debounce 定时器
-    this.saveTimer = null
+    // ⭐ 重构（2026-03-17）：使用缓存管理器和同步队列管理器（单一职责原则）
+    this.cacheManager = new TaskCacheManager(STORAGE_KEY)
+    this.syncQueue = new TaskSyncQueue(QUEUE_KEY)
 
     /**
      * ⭐ 事件订阅者列表（发布-订阅模式）
@@ -73,8 +68,11 @@ class TaskRepository {
   async hydrate() {
     console.log('[TaskRepository] 开始 hydrate...')
 
-    // 从 localStorage 加载缓存
-    this._loadFromLocalStorage()
+    // ⭐ 重构（2026-03-17）：使用缓存管理器加载
+    this.cacheManager.loadFromLocalStorage()
+
+    // ⭐ 重构（2026-03-17）：使用同步队列管理器加载
+    this.syncQueue.loadQueueFromLocalStorage()
 
     // 从服务器同步最新数据
     try {
@@ -83,10 +81,11 @@ class TaskRepository {
       console.warn('[TaskRepository] 离线模式，使用本地缓存', err)
     }
 
-    // 重放操作队列
-    await this._replayQueue()
+    // 重放操作队列（同步队列中的待处理操作）
+    // ⭐ 传入回调函数处理 create 成功后的缓存更新
+    await this.syncQueue.sync(request, this._handleSyncSuccess.bind(this))
 
-    console.log('[TaskRepository] hydrate 完成，任务数量:', this.memoryCache.size)
+    console.log('[TaskRepository] hydrate 完成，任务数量:', this.cacheManager.size())
 
     // ⭐ 发布事件：通知订阅者数据已加载完成
     this._notify('hydrate', null)
@@ -97,9 +96,9 @@ class TaskRepository {
    * @returns {Array<object>}
    */
   getAll() {
-    const allTasks = Array.from(this.memoryCache.values())
-    const activeTasks = allTasks.filter(task => !task.deletedAt)
-    return activeTasks.sort((a, b) => b.createdAt - a.createdAt)  // 按创建时间倒序
+    // ⭐ 重构（2026-03-17）：使用缓存管理器（已自动过滤deletedAt）
+    const allTasks = this.cacheManager.getAll()
+    return allTasks.sort((a, b) => b.createdAt - a.createdAt)  // 按创建时间倒序
   }
 
   /**
@@ -108,7 +107,8 @@ class TaskRepository {
    * @returns {object|null}
    */
   getById(id) {
-    const task = this.memoryCache.get(id)
+    // ⭐ 重构（2026-03-17）：使用缓存管理器
+    const task = this.cacheManager.get(id)
     return task && !task.deletedAt ? task : null
   }
 
@@ -139,7 +139,7 @@ class TaskRepository {
     console.log('  任务日期:', data.taskDate)
     console.log('  分类ID:', data.categoryId)
     console.log('  调用栈:', new Error().stack)
-    console.log('  当前缓存任务数:', this.memoryCache.size)
+    console.log('  当前缓存任务数:', this.cacheManager.size())
 
     const task = {
       id: this._generateId(),
@@ -152,8 +152,8 @@ class TaskRepository {
     console.log('  生成的任务ID:', task.id)
 
     // 更新内存缓存
-    this.memoryCache.set(task.id, task)
-    console.log('  缓存更新后任务数:', this.memoryCache.size)
+    this.cacheManager.set(task.id, task)
+    console.log('  缓存更新后任务数:', this.cacheManager.size())
 
     // 添加到操作队列
     this._addToQueue({
@@ -182,7 +182,7 @@ class TaskRepository {
    * @returns {Promise<object>}
    */
   async update(id, data) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -210,7 +210,7 @@ class TaskRepository {
     }
 
     // 更新缓存
-    this.memoryCache.set(id, updated)
+    this.cacheManager.set(id, updated)
 
     // 添加到队列
     this._addToQueue({
@@ -244,7 +244,7 @@ class TaskRepository {
    * 4. 通知订阅者
    */
   async updateFuture(id, data, currentDate) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -262,7 +262,7 @@ class TaskRepository {
       })
 
       // 更新缓存
-      this.memoryCache.set(id, updated)
+      this.cacheManager.set(id, updated)
 
       // 持久化
       this._saveToLocalStorage()
@@ -292,7 +292,7 @@ class TaskRepository {
    * 4. 通知订阅者（触发重新查询）
    */
   async updateOnce(id, data, date) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -333,7 +333,7 @@ class TaskRepository {
    * 4. 通知订阅者触发重新查询
    */
   async updateTaskSingleDay(id, data, date) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -377,7 +377,7 @@ class TaskRepository {
    * 4. 通知订阅者
    */
   async updateTaskFuture(id, data, splitDate) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -399,10 +399,10 @@ class TaskRepository {
       const { originalTask, newTask } = result
 
       // 更新旧任务缓存（UNTIL已修改）
-      this.memoryCache.set(originalTask.id, originalTask)
+      this.cacheManager.set(originalTask.id, originalTask)
 
       // 添加新任务到缓存
-      this.memoryCache.set(newTask.id, newTask)
+      this.cacheManager.set(newTask.id, newTask)
 
       // 持久化
       this._saveToLocalStorage()
@@ -432,7 +432,7 @@ class TaskRepository {
    * 5. 后台同步到服务器
    */
   async delete(id) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -449,7 +449,7 @@ class TaskRepository {
     })
 
     // 2. ⭐ 从内存缓存中移除（立即生效，避免刷新页面恢复）
-    this.memoryCache.delete(id)
+    this.cacheManager.delete(id)
     console.log('[TaskRepository] 已从内存缓存中移除:', id)
 
     // 3. 持久化到 localStorage（memoryCache 已移除，所以 localStorage 中也会移除）
@@ -481,7 +481,7 @@ class TaskRepository {
    * 4. 通知订阅者触发重新查询（重新计算RRULE实例）
    */
   async deleteTaskSingleDay(id, date) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -525,7 +525,7 @@ class TaskRepository {
    * 4. 通知订阅者触发UI刷新
    */
   async deleteTaskAll(id) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -540,7 +540,7 @@ class TaskRepository {
       })
 
       // 从内存缓存中移除
-      this.memoryCache.delete(id)
+      this.cacheManager.delete(id)
       console.log('[TaskRepository] 已从内存缓存中移除:', id)
 
       // 持久化
@@ -568,7 +568,7 @@ class TaskRepository {
    * 4. 通知订阅者触发重新查询
    */
   async deleteTaskFuture(id, fromDate) {
-    const task = this.memoryCache.get(id)
+    const task = this.cacheManager.get(id)
     if (!task) {
       throw new Error(`任务不存在：${id}`)
     }
@@ -590,7 +590,7 @@ class TaskRepository {
         rrule: result.rrule,
         rruleUntil: result.rruleUntil
       }
-      this.memoryCache.set(id, updatedTask)
+      this.cacheManager.set(id, updatedTask)
 
       // 持久化
       this._saveToLocalStorage()
@@ -634,72 +634,26 @@ class TaskRepository {
   }
 
   // ========== 私有方法 ==========
-
-  /**
-   * 从 localStorage 加载
-   * @private
-   */
-  _loadFromLocalStorage() {
-    const cached = localStorage.getItem(STORAGE_KEY)
-    if (cached) {
-      try {
-        const tasks = JSON.parse(cached)
-
-        // ⭐ 自动清理垃圾数据：过滤掉 deletedAt 不为 null 的数据
-        const beforeCount = tasks.length
-        const cleaned = tasks.filter(task => !task.deletedAt)
-        const garbageCount = beforeCount - cleaned.length
-
-        if (garbageCount > 0) {
-          console.warn(`[TaskRepository] 检测到 ${garbageCount} 个垃圾任务（deletedAt 不为 null），已自动清理`)
-          // 立即保存清理后的数据到 localStorage
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned))
-        }
-
-        cleaned.forEach(task => {
-          this.memoryCache.set(task.id, task)
-        })
-        console.log('[TaskRepository] 从缓存加载', cleaned.length, '个任务（清理后）')
-      } catch (err) {
-        console.error('[TaskRepository] 缓存数据损坏，清除缓存', err)
-        localStorage.removeItem(STORAGE_KEY)
-      }
-    }
-
-    const queue = localStorage.getItem(QUEUE_KEY)
-    if (queue) {
-      try {
-        this.operationQueue = JSON.parse(queue)
-        console.log('[TaskRepository] 从缓存加载', this.operationQueue.length, '个待同步操作')
-      } catch (err) {
-        console.error('[TaskRepository] 队列数据损坏，清除队列', err)
-        localStorage.removeItem(QUEUE_KEY)
-      }
-    }
-  }
+  // ⭐ 注意（2026-03-17）：_loadFromLocalStorage 方法已删除
+  // 该职责已委托给 TaskCacheManager.loadFromLocalStorage() 和 TaskSyncQueue.loadQueueFromLocalStorage()
 
   /**
    * 保存到 localStorage
+   * ⭐ 重构（2026-03-17）：委托给缓存管理器
    * @private
    */
   _saveToLocalStorage() {
-    const tasks = Array.from(this.memoryCache.values())
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks))
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(this.operationQueue))
+    // 委托给缓存管理器
+    this.cacheManager.saveToLocalStorage()
   }
 
   /**
    * 添加操作到队列
+   * ⭐ 重构（2026-03-17）：委托给同步队列管理器
    * @private
    */
   _addToQueue(operation) {
-    this.operationQueue.push({
-      id: this._generateId(),
-      ...operation,
-      timestamp: Date.now(),
-      status: 'pending',
-      retryCount: 0
-    })
+    this.syncQueue.enqueue(operation)
   }
 
   /**
@@ -715,18 +669,19 @@ class TaskRepository {
 
   /**
    * 合并服务器数据
+   * ⭐ 重构（2026-03-17）：使用缓存管理器
    * @private
    */
   _mergeServerData(serverData) {
     serverData.forEach(serverTask => {
-      const localTask = this.memoryCache.get(serverTask.id)
+      const localTask = this.cacheManager.get(serverTask.id)
 
       if (!localTask) {
         // 服务器有但本地没有 → 直接添加
-        this.memoryCache.set(serverTask.id, serverTask)
+        this.cacheManager.set(serverTask.id, serverTask)
       } else if (serverTask.updatedAt > localTask.updatedAt) {
         // 服务器更新时间更晚 → 使用服务器版本
-        this.memoryCache.set(serverTask.id, serverTask)
+        this.cacheManager.set(serverTask.id, serverTask)
         console.warn(`[TaskRepository] 冲突：${serverTask.title}，使用服务器版本`)
       }
       // 否则保留本地版本
@@ -737,70 +692,36 @@ class TaskRepository {
 
   /**
    * 上传操作队列
-   * ⭐ BUG修复（2026-03-15）：启用后端API调用，解决任务不同步到服务器的问题
+   * ⭐ 重构（2026-03-17）：委托给同步队列管理器
    * @private
    */
   async _uploadQueue() {
-    const pendingOps = this.operationQueue.filter(op => op.status === 'pending')
+    // ⭐ 委托给同步队列管理器，传入request函数和成功回调
+    const result = await this.syncQueue.sync(request, this._handleSyncSuccess.bind(this))
 
-    if (pendingOps.length === 0) {
-      return
+    console.log(`[TaskRepository] 同步完成: 成功 ${result.success} 个，失败 ${result.failed} 个`)
+
+    // 如果有成功的操作，保存缓存（因为可能更新了任务）
+    if (result.success > 0) {
+      this._saveToLocalStorage()
     }
-
-    console.log('[TaskRepository] 上传队列，待处理操作:', pendingOps.length)
-
-    // ⭐ 动态导入 taskApi（避免循环依赖）
-    const { createTask, updateTask, deleteTask } = await import('@/api/task')
-
-    for (const op of pendingOps) {
-      try {
-        op.status = 'syncing'
-
-        // ✅ 调用后端 API（已启用）
-        if (op.type === 'create') {
-          const serverTask = await createTask(op.data)  // ⭐ request.js已返回data字段
-          console.log(`[TaskRepository] 操作 create 成功，服务器返回:`, serverTask)
-
-          // ⭐ 同步服务器返回的完整数据（包含 id、isRecurring 等字段）
-          if (serverTask && serverTask.id) {
-            this.memoryCache.set(serverTask.id, serverTask)
-            console.log(`[TaskRepository] 已更新内存缓存为服务器版本:`, serverTask.id)
-          }
-        } else if (op.type === 'update') {
-          await updateTask(op.entityId, op.data)
-          console.log(`[TaskRepository] 操作 update 成功:`, op.entityId)
-        } else if (op.type === 'delete') {
-          await deleteTask(op.entityId)
-          console.log(`[TaskRepository] 操作 delete 成功:`, op.entityId)
-        }
-
-        // 成功 → 从队列移除
-        this.operationQueue = this.operationQueue.filter(o => o.id !== op.id)
-      } catch (err) {
-        op.status = 'failed'
-        op.retryCount++
-
-        if (op.retryCount >= MAX_RETRY) {
-          console.error(`[TaskRepository] 操作失败（已重试${MAX_RETRY}次），放弃`, op)
-          this.operationQueue = this.operationQueue.filter(o => o.id !== op.id)
-        } else {
-          const delay = Math.pow(2, op.retryCount) * 1000
-          console.warn(`[TaskRepository] 操作失败，${delay}ms 后重试`, op)
-          await new Promise(resolve => setTimeout(resolve, delay))
-        }
-      }
-    }
-
-    this._saveToLocalStorage()
   }
 
   /**
-   * 重放操作队列
+   * 处理同步成功后的回调（更新缓存）
+   * ⭐ 新增（2026-03-17）：处理 create 操作成功后更新缓存为服务器版本
    * @private
    */
-  async _replayQueue() {
-    await this._uploadQueue()
+  async _handleSyncSuccess(operation, result) {
+    // 只处理 create 操作（update/delete 不需要更新缓存）
+    if (operation.type === 'create' && result && result.id) {
+      console.log(`[TaskRepository] 同步成功，更新缓存为服务器版本: ${result.id}`)
+      this.cacheManager.set(result.id, result)
+    }
   }
+
+  // ⭐ 注意（2026-03-17）：_replayQueue 方法已删除
+  // 该职责已委托给 TaskSyncQueue.sync()
 
   /**
    * 生成唯一 ID
