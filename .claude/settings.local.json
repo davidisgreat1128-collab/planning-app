@@ -1,11 +1,27 @@
 {
   "permissions": {
     "allow": [
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"UPDATE task_overrides SET is_deleted = 1 WHERE task_id = 122 AND override_date = ''2026-03-17'';\")",
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT id, task_id, user_id, override_date, is_deleted FROM task_overrides WHERE task_id = 122 AND override_date = ''2026-03-17'';\")",
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT id, task_id, user_id, override_date, is_deleted, created_at FROM task_overrides ORDER BY created_at DESC LIMIT 10;\")",
-      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT id, task_id, override_date, is_deleted, title, description, is_urgent, is_important, start_time, end_time, is_all_day FROM task_overrides WHERE id IN (4, 12);\")",
-      "Read(//d/**)"
+      "Bash(git commit:*)",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT id, title, is_recurring, deleted_at, created_at FROM tasks WHERE id IN (172, 173, 174, 175);\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT id, title, is_recurring, deleted_at FROM tasks WHERE id IN (176, 177, 178, 179);\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DELETE FROM tasks WHERE id IN (172, 173, 174, 175, 176, 177, 178, 179);\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT COUNT(*) as count FROM tasks WHERE id IN (172, 173, 174, 175, 176, 177, 178, 179);\")",
+      "Bash(git push:*)",
+      "Bash(git restore:*)",
+      "Bash(awk:*)",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SHOW TABLES;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE users;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE tasks;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE task_overrides;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE task_completion_records;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE task_occurrences;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE planning_records;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE plan_progress_logs;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE alarms;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE alarm_sounds;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE holidays;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE work_days;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"DESCRIBE logs;\")"
     ],
     "deny": [],
     "ask": []
