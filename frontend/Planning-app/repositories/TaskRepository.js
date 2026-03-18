@@ -899,6 +899,59 @@ class TaskRepository {
       }
     })
   }
+
+  /**
+   * 等待同步队列完成（用于解决DELETE和fetchTasksByDate()竞态条件）
+   *
+   * @description
+   * 当同步队列中有待同步操作时，等待其完成。
+   * 主要用于确保DELETE操作已同步到服务器后，再执行依赖服务器状态的操作（如fetchTasksByDate）。
+   *
+   * @returns {Promise<void>} 无返回值，当队列为空或超时后resolve
+   *
+   * @example
+   * // Store层使用
+   * await TaskRepository.delete(182)
+   * await TaskRepository.delete(183)
+   * await TaskRepository.waitForSync()  // 等待DELETE请求完成
+   * // 此时fetchTasksByDate()不会返回已删除任务
+   *
+   * @throws {Error} 不抛出异常，超时后自动resolve（容错）
+   */
+  async waitForSync() {
+    // 队列为空，无需等待
+    if (this.syncQueue.queue.length === 0) {
+      console.log('[TaskRepository.waitForSync] 队列为空，无需等待')
+      return
+    }
+
+    console.log('[TaskRepository.waitForSync] 等待同步队列完成，当前队列长度:', this.syncQueue.queue.length)
+
+    // 等待同步完成
+    return new Promise((resolve) => {
+      const startTime = Date.now()
+      const checkInterval = setInterval(() => {
+        const elapsed = Date.now() - startTime
+
+        // 队列已清空且未在同步中
+        if (this.syncQueue.queue.length === 0 && !this.syncQueue.isSyncing) {
+          console.log(`[TaskRepository.waitForSync] 同步队列已完成（耗时: ${elapsed}ms）`)
+          clearInterval(checkInterval)
+          resolve()
+        }
+      }, 50)  // 每50ms检查一次
+
+      // 超时保护（最多等待5秒）
+      setTimeout(() => {
+        const elapsed = Date.now() - startTime
+        console.warn(`[TaskRepository.waitForSync] 等待超时（${elapsed}ms），强制继续`)
+        console.warn('  剩余队列长度:', this.syncQueue.queue.length)
+        console.warn('  是否正在同步:', this.syncQueue.isSyncing)
+        clearInterval(checkInterval)
+        resolve()  // 即使超时也resolve，不影响后续流程（容错）
+      }, 5000)
+    })
+  }
 }
 
 // 导出单例

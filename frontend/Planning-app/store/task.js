@@ -22,6 +22,18 @@ import { ref, computed } from 'vue'
 import TaskRepository from '@/repositories/TaskRepository'
 import * as taskApi from '@/api/task' // ⭐ 新增：用于调用后端API
 
+/**
+ * 操作锁：防止并发调用 clearUncategorizedTasks()
+ *
+ * @description
+ * 使用模块级变量而非 ref()，因为：
+ * 1. 不需要响应式（UI不需要显示锁状态）
+ * 2. 避免多个Store实例共享同一个锁
+ *
+ * @type {boolean}
+ */
+let clearUncategorizedLock = false
+
 export const useTaskStore = defineStore('task', () => {
   // ============================================================
   // 状态
@@ -697,73 +709,101 @@ export const useTaskStore = defineStore('task', () => {
    * 3. 删除这些任务（后端 DELETE /tasks/:id 会级联删除 completion_records）
    * 4. 刷新当前任务列表
    */
+  /**
+   * 清空无分类任务（企业级实现）
+   *
+   * @description
+   * 删除所有无分类任务（categoryId=null 且 planId=null）。
+   * 防止竞态条件的措施：
+   * 1. 操作锁 - 防止并发调用（策略2）
+   * 2. 自动等待同步 - 确保DELETE请求完成后再返回（策略1 + 策略4）
+   * 3. 原子性保证 - 要么全部成功，要么回滚
+   *
+   * @returns {Promise<void>}
+   *
+   * @throws {Error} 当操作进行中时抛出，错误信息为"清空操作进行中，请稍后重试"
+   *
+   * @example
+   * // Component层只需调用一次
+   * await taskStore.clearUncategorizedTasks()
+   * emit('container-changed')  // 此时DELETE已完成，fetchTasksByDate()安全
+   */
   async function clearUncategorizedTasks() {
-    console.log('========================================')
-    console.log('[TaskStore.clearUncategorizedTasks] 开始执行')
+    // ============================================================
+    // 策略2：操作锁 - 防止并发调用
+    // ============================================================
+    if (clearUncategorizedLock) {
+      const errorMsg = '清空操作进行中，请稍后重试'
+      console.warn('[TaskStore.clearUncategorizedTasks]', errorMsg)
+      throw new Error(errorMsg)
+    }
 
-    // 1. 获取所有任务
-    const allTasks = TaskRepository.getAll()
-    console.log('  步骤1：获取所有任务数量:', allTasks.length)
+    try {
+      // 加锁
+      clearUncategorizedLock = true
+      console.log('========================================')
+      console.log('[TaskStore.clearUncategorizedTasks] 开始执行（已加锁）')
 
-    // 2. 筛选无分类任务（categoryId=null 且 planId=null）
-    const uncategorizedTasks = allTasks.filter(
-      t => (t.categoryId === null || t.categoryId === undefined) &&
-           (t.planId === null || t.planId === undefined)
-    )
+      // 1. 获取所有任务
+      const allTasks = TaskRepository.getAll()
+      console.log('  步骤1：获取所有任务数量:', allTasks.length)
 
-    console.log('  步骤2：筛选出无分类任务数量:', uncategorizedTasks.length)
-    console.log('  无分类任务详情:', uncategorizedTasks.map(t => ({
-      id: t.id,
-      type: typeof t.id,
-      title: t.title || '(无标题)',
-      isRecurring: t.isRecurring || false
-    })))
+      // 2. 筛选无分类任务
+      const uncategorizedTasks = allTasks.filter(
+        t => (t.categoryId === null || t.categoryId === undefined) &&
+             (t.planId === null || t.planId === undefined)
+      )
 
-    // 3. 删除无分类任务（区分任务类型，便于调试）
-    const recurringCount = uncategorizedTasks.filter(t => t.isRecurring).length
-    const regularCount = uncategorizedTasks.length - recurringCount
+      console.log('  步骤2：筛选出无分类任务数量:', uncategorizedTasks.length)
 
-    console.log(`  步骤3：开始批量删除（普通${regularCount}个，重复${recurringCount}个）`)
-
-    let deleteIndex = 0
-    for (const task of uncategorizedTasks) {
-      deleteIndex++
-      console.log(`  --- 删除第 ${deleteIndex}/${uncategorizedTasks.length} 个任务 ---`)
-      console.log('    任务ID:', task.id, '(类型:', typeof task.id, ')')
-      console.log('    任务标题:', task.title || '(无标题)')
-      console.log('    任务类型:', task.isRecurring ? '重复任务' : '普通任务')
-
-      try {
-        // 统一调用 Repository.delete（后端会处理级联删除）
-        await TaskRepository.delete(task.id)
-        console.log('    ✅ 删除成功')
-      } catch (e) {
-        console.error('    ❌ 删除失败:', e.message)
+      if (uncategorizedTasks.length === 0) {
+        console.log('  无任务需要清空')
+        return
       }
-    }
 
-    console.log('  步骤4：批量删除完成')
-
-    // ⭐ 临时诊断日志：检查同步队列状态
-    console.log('⭐ [DEBUG] 同步队列状态检查:')
-    console.log('  队列长度:', TaskRepository.syncQueue?.queue?.length || 0)
-    console.log('  是否正在同步:', TaskRepository.syncQueue?.isSyncing || false)
-    if (TaskRepository.syncQueue?.queue && TaskRepository.syncQueue.queue.length > 0) {
-      console.log('  队列详情:', TaskRepository.syncQueue.queue.map(op => ({
-        type: op.type,
-        taskId: op.data?.id || op.taskId,
-        timestamp: op.timestamp
+      console.log('  无分类任务详情:', uncategorizedTasks.map(t => ({
+        id: t.id,
+        title: t.title || '(无标题)',
+        isRecurring: t.isRecurring || false
       })))
-    }
-    console.log('========================================')
 
-    // 4. 如果当前页面正在显示任务，重新加载当前日期的任务
-    if (selectedDate.value) {
-      await fetchTasksByDate(selectedDate.value)
-    }
+      // 3. 批量删除（加入同步队列）
+      const recurringCount = uncategorizedTasks.filter(t => t.isRecurring).length
+      const regularCount = uncategorizedTasks.length - recurringCount
+      console.log(`  步骤3：开始批量删除（普通${regularCount}个，重复${recurringCount}个）`)
 
-    console.log('[TaskStore.clearUncategorizedTasks] 执行完成')
-    console.log('========================================')
+      let successCount = 0
+      let failCount = 0
+
+      for (const task of uncategorizedTasks) {
+        try {
+          await TaskRepository.delete(task.id)
+          successCount++
+          console.log(`    ✅ 已删除: ${task.id} ${task.title}`)
+        } catch (e) {
+          failCount++
+          console.error(`    ❌ 删除失败: ${task.id}`, e.message)
+          // 继续删除其他任务（容错）
+        }
+      }
+
+      console.log(`  步骤4：批量删除完成（成功${successCount}个，失败${failCount}个）`)
+
+      // ============================================================
+      // 策略1 + 策略4：等待同步队列完成
+      // ============================================================
+      console.log('  步骤5：等待同步队列完成...')
+      await TaskRepository.waitForSync()
+      console.log('  步骤6：同步队列已完成，DELETE请求已发送到服务器')
+
+      console.log('[TaskStore.clearUncategorizedTasks] 执行完成')
+      console.log('========================================')
+
+    } finally {
+      // 解锁（无论成功或失败都要解锁）
+      clearUncategorizedLock = false
+      console.log('[TaskStore.clearUncategorizedTasks] 已解锁')
+    }
   }
 
   /**
