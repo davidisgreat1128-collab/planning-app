@@ -316,75 +316,171 @@ D:\MyProject\Planning-app/
 ```
 backend/
 ├── src/
-│   ├── models/            ⭐ Sequelize模型 (核心!)
-│   │   ├── index.js       模型汇总 + 关联定义
-│   │   ├── User.js        用户模型
-│   │   ├── Planning.js    规划模型
-│   │   ├── Hexagram.js    卦象模型 (64卦)
-│   │   ├── LifeStage.js   人生阶段模型
-│   │   └── DivinationRecord.js  占卜记录
-│   ├── controllers/       控制器层
-│   ├── services/          业务逻辑层
-│   │   └── iching/        易经算法核心
-│   ├── routes/            RESTful路由
-│   ├── middleware/        中间件
-│   │   ├── auth.js        JWT认证
-│   │   ├── validator.js   数据验证
-│   │   ├── logger.js      日志记录
-│   │   └── errorHandler.js 错误处理
-│   ├── utils/             工具函数
-│   │   ├── errors.js      自定义错误类
-│   │   ├── response.js    统一响应格式
-│   │   ├── crypto.js      加密工具
-│   │   └── jwt.js         JWT工具
+│   ├── app.js             ⭐ Express应用入口（路由注册中心）
 │   ├── config/            配置文件
 │   │   ├── database.js    ⭐ Sequelize配置
 │   │   └── constants.js   常量定义
-│   ├── migrations/        ⭐ 数据库迁移文件
-│   ├── seeders/           ⭐ 初始数据 (64卦)
-│   └── app.js             Express应用入口
-├── tests/unit/            单元测试
-├── tests/integration/     集成测试
-├── logs/                  日志目录
+│   ├── controllers/       控制器层（11个控制器）
+│   │   ├── alarmController.js          闹钟控制器
+│   │   ├── authController.js           认证控制器
+│   │   ├── completionRecordController.js 完成记录控制器
+│   │   ├── holidayController.js        节假日控制器
+│   │   ├── logController.js            日志控制器
+│   │   ├── planProgressController.js   规划进度控制器
+│   │   ├── planningController.js       规划控制器
+│   │   ├── taskController.js           任务控制器
+│   │   ├── taskOverrideController.js   任务覆盖控制器
+│   │   ├── userController.js           用户控制器
+│   │   └── workDayController.js        工作日控制器
+│   ├── middleware/        中间件
+│   │   ├── auth.js        JWT认证
+│   │   ├── errorHandler.js 错误处理
+│   │   ├── logger.js      日志记录（Winston单例）
+│   │   └── validator.js   数据验证（Joi）
+│   ├── migrations/        ⭐ 数据库迁移文件（19个迁移）
+│   │   ├── 20240101000000-create-users.js
+│   │   ├── 20240101000001-create-tasks.js
+│   │   ├── 20240101000002-create-task-overrides.js
+│   │   ├── 20240101000003-create-task-completion-records.js
+│   │   ├── 20240101000004-create-planning-records.js
+│   │   ├── 20240101000005-create-alarms.js
+│   │   ├── 20240101000006-create-alarm-sounds.js
+│   │   ├── 20240101000007-create-holidays.js
+│   │   ├── 20240101000008-create-work-days.js
+│   │   ├── 20240101000009-create-logs.js
+│   │   ├── 20240101000010-create-plan-progress-logs.js
+│   │   ├── 20240119061821-add-version-to-tasks.js
+│   │   ├── 20240119062000-add-version-to-task-overrides.js
+│   │   ├── 20240119063000-add-version-to-completion-records.js
+│   │   ├── 20240131000000-modify-tasks-table-structure.js
+│   │   ├── 20240203081507-add-count-to-completion-records.js
+│   │   ├── 20240204000000-modify-alarms-table-structure.js
+│   │   ├── 20240205000000-create-task-occurrences.js
+│   │   └── 20240308000000-add-overrideType-to-task-overrides.js
+│   ├── models/            ⭐ Sequelize模型（11个模型，核心！）
+│   │   ├── index.js       模型汇总 + 关联定义（Sequelize单例入口）
+│   │   ├── User.js        用户模型
+│   │   ├── Task.js        任务模型（支持RRULE重复任务）
+│   │   ├── TaskOverride.js 任务覆盖模型（RRULE单日覆盖）
+│   │   ├── CompletionRecord.js 完成记录模型
+│   │   ├── TaskOccurrence.js 任务实例模型（⚠️已废弃）
+│   │   ├── Planning.js    规划模型
+│   │   ├── PlanProgress.js 规划进度模型
+│   │   ├── Alarm.js       闹钟模型
+│   │   ├── AlarmSound.js  闹钟声音模型
+│   │   └── Log.js         日志模型
+│   ├── repositories/      数据访问层（2个Repository）
+│   │   ├── completionRecordRepository.js  完成记录Repository
+│   │   └── TaskOverrideRepository.js      任务覆盖Repository
+│   ├── routes/            RESTful路由（7个路由文件）
+│   │   ├── alarm.js       闹钟路由
+│   │   ├── auth.js        认证路由
+│   │   ├── holiday.js     节假日路由
+│   │   ├── log.js         日志路由
+│   │   ├── planning.js    规划路由（含进度子路由）
+│   │   ├── task.js        任务路由（含覆盖、完成记录子路由）
+│   │   └── user.js        用户路由
+│   ├── seeders/           ⭐ 初始数据（2个种子文件）
+│   │   ├── 20240101000000-demo-user.js      演示用户数据
+│   │   └── 20240108000000-default-alarm-sounds.js 默认闹钟声音
+│   ├── services/          业务逻辑层（10个服务）
+│   │   ├── alarmService.js            闹钟服务
+│   │   ├── completionRecordService.js 完成记录服务
+│   │   ├── dateService.js             日期计算服务
+│   │   ├── holidayService.js          节假日服务
+│   │   ├── logService.js              日志服务
+│   │   ├── planProgressService.js     规划进度服务
+│   │   ├── planningService.js         规划服务
+│   │   ├── recurringTaskService.js    重复任务服务（RRULE核心）
+│   │   ├── RRuleCalculationService.js RRULE计算服务（RFC 5545）
+│   │   └── taskService.js             任务服务
+│   └── utils/             工具函数
+│       ├── errors.js      自定义错误类
+│       └── response.js    统一响应格式
+├── tests/                 测试目录（待补充）
+│   ├── unit/              单元测试
+│   └── integration/       集成测试
+├── logs/                  日志目录（Winston输出）
 ├── uploads/               上传文件目录
 ├── .env.example           环境变量模板
 ├── .env.development       开发环境配置
 ├── .sequelizerc           Sequelize配置
 ├── package.json           依赖管理
-└── server.js              服务器启动
+└── server.js              服务器启动入口
 ```
 
 ### 4.4 `frontend/Planning-app/` 目录详解
 
 ```
 frontend/Planning-app/
-├── pages/                 页面 (按功能模块划分)
-│   ├── index/             首页
-│   ├── planning/          规划模块
-│   │   ├── life/          人生规划
-│   │   ├── career/        职业规划
-│   │   ├── project/       项目规划
-│   │   ├── mood/          心情规划
-│   │   ├── health/        健康规划
-│   │   ├── time/          时间规划
-│   │   └── habit/         习惯规划
-│   ├── iching/            易经模块
+├── pages/                 页面（按功能模块划分，21个页面目录）
+│   ├── calendar/          ⭐ 日历任务主页面
+│   │   ├── index.vue      日历视图主页（复杂拖拽交互）
+│   │   ├── task-edit.vue  任务编辑页面（复杂表单逻辑）
+│   │   └── month-calendar.vue 月历视图
+│   ├── category-drawer/   分类抽屉组件（实为页面级组件）
+│   ├── iching/            易经模块（待开发）
 │   │   ├── divination/    占卜功能
 │   │   ├── hexagram/      卦象解析
-│   │   └── stage/         人生阶段
-│   ├── user/              用户中心
-│   └── settings/          设置
-├── components/            公共组件
+│   │   └── stage/         人生阶段判断
+│   ├── logs/              日志查看页面
+│   ├── onboarding/        欢迎引导页面
+│   ├── plan-link/         计划关联页面
+│   ├── planning/          规划模块（7大规划）
+│   │   ├── life/          人生规划（待开发）
+│   │   ├── career/        职业规划（待开发）
+│   │   ├── project/       项目规划
+│   │   ├── mood/          心情规划（待开发）
+│   │   ├── diet/          饮食规划（待开发）
+│   │   ├── health/        健康规划（待开发）
+│   │   └── habit/         习惯规划（待开发）
+│   ├── settings/          设置页面
+│   │   ├── index.vue      设置首页
+│   │   ├── account.vue    账号设置
+│   │   ├── privacy.vue    隐私设置
+│   │   └── about.vue      关于页面
+│   ├── task-history/      任务历史记录
+│   ├── task-recurrence/   重复任务设置（RRULE配置）
+│   └── user/              用户中心（待开发）
+│       ├── login.vue      登录页面
+│       ├── register.vue   注册页面
+│       └── profile.vue    个人资料
+├── components/            公共组件（7个组件目录）
+│   ├── calendar/          日历相关组件
+│   │   └── month-selector.vue  月份选择器
+│   ├── category-drawer/   分类抽屉相关组件
 │   ├── common/            通用组件
-│   ├── planning/          规划组件
-│   └── iching/            易经组件
-├── composables/           ⭐ Vue 3 Composition API - 业务流程层
+│   │   ├── EmptyState.vue 空状态组件
+│   │   ├── LoadingSpinner.vue 加载动画
+│   │   └── ConfirmDialog.vue  确认对话框
+│   ├── iching/            易经相关组件（待开发）
+│   ├── planning/          规划相关组件
+│   ├── task/              任务相关组件
+│   │   ├── TaskCard.vue   任务卡片
+│   │   ├── TaskList.vue   任务列表
+│   │   └── QuadrantSelector.vue 象限选择器
+│   └── AddTaskPanel.vue   快速添加任务面板
+├── composables/           ⭐ Vue 3 Composition API - 业务流程层（20个文件）
 │   ├── useAuthGuard.js    访客模式权限守卫
-│   ├── useTaskForm.js     任务表单逻辑（复杂表单场景）
-│   ├── useCalendar.js     日历业务逻辑（页面业务流程）
-│   ├── useDragDrop.js     拖拽状态机（复杂交互）
+│   ├── useCalendar.js     ⭐ 日历业务逻辑（558行，日期计算+节假日+事件管理）
+│   ├── useDragDrop.js     ⭐ 拖拽状态机（433行，复杂交互）
+│   ├── useTaskForm.js     ⭐ 任务表单逻辑（821行，管理表单状态+验证+提交）
 │   ├── useTaskQuadrant.js 象限管理逻辑（可复用业务逻辑）
-│   └── useTaskFormUtils.js 任务表单工具函数（业务工具）
+│   ├── useTaskFormUtils.js 任务表单工具函数
+│   ├── useBackgroundSync.js 后台同步逻辑
+│   ├── useCategorySync.js  分类同步逻辑
+│   ├── useCompletionSync.js 完成记录同步逻辑
+│   ├── useDebounce.js     防抖工具
+│   ├── useImagePicker.js  图片选择器
+│   ├── useKeyboard.js     键盘事件处理
+│   ├── useNetworkStatus.js 网络状态监听
+│   ├── usePagination.js   分页逻辑
+│   ├── usePlanSync.js     计划同步逻辑
+│   ├── useRecurringTask.js 重复任务逻辑（RRULE）
+│   ├── useSearch.js       搜索逻辑
+│   ├── useTaskFilter.js   任务过滤逻辑
+│   ├── useTaskSync.js     任务同步逻辑
+│   └── useTheme.js        主题切换逻辑
 │
 │   职责：
 │   ✅ 复杂表单逻辑封装（如useTaskForm管理表单状态、验证、提交）
@@ -396,31 +492,58 @@ frontend/Planning-app/
 │   ❌ 禁止纯工具函数（应放utils/）
 │   规模限制：<600行/文件
 │
-├── utils/                 工具函数
-│   ├── request.js         网络请求封装 (axios)
-│   ├── storage.js         本地存储封装
-│   ├── validator.js       数据验证
-│   └── iching.js          易经工具函数
-├── store/                 Pinia状态管理
+├── repositories/          ⭐ 数据访问层（6个Repository + 2个子目录）
+│   ├── CategoryRepository.js    分类Repository（企业级实现）
+│   ├── CompletionRecordRepository.js 完成记录Repository
+│   ├── PlanningRepository.js    规划Repository
+│   ├── TaskOverrideRepository.js 任务覆盖Repository（RRULE核心）
+│   ├── TaskRepository.js        ⭐ 任务Repository（959行，缓存+离线队列+同步）
+│   ├── UserRepository.js        用户Repository
+│   ├── cache/               缓存管理子目录
+│   │   └── memoryCache.js   内存缓存（Map结构）
+│   └── sync/                同步队列子目录
+│       ├── TaskSyncQueue.js ⭐ 任务同步队列（debounce 500ms，指数退避重试）
+│       └── CategorySyncQueue.js 分类同步队列
+├── store/                 ⭐ Pinia状态管理（5个主Store文件）
 │   ├── index.js           Store入口
-│   └── modules/
-│       ├── user.js        用户状态
-│       ├── planning.js    规划状态
-│       └── iching.js      易经状态
+│   ├── category.js        分类状态管理
+│   ├── log.js             日志状态管理
+│   ├── planning.js        规划状态管理
+│   ├── task.js            ⭐ 任务状态管理（853行，调用TaskRepository）
+│   ├── template.js        模板状态管理
+│   └── user.js            用户状态管理
+├── utils/                 纯工具函数（12个文件）
+│   ├── date.js            ⭐ 日期计算工具（416行，纯函数）
+│   ├── request.js         网络请求封装（axios + uni.request）
+│   ├── storage.js         本地存储封装（uni.setStorageSync）
+│   ├── validator.js       数据验证工具
+│   ├── debug.js           调试工具（诊断工具集）
+│   ├── error.js           错误处理工具
+│   ├── format.js          格式化工具
+│   ├── logger.js          日志记录工具
+│   ├── permission.js      权限检查工具
+│   ├── rrule.js           RRULE工具函数（RFC 5545解析）
+│   ├── string.js          字符串工具
+│   └── uuid.js            UUID生成工具
 ├── api/                   API接口封装
-│   ├── user.js
-│   ├── planning.js
-│   └── iching.js
+│   ├── category.js        分类API
+│   ├── completion.js      完成记录API
+│   ├── planning.js        规划API
+│   ├── task.js            任务API
+│   ├── taskOverride.js    任务覆盖API
+│   └── user.js            用户API
 ├── config/                配置文件
-│   ├── env.dev.js         开发环境
-│   ├── env.prod.js        生产环境
-│   └── constants.js       常量定义
+│   ├── constants.js       常量定义
+│   └── env.js             环境配置（开发/生产）
 ├── static/                静态资源
-├── App.vue                应用入口
-├── main.js                主入口
-├── manifest.json          应用配置
-├── pages.json             路由配置 ⭐
-└── uni.scss               全局样式
+│   ├── images/            图片资源
+│   ├── icons/             图标资源
+│   └── fonts/             字体资源
+├── App.vue                ⭐ 应用入口（hydrate启动点）
+├── main.js                主入口（Pinia + 全局配置）
+├── manifest.json          UniApp应用配置
+├── pages.json             ⭐ UniApp路由配置（21个页面路由）
+└── uni.scss               全局样式变量
 ```
 
 ### 4.4.1 Composable层使用场景判断 ⭐ 重要
