@@ -575,6 +575,7 @@ function handleClearUncategorized() {
  */
 async function onClearUncategorizedConfirm() {
   console.log('[CategoryDrawer] 确认清空无分类任务');
+  console.log('⭐ [DEBUG] 即将调用 clearUncategorizedTasks()，时间戳:', Date.now());
 
   try {
     uni.showLoading({ title: '删除中...' });
@@ -582,6 +583,8 @@ async function onClearUncategorizedConfirm() {
     // 调用 taskStore.clearUncategorizedTasks()
     const taskStore = useTaskStore();
     await taskStore.clearUncategorizedTasks();
+
+    console.log('⭐ [DEBUG] clearUncategorizedTasks()完成，时间戳:', Date.now());
 
     uni.hideLoading();
     uni.showToast({
@@ -591,8 +594,10 @@ async function onClearUncategorizedConfirm() {
 
     showClearUncategorizedDialog.value = false;
 
+    console.log('⭐ [DEBUG] 即将emit(container-changed)，时间戳:', Date.now());
     // 通知父组件容器已改变，需要刷新任务列表
     emit('container-changed');
+    console.log('⭐ [DEBUG] emit(container-changed)完成，时间戳:', Date.now());
   } catch (error) {
     uni.hideLoading();
     console.error('[CategoryDrawer] 清空无分类任务失败:', error);

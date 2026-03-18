@@ -570,13 +570,22 @@ function goToPlanningCategory() {
  * @param {object} container - 容器信息 { type, id }
  */
 async function handleContainerChanged(container) {
+  console.log('⭐ [DEBUG] handleContainerChanged()被调用');
+  console.log('  调用时间:', Date.now());
+  console.log('  container:', container);
+
   // 使用 Composable 的方法设置选中容器
   taskFilterComposable.setSelectedContainer(container);
+
+  console.log('⭐ [DEBUG] 即将调用fetchTasksByDate()');
+  console.log('  当前selectedDate:', calendarComposable.selectedDate.value);
 
   // 强制刷新任务列表（重新从 Repository 加载数据）
   if (calendarComposable.selectedDate.value) {
     await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
   }
+
+  console.log('⭐ [DEBUG] fetchTasksByDate()完成');
 }
 
 /**

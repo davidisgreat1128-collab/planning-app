@@ -744,6 +744,19 @@ export const useTaskStore = defineStore('task', () => {
 
     console.log('  步骤4：批量删除完成')
 
+    // ⭐ 临时诊断日志：检查同步队列状态
+    console.log('⭐ [DEBUG] 同步队列状态检查:')
+    console.log('  队列长度:', TaskRepository.syncQueue?.queue?.length || 0)
+    console.log('  是否正在同步:', TaskRepository.syncQueue?.isSyncing || false)
+    if (TaskRepository.syncQueue?.queue && TaskRepository.syncQueue.queue.length > 0) {
+      console.log('  队列详情:', TaskRepository.syncQueue.queue.map(op => ({
+        type: op.type,
+        taskId: op.data?.id || op.taskId,
+        timestamp: op.timestamp
+      })))
+    }
+    console.log('========================================')
+
     // 4. 如果当前页面正在显示任务，重新加载当前日期的任务
     if (selectedDate.value) {
       await fetchTasksByDate(selectedDate.value)
