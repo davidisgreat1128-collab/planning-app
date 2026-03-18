@@ -167,6 +167,24 @@ export const useTaskStore = defineStore('task', () => {
           }
           break
 
+        case 'idUpdated':
+          // ⭐ 新增（2026-03-18）：任务ID更新（create同步成功后，临时ID → 真实ID）
+          console.log('  [idUpdated事件] 开始处理')
+          console.log('  临时ID:', data.tempId)
+          console.log('  真实ID:', data.realId)
+
+          // 查找tasks数组中是否有旧ID的任务
+          const idUpdateIndex = tasks.value.findIndex(t => t.id === data.tempId)
+          if (idUpdateIndex > -1) {
+            // 替换为后端返回的任务对象（含真实ID）
+            tasks.value[idUpdateIndex] = data.task
+            console.log(`  ⭐ 任务ID已更新：${data.tempId} → ${data.realId}`)
+            console.log('  任务标题:', data.task.title || '(无标题)')
+          } else {
+            console.log('  ✖ 当前列表中未找到旧ID的任务，可能不在当前日期')
+          }
+          break
+
         default:
           console.warn(`[taskStore] 未知事件类型: ${event}`)
       }
@@ -655,49 +673,59 @@ export const useTaskStore = defineStore('task', () => {
    * 4. 刷新当前任务列表
    */
   async function clearUncategorizedTasks() {
-    console.log('[TaskStore] 清空无分类任务');
+    console.log('========================================')
+    console.log('[TaskStore.clearUncategorizedTasks] 开始执行')
 
     // 1. 获取所有任务
-    const allTasks = TaskRepository.getAll();
+    const allTasks = TaskRepository.getAll()
+    console.log('  步骤1：获取所有任务数量:', allTasks.length)
 
     // 2. 筛选无分类任务（categoryId=null 且 planId=null）
     const uncategorizedTasks = allTasks.filter(
       t => (t.categoryId === null || t.categoryId === undefined) &&
            (t.planId === null || t.planId === undefined)
-    );
+    )
 
-    console.log('[TaskStore] 找到无分类任务数量:', uncategorizedTasks.length);
+    console.log('  步骤2：筛选出无分类任务数量:', uncategorizedTasks.length)
+    console.log('  无分类任务详情:', uncategorizedTasks.map(t => ({
+      id: t.id,
+      type: typeof t.id,
+      title: t.title || '(无标题)',
+      isRecurring: t.isRecurring || false
+    })))
 
     // 3. 删除无分类任务（区分任务类型，便于调试）
-    const recurringCount = uncategorizedTasks.filter(t => t.isRecurring).length;
-    const regularCount = uncategorizedTasks.length - recurringCount;
+    const recurringCount = uncategorizedTasks.filter(t => t.isRecurring).length
+    const regularCount = uncategorizedTasks.length - recurringCount
 
-    console.log(`[TaskStore] 任务分类：普通任务${regularCount}个，重复任务${recurringCount}个`);
+    console.log(`  步骤3：开始批量删除（普通${regularCount}个，重复${recurringCount}个）`)
 
+    let deleteIndex = 0
     for (const task of uncategorizedTasks) {
+      deleteIndex++
+      console.log(`  --- 删除第 ${deleteIndex}/${uncategorizedTasks.length} 个任务 ---`)
+      console.log('    任务ID:', task.id, '(类型:', typeof task.id, ')')
+      console.log('    任务标题:', task.title || '(无标题)')
+      console.log('    任务类型:', task.isRecurring ? '重复任务' : '普通任务')
+
       try {
-        if (task.isRecurring) {
-          // ✅ 重复任务：删除任务定义（后端会级联删除 completion_records）
-          console.log('[TaskStore] 删除重复任务（含完成记录）:', task.id, task.title);
-        } else {
-          // ✅ 普通任务：直接删除
-          console.log('[TaskStore] 删除普通任务:', task.id, task.title);
-        }
-
         // 统一调用 Repository.delete（后端会处理级联删除）
-        await TaskRepository.delete(task.id);
-
+        await TaskRepository.delete(task.id)
+        console.log('    ✅ 删除成功')
       } catch (e) {
-        console.error('[TaskStore] 删除任务失败:', task.id, e);
+        console.error('    ❌ 删除失败:', e.message)
       }
     }
 
+    console.log('  步骤4：批量删除完成')
+
     // 4. 如果当前页面正在显示任务，重新加载当前日期的任务
     if (selectedDate.value) {
-      await fetchTasksByDate(selectedDate.value);
+      await fetchTasksByDate(selectedDate.value)
     }
 
-    console.log('[TaskStore] 清空无分类任务完成');
+    console.log('[TaskStore.clearUncategorizedTasks] 执行完成')
+    console.log('========================================')
   }
 
   /**

@@ -99,7 +99,44 @@ class TaskRepository {
   getAll() {
     // ⭐ 重构（2026-03-17）：使用缓存管理器（已自动过滤deletedAt）
     const allTasks = this.cacheManager.getAll()
-    return allTasks.sort((a, b) => b.createdAt - a.createdAt)  // 按创建时间倒序
+    const sorted = allTasks.sort((a, b) => b.createdAt - a.createdAt)  // 按创建时间倒序
+
+    // ⭐ 诊断日志（2026-03-18）：检查缓存中是否有重复ID的任务
+    console.log('========================================')
+    console.log('[TaskRepository.getAll] 诊断信息')
+    console.log('  缓存中任务总数:', sorted.length)
+
+    // 检查ID类型分布
+    const idTypes = {
+      string: sorted.filter(t => typeof t.id === 'string').length,
+      number: sorted.filter(t => typeof t.id === 'number').length
+    }
+    console.log('  ID类型分布:', idTypes)
+
+    // 列出所有ID
+    const allIds = sorted.map(t => ({ id: t.id, type: typeof t.id, title: t.title || '(无标题)' }))
+    console.log('  所有任务ID列表:', allIds)
+
+    // 检查是否有重复的任务（通过title判断）
+    const titleMap = new Map()
+    sorted.forEach(t => {
+      if (t.title) {
+        if (!titleMap.has(t.title)) {
+          titleMap.set(t.title, [])
+        }
+        titleMap.get(t.title).push(t.id)
+      }
+    })
+
+    const duplicates = Array.from(titleMap.entries()).filter(([, ids]) => ids.length > 1)
+    if (duplicates.length > 0) {
+      console.warn('  ⚠️ 发现重复任务（相同title，不同ID）:', duplicates)
+    } else {
+      console.log('  ✅ 无重复任务')
+    }
+    console.log('========================================')
+
+    return sorted
   }
 
   /**
@@ -433,12 +470,32 @@ class TaskRepository {
    * 5. 后台同步到服务器
    */
   async delete(id) {
+    // ⭐ 诊断日志（2026-03-18）：追踪删除调用
+    console.log('========================================')
+    console.log('[TaskRepository.delete] 诊断信息')
+    console.log('  删除任务ID:', id, '(类型:', typeof id, ')')
+
+    // 获取调用栈（追踪谁调用了delete）
+    const stack = new Error().stack
+    const stackLines = stack.split('\n').slice(1, 5)
+    console.log('  调用栈:')
+    stackLines.forEach(line => console.log('   ', line.trim()))
+
     const task = this.cacheManager.get(id)
     if (!task) {
+      console.error('  ❌ 任务不存在于缓存中:', id)
+      console.log('========================================')
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 删除任务:', task.title || task.id)
+    console.log('  任务信息:', {
+      id: task.id,
+      title: task.title || '(无标题)',
+      isRecurring: task.isRecurring || false,
+      categoryId: task.categoryId,
+      planId: task.planId
+    })
+    console.log('========================================')
 
     const deletedAt = Date.now()
 
@@ -736,13 +793,40 @@ class TaskRepository {
   /**
    * 处理同步成功后的回调（更新缓存）
    * ⭐ 新增（2026-03-17）：处理 create 操作成功后更新缓存为服务器版本
+   * ⭐ 修复（2026-03-18）：create操作成功后，删除旧的临时ID条目，添加新的数字ID条目
+   *
    * @private
+   * @param {object} operation - 同步操作对象（含 type、entityId、data）
+   * @param {object} result - 服务器返回的结果对象
+   *
+   * 修复原因：
+   * - 旧逻辑：create成功后只添加新ID缓存，不删除旧ID，导致缓存中同时存在临时ID和真实ID
+   * - 问题：UI显示的任务使用临时ID，删除时发送临时ID到后端，后端要求数字ID（400错误）
+   * - 新逻辑：删除旧的临时ID条目 → 添加新的数字ID条目 → 通知Store层更新
    */
   async _handleSyncSuccess(operation, result) {
     // 只处理 create 操作（update/delete 不需要更新缓存）
     if (operation.type === 'create' && result && result.id) {
-      console.log(`[TaskRepository] 同步成功，更新缓存为服务器版本: ${result.id}`)
-      this.cacheManager.set(result.id, result)
+      const tempId = operation.entityId  // 临时ID（字符串，如 task_xxx）
+      const realId = result.id           // 真实ID（数字，如 123）
+
+      console.log(`[TaskRepository] create同步成功，ID映射：${tempId} → ${realId}`)
+
+      // ⭐ 修复（2026-03-18）：删除旧的临时ID条目
+      if (this.cacheManager.get(tempId)) {
+        this.cacheManager.delete(tempId)
+        console.log(`[TaskRepository] 已删除临时ID条目: ${tempId}`)
+      }
+
+      // ⭐ 添加新的数字ID条目（使用后端返回的完整任务对象）
+      this.cacheManager.set(realId, result)
+      console.log(`[TaskRepository] 已添加真实ID条目: ${realId}`)
+
+      // ⭐ 持久化到localStorage
+      this._saveToLocalStorage()
+
+      // ⭐ 通知订阅者：ID已更新（Store层需要更新tasks数组）
+      this._notify('idUpdated', { tempId, realId, task: result })
     }
   }
 
