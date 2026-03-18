@@ -271,23 +271,6 @@ export const useTaskStore = defineStore('task', () => {
       // ⭐ 修复（2026-03-17）：改用TaskRepository.updateCache()公共方法，避免直接访问memoryCache
       // ⭐ BUG修复（2026-03-18）：防御性检查deletedAt字段，避免后端BUG导致已删除任务重新加入缓存
 
-      // ⭐ 临时诊断日志（2026-03-18）：检查后端返回的任务中deletedAt字段
-      console.log('========================================')
-      console.log('[TaskStore] fetchTasksByDate - 检查后端返回的任务')
-      console.log('  合并后任务数:', allTasks.length)
-      allTasks.forEach((task, index) => {
-        console.log(`  任务${index + 1}:`, {
-          id: task.id,
-          title: task.title,
-          deletedAt: task.deletedAt,  // ⭐ 检查值
-          _deletedAtType: typeof task.deletedAt,  // ⭐ 检查类型
-          _hasDeletedAt: 'deletedAt' in task,  // ⭐ 检查属性是否存在
-          _deletedAtUndefined: task.deletedAt === undefined,
-          _deletedAtNull: task.deletedAt === null
-        })
-      })
-      console.log('========================================')
-
       allTasks.forEach(task => {
         // ⭐ 防御性检查：忽略已软删除的任务（后端bug兜底）
         if (task.deletedAt) {

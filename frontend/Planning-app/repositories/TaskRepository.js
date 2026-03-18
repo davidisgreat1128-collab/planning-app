@@ -99,44 +99,7 @@ class TaskRepository {
   getAll() {
     // ⭐ 重构（2026-03-17）：使用缓存管理器（已自动过滤deletedAt）
     const allTasks = this.cacheManager.getAll()
-    const sorted = allTasks.sort((a, b) => b.createdAt - a.createdAt)  // 按创建时间倒序
-
-    // ⭐ 诊断日志（2026-03-18）：检查缓存中是否有重复ID的任务
-    console.log('========================================')
-    console.log('[TaskRepository.getAll] 诊断信息')
-    console.log('  缓存中任务总数:', sorted.length)
-
-    // 检查ID类型分布
-    const idTypes = {
-      string: sorted.filter(t => typeof t.id === 'string').length,
-      number: sorted.filter(t => typeof t.id === 'number').length
-    }
-    console.log('  ID类型分布:', idTypes)
-
-    // 列出所有ID
-    const allIds = sorted.map(t => ({ id: t.id, type: typeof t.id, title: t.title || '(无标题)' }))
-    console.log('  所有任务ID列表:', allIds)
-
-    // 检查是否有重复的任务（通过title判断）
-    const titleMap = new Map()
-    sorted.forEach(t => {
-      if (t.title) {
-        if (!titleMap.has(t.title)) {
-          titleMap.set(t.title, [])
-        }
-        titleMap.get(t.title).push(t.id)
-      }
-    })
-
-    const duplicates = Array.from(titleMap.entries()).filter(([, ids]) => ids.length > 1)
-    if (duplicates.length > 0) {
-      console.warn('  ⚠️ 发现重复任务（相同title，不同ID）:', duplicates)
-    } else {
-      console.log('  ✅ 无重复任务')
-    }
-    console.log('========================================')
-
-    return sorted
+    return allTasks.sort((a, b) => b.createdAt - a.createdAt)  // 按创建时间倒序
   }
 
   /**
@@ -470,32 +433,10 @@ class TaskRepository {
    * 5. 后台同步到服务器
    */
   async delete(id) {
-    // ⭐ 诊断日志（2026-03-18）：追踪删除调用
-    console.log('========================================')
-    console.log('[TaskRepository.delete] 诊断信息')
-    console.log('  删除任务ID:', id, '(类型:', typeof id, ')')
-
-    // 获取调用栈（追踪谁调用了delete）
-    const stack = new Error().stack
-    const stackLines = stack.split('\n').slice(1, 5)
-    console.log('  调用栈:')
-    stackLines.forEach(line => console.log('   ', line.trim()))
-
     const task = this.cacheManager.get(id)
     if (!task) {
-      console.error('  ❌ 任务不存在于缓存中:', id)
-      console.log('========================================')
       throw new Error(`任务不存在：${id}`)
     }
-
-    console.log('  任务信息:', {
-      id: task.id,
-      title: task.title || '(无标题)',
-      isRecurring: task.isRecurring || false,
-      categoryId: task.categoryId,
-      planId: task.planId
-    })
-    console.log('========================================')
 
     const deletedAt = Date.now()
 
