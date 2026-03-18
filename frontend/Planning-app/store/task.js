@@ -257,7 +257,14 @@ export const useTaskStore = defineStore('task', () => {
 
       // ⭐ 同步到本地 Repository（更新缓存）
       // ⭐ 修复（2026-03-17）：改用TaskRepository.updateCache()公共方法，避免直接访问memoryCache
+      // ⭐ BUG修复（2026-03-18）：防御性检查deletedAt字段，避免后端BUG导致已删除任务重新加入缓存
       allTasks.forEach(task => {
+        // ⭐ 防御性检查：忽略已软删除的任务（后端bug兜底）
+        if (task.deletedAt) {
+          console.warn('[TaskStore] 后端返回了已删除任务（后端BUG），已过滤:', task.id, task.title, task.deletedAt)
+          return  // 跳过该任务，不添加到缓存
+        }
+
         // 检查任务是否已存在
         const existingTask = TaskRepository.getById(task.id)
         if (!existingTask) {

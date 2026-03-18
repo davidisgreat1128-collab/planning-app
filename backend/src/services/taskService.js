@@ -115,10 +115,12 @@ async function getTasksByDate(userId, date, options = {}) {
 
   // 3. 重复任务（使用 RRULE 实时计算）
   // ⭐ 架构升级：不再查询 TaskOccurrence 表（已删除），改为查询 Task 表 + RRULE 计算
+  // ⭐ BUG修复（2026-03-18）：显式过滤已软删除的任务（Sequelize paranoid未自动生效）
   const allRecurringTasks = await Task.findAll({
     where: {
       userId,
-      isRecurring: true
+      isRecurring: true,
+      deletedAt: null  // ⭐ 显式过滤已软删除的任务
     }
   });
 
