@@ -121,8 +121,24 @@ async function getTasksByDate(userId, date, options = {}) {
       userId,
       isRecurring: true,
       deletedAt: null  // ⭐ 显式过滤已软删除的任务
-    }
+    },
+    logging: (sql) => console.log('[TaskService] SQL查询:', sql)  // ⭐ 临时诊断日志：打印SQL
   });
+
+  // ⭐ 临时诊断日志（2026-03-18）：检查查询结果和deletedAt字段
+  console.log('========================================');
+  console.log('[TaskService] 重复任务查询结果');
+  console.log('  查询日期:', date);
+  console.log('  查询到的任务数量:', allRecurringTasks.length);
+  console.log('  任务详情:', allRecurringTasks.map(t => ({
+    id: t.id,
+    title: t.title,
+    isRecurring: t.isRecurring,
+    deletedAt: t.deletedAt,  // ⭐ 检查deletedAt值
+    _deletedAtType: typeof t.deletedAt,  // ⭐ 检查字段类型
+    _hasDeletedAtProperty: 'deletedAt' in t  // ⭐ 检查属性是否存在
+  })));
+  console.log('========================================');
 
   // 筛选出在该日期发生的重复任务
   // ⭐⭐ 架构升级（2026-03-17）：应用优先级流程（is_deleted → 覆盖 → 完成记录 → 默认规则）
@@ -179,6 +195,23 @@ async function getTasksByDate(userId, date, options = {}) {
       }
     }
   }
+
+  // ⭐ 临时诊断日志（2026-03-18）：检查返回数据中的deletedAt字段
+  console.log('========================================');
+  console.log('[TaskService] getTasksByDate返回数据');
+  console.log('  单日任务数:', singleTasks.length);
+  console.log('  跨天任务数:', rangeTasks.length);
+  console.log('  重复任务数:', recurringTasksOnDate.length);
+  if (recurringTasksOnDate.length > 0) {
+    console.log('  重复任务详情:', recurringTasksOnDate.map(t => ({
+      id: t.id,
+      title: t.title,
+      deletedAt: t.deletedAt,  // ⭐ 检查toJSON()后deletedAt是否存在
+      _hasDeletedAt: 'deletedAt' in t,
+      _deletedAtType: typeof t.deletedAt
+    })));
+  }
+  console.log('========================================');
 
   return {
     single: singleTasks,
