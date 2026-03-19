@@ -4,7 +4,7 @@
  */
 
 const BASE_URL = (typeof process !== 'undefined' && process.env && process.env.NODE_ENV === 'production')
-  ? 'https://api.planning-app.com/api/v1'
+  ? 'https://txjjzyzqbx.cn/api/v1'
   : 'http://127.0.0.1:3000/api/v1';
 
 export default {

@@ -1,0 +1,50 @@
+# ============================================================
+# Docker 构建排除文件列表
+# ============================================================
+
+# 依赖目录（会在容器内重新安装）
+node_modules
+npm-debug.log
+
+# 测试文件
+tests
+__tests__
+*.test.js
+*.spec.js
+coverage
+
+# 开发配置
+.env.development
+.env.local
+.env.*.local
+
+# 日志文件
+logs
+*.log
+
+# 临时文件
+tmp
+temp
+*.tmp
+
+# IDE配置
+.vscode
+.idea
+*.swp
+*.swo
+
+# Git
+.git
+.gitignore
+
+# 文档
+README.md
+CHANGELOG.md
+docs
+
+# 上传文件（生产环境会挂载卷）
+uploads
+
+# 其他
+.DS_Store
+Thumbs.db

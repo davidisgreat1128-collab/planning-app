@@ -1,0 +1,180 @@
+# ============================================================
+# Planning App - 生产环境 Docker Compose 配置
+# ============================================================
+# 版本: v1.0.0
+# 更新时间: 2026-03-20
+# 说明: MySQL + Redis + Backend + Nginx (HTTPS)
+# ============================================================
+
+version: '3.8'
+
+services:
+  # ============================================================
+  # MySQL 8.0 数据库服务
+  # ============================================================
+  mysql:
+    image: mysql:8.0.43
+    container_name: planning-app-mysql
+    restart: unless-stopped
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+      MYSQL_USER: ${MYSQL_USER}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      TZ: Asia/Shanghai
+    volumes:
+      - mysql_data:/var/lib/mysql
+      - ./database/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+      - ./backend/logs:/var/log/mysql
+    # ⚠️ 生产环境不暴露3306端口（仅内网访问）
+    # ports:
+    #   - "3306:3306"
+    networks:
+      - planning_network
+    command: >
+      --character-set-server=utf8mb4
+      --collation-server=utf8mb4_unicode_ci
+      --default-authentication-plugin=mysql_native_password
+      --sql_mode=STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p${MYSQL_ROOT_PASSWORD}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  # ============================================================
+  # Redis 7.2 缓存服务
+  # ============================================================
+  redis:
+    image: redis:7.2-alpine
+    container_name: planning-app-redis
+    restart: unless-stopped
+    environment:
+      TZ: Asia/Shanghai
+    volumes:
+      - redis_data:/data
+    # ⚠️ 生产环境不暴露6379端口（仅内网访问）
+    # ports:
+    #   - "6379:6379"
+    networks:
+      - planning_network
+    command: redis-server --requirepass ${REDIS_PASSWORD} --appendonly yes
+    healthcheck:
+      test: ["CMD", "redis-cli", "-a", "${REDIS_PASSWORD}", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # ============================================================
+  # Node.js 后端服务
+  # ============================================================
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+      args:
+        NODE_ENV: production
+    image: planning-app-backend:latest
+    container_name: planning-app-backend
+    restart: unless-stopped
+    environment:
+      # 应用配置
+      NODE_ENV: ${NODE_ENV}
+      PORT: ${PORT}
+      HOST: ${HOST}
+
+      # 数据库配置
+      DB_HOST: mysql
+      DB_PORT: 3306
+      DB_USER: ${MYSQL_USER}
+      DB_PASSWORD: ${MYSQL_PASSWORD}
+      DB_NAME: ${MYSQL_DATABASE}
+
+      # Redis配置
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
+      # JWT配置
+      JWT_SECRET: ${JWT_SECRET}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN}
+      JWT_COOKIE_SECURE: ${JWT_COOKIE_SECURE}
+      JWT_COOKIE_SAME_SITE: ${JWT_COOKIE_SAME_SITE}
+
+      # CORS配置
+      CORS_ORIGIN: ${CORS_ORIGIN}
+
+      # 域名配置
+      API_BASE_URL: ${API_BASE_URL}
+      DOMAIN: ${DOMAIN}
+
+      # 时区
+      TZ: Asia/Shanghai
+    volumes:
+      - ./backend/logs:/app/logs
+      - ./backend/uploads:/app/uploads
+    # ⚠️ 生产环境不暴露3000端口（仅通过Nginx访问）
+    # ports:
+    #   - "3000:3000"
+    networks:
+      - planning_network
+    depends_on:
+      mysql:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:3000/health', (r) => process.exit(r.statusCode === 200 ? 0 : 1))"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # ============================================================
+  # Nginx 反向代理服务（HTTPS）
+  # ============================================================
+  nginx:
+    image: nginx:1.25.4-alpine
+    container_name: planning-app-nginx
+    restart: unless-stopped
+    ports:
+      - "80:80"     # HTTP（用于SSL证书验证和跳转HTTPS）
+      - "443:443"   # HTTPS（主服务）
+    volumes:
+      - ./nginx/nginx.conf:/etc/nginx/nginx.conf:ro
+      - ./nginx/conf.d:/etc/nginx/conf.d:ro
+      - /etc/letsencrypt:/etc/letsencrypt:ro  # ⭐ SSL证书目录
+      - nginx_logs:/var/log/nginx
+    networks:
+      - planning_network
+    depends_on:
+      backend:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--quiet", "--tries=1", "--spider", "http://localhost/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+# ============================================================
+# 数据卷定义
+# ============================================================
+volumes:
+  mysql_data:
+    driver: local
+    name: planning_app_mysql_data
+  redis_data:
+    driver: local
+    name: planning_app_redis_data
+  nginx_logs:
+    driver: local
+    name: planning_app_nginx_logs
+
+# ============================================================
+# 网络定义
+# ============================================================
+networks:
+  planning_network:
+    driver: bridge
+    name: planning_app_network
