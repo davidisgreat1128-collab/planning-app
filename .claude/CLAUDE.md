@@ -3,8 +3,8 @@
 > **文档性质**: 企业级AI协作核心文档
 > **适用对象**: 所有参与本项目的Claude实例
 > **重要程度**: ⭐⭐⭐⭐⭐ 最高优先级
-> **最后更新**: 2026-03-05
-> **文档版本**: v1.3
+> **最后更新**: 2026-03-19
+> **文档版本**: v1.4（2026-03-19更新）
 
 ---
 
@@ -203,6 +203,12 @@ app.js（唯一注册入口）
     │                                      + planProgressController → planProgressService
     ├── /holidays   → routes/holiday.js    → holidayController    → holidayService
     ├── /tasks      → routes/task.js       → taskController       → taskService
+    │                                         ⭐ 新增4个RRULE相关API（2026-03-16）：
+    │                                         - POST /tasks/:id/update-future（修改未来所有任务）
+    │                                         - POST /tasks/:id/update-single（仅修改当天任务）
+    │                                         - POST /tasks/:id/delete-future（删除未来所有任务）
+    │                                         - POST /tasks/:id/delete-single（仅删除当天任务）
+    │                                         详见：recurringTaskService.js（RRULE核心）
     ├── /alarms     → routes/alarm.js      → alarmController      → alarmService
     └── /logs       → routes/log.js        → logController        → logService
 ```
@@ -320,43 +326,39 @@ backend/
 │   ├── config/            配置文件
 │   │   ├── database.js    ⭐ Sequelize配置
 │   │   └── constants.js   常量定义
-│   ├── controllers/       控制器层（11个控制器）
+│   ├── controllers/       控制器层（8个控制器）⭐ 更新（2026-03-19）
 │   │   ├── alarmController.js          闹钟控制器
 │   │   ├── authController.js           认证控制器
-│   │   ├── completionRecordController.js 完成记录控制器
 │   │   ├── holidayController.js        节假日控制器
 │   │   ├── logController.js            日志控制器
 │   │   ├── planProgressController.js   规划进度控制器
 │   │   ├── planningController.js       规划控制器
-│   │   ├── taskController.js           任务控制器
-│   │   ├── taskOverrideController.js   任务覆盖控制器
-│   │   ├── userController.js           用户控制器
-│   │   └── workDayController.js        工作日控制器
+│   │   ├── taskController.js           ⭐ 任务控制器（含4个RRULE相关方法）
+│   │   └── userController.js           用户控制器
 │   ├── middleware/        中间件
 │   │   ├── auth.js        JWT认证
 │   │   ├── errorHandler.js 错误处理
 │   │   ├── logger.js      日志记录（Winston单例）
 │   │   └── validator.js   数据验证（Joi）
-│   ├── migrations/        ⭐ 数据库迁移文件（19个迁移）
-│   │   ├── 20240101000000-create-users.js
-│   │   ├── 20240101000001-create-tasks.js
-│   │   ├── 20240101000002-create-task-overrides.js
-│   │   ├── 20240101000003-create-task-completion-records.js
-│   │   ├── 20240101000004-create-planning-records.js
-│   │   ├── 20240101000005-create-alarms.js
-│   │   ├── 20240101000006-create-alarm-sounds.js
-│   │   ├── 20240101000007-create-holidays.js
-│   │   ├── 20240101000008-create-work-days.js
-│   │   ├── 20240101000009-create-logs.js
-│   │   ├── 20240101000010-create-plan-progress-logs.js
-│   │   ├── 20240119061821-add-version-to-tasks.js
-│   │   ├── 20240119062000-add-version-to-task-overrides.js
-│   │   ├── 20240119063000-add-version-to-completion-records.js
-│   │   ├── 20240131000000-modify-tasks-table-structure.js
-│   │   ├── 20240203081507-add-count-to-completion-records.js
-│   │   ├── 20240204000000-modify-alarms-table-structure.js
-│   │   ├── 20240205000000-create-task-occurrences.js
-│   │   └── 20240308000000-add-overrideType-to-task-overrides.js
+│   ├── migrations/        ⭐ 数据库迁移文件（18个迁移）⭐ 更新（2026-03-19）
+│   │   ├── 20260217071613-create-users.js
+│   │   ├── 20260217080000-create-planning-records.js
+│   │   ├── 20260219000001-create-holidays.js
+│   │   ├── 20260219000002-create-tasks.js
+│   │   ├── 20260219000003-create-task-occurrences.js
+│   │   ├── 20260219000004-create-alarm-sounds.js
+│   │   ├── 20260219000005-create-alarms.js
+│   │   ├── 20260219000006-create-logs.js
+│   │   ├── 20260219000007-create-plan-progress-logs.js
+│   │   ├── 20260219000008-alter-planning-records.js
+│   │   ├── 20260224000001-add-category-id-to-tasks.js
+│   │   ├── 20260225000001-alter-tasks-plan-id-to-string.js
+│   │   ├── 20260303181511-add-subtasks-to-tasks.js
+│   │   ├── 20260306151755-create-work-days.js
+│   │   ├── 20260316000001-create-task-overrides.js
+│   │   ├── 20260316000002-add-task-split-fields.js
+│   │   ├── 20260316000003-add-task-indexes.js
+│   │   └── 20260317000001-add-is-deleted-to-task-overrides.js
 │   ├── models/            ⭐ Sequelize模型（11个模型，核心！）
 │   │   ├── index.js       模型汇总 + 关联定义（Sequelize单例入口）
 │   │   ├── User.js        用户模型
@@ -413,7 +415,7 @@ backend/
 
 ```
 frontend/Planning-app/
-├── pages/                 页面（按功能模块划分，21个页面目录）
+├── pages/                 页面（按功能模块划分，28个页面路由）⭐ 更新（2026-03-19）
 │   ├── calendar/          ⭐ 日历任务主页面
 │   │   ├── index.vue      日历视图主页（复杂拖拽交互）
 │   │   ├── task-edit.vue  任务编辑页面（复杂表单逻辑）
@@ -464,7 +466,7 @@ frontend/Planning-app/
 │   ├── useAuthGuard.js    访客模式权限守卫
 │   ├── useCalendar.js     ⭐ 日历业务逻辑（558行，日期计算+节假日+事件管理）
 │   ├── useDragDrop.js     ⭐ 拖拽状态机（433行，复杂交互）
-│   ├── useTaskForm.js     ⭐ 任务表单逻辑（821行，管理表单状态+验证+提交）
+│   ├── useTaskForm.js     ⭐ 任务表单逻辑（562行，-31.6%优化完成）⭐ 更新（2026-03-10）
 │   ├── useTaskQuadrant.js 象限管理逻辑（可复用业务逻辑）
 │   ├── useTaskFormUtils.js 任务表单工具函数
 │   ├── useBackgroundSync.js 后台同步逻辑
@@ -497,20 +499,21 @@ frontend/Planning-app/
 │   ├── CompletionRecordRepository.js 完成记录Repository
 │   ├── PlanningRepository.js    规划Repository
 │   ├── TaskOverrideRepository.js 任务覆盖Repository（RRULE核心）
-│   ├── TaskRepository.js        ⭐ 任务Repository（959行，缓存+离线队列+同步）
+│   ├── TaskRepository.js        ⭐ 任务Repository（959行，含waitForSync方法）⭐ 更新（2026-03-18 BUG-015修复）
 │   ├── UserRepository.js        用户Repository
-│   ├── cache/               缓存管理子目录
-│   │   └── memoryCache.js   内存缓存（Map结构）
-│   └── sync/                同步队列子目录
-│       ├── TaskSyncQueue.js ⭐ 任务同步队列（debounce 500ms，指数退避重试）
+│   ├── cache/               ⭐ 缓存管理子目录（拆分自TaskRepository）⭐ 更新（2026-03-17）
+│   │   ├── TaskCacheManager.js   ⭐ 任务缓存管理器（145行，内存+localStorage）
+│   │   └── CategoryCacheManager.js（待创建）
+│   └── sync/                ⭐ 同步队列子目录（拆分自TaskRepository）⭐ 更新（2026-03-17）
+│       ├── TaskSyncQueue.js ⭐ 任务同步队列（192行，debounce + 指数退避重试）
 │       └── CategorySyncQueue.js 分类同步队列
-├── store/                 ⭐ Pinia状态管理（5个主Store文件）
+├── store/                 ⭐ Pinia状态管理（6个Store文件 + 1个入口）⭐ 更新（2026-03-19）
 │   ├── index.js           Store入口
 │   ├── category.js        分类状态管理
 │   ├── log.js             日志状态管理
 │   ├── planning.js        规划状态管理
 │   ├── task.js            ⭐ 任务状态管理（853行，调用TaskRepository）
-│   ├── template.js        模板状态管理
+│   ├── template.js        ⭐ 模板状态管理（新增）⭐
 │   └── user.js            用户状态管理
 ├── utils/                 纯工具函数（12个文件）
 │   ├── date.js            ⭐ 日期计算工具（416行，纯函数）
