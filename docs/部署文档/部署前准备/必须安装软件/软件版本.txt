@@ -1,0 +1,47 @@
+ubuntu@VM-0-10-ubuntu:~$ docker -v
+Docker version 28.1.1, build 4eba377
+
+
+ubuntu@VM-0-10-ubuntu:~$ docker version
+Client: Docker Engine - Community
+ Version:           28.1.1
+ API version:       1.49
+ Go version:        go1.23.8
+ Git commit:        4eba377
+ Built:             Fri Apr 18 09:52:18 2025
+ OS/Arch:           linux/amd64
+ Context:           default
+
+Server: Docker Engine - Community
+ Engine:
+  Version:          28.1.1
+  API version:      1.49 (minimum version 1.24)
+  Go version:       go1.23.8
+  Git commit:       01f442b
+  Built:            Fri Apr 18 09:52:18 2025
+  OS/Arch:          linux/amd64
+  Experimental:     false
+ containerd:
+  Version:          1.7.27
+  GitCommit:        05044ec0a9a75232cad458027ca83437aae3f4da
+ runc:
+  Version:          1.2.5
+  GitCommit:        v1.2.5-0-g59923ef
+ docker-init:
+  Version:          0.19.0
+  GitCommit:        de40ad0
+
+
+ubuntu@VM-0-10-ubuntu:~$ docker compose version
+Docker Compose version v5.1.0
+
+ubuntu@VM-0-10-ubuntu:~$ git version
+git version 2.25.1
+
+ubuntu@VM-0-10-ubuntu:~$ git config --global user.name "David"&& git config --global user.email "davidisgreat1128@gmail.com"
+ubuntu@VM-0-10-ubuntu:~$ git config --list
+user.name=David
+user.email=davidisgreat1128@gmail.com
+ubuntu@VM-0-10-ubuntu:~$ 
+
+
