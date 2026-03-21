@@ -146,12 +146,12 @@ else
     log_error "HTTPS 访问失败 (HTTP $HTTPS_STATUS)"
 fi
 
-# 3.2 验证 HTTP 跳转 HTTPS
-HTTP_REDIRECT=$(timeout 10 curl -sI http://$DOMAIN/health 2>/dev/null | grep -i "location" || echo "")
+# 3.2 验证 HTTP 跳转 HTTPS（测试根路径，/health不跳转是正常的）
+HTTP_REDIRECT=$(timeout 10 curl -sI http://$DOMAIN/ 2>/dev/null | grep -i "location" || echo "")
 if echo "$HTTP_REDIRECT" | grep -q "https://"; then
     log_success "HTTP → HTTPS 跳转正常"
 else
-    log_warning "HTTP 跳转配置可能缺失"
+    log_warning "HTTP 跳转配置可能缺失（注意：/health路径不跳转是正常的，用于Docker健康检查）"
 fi
 
 # 3.3 验证 TLS 版本
@@ -221,12 +221,14 @@ else
     log_error "健康检查接口异常: $HEALTH_RESPONSE"
 fi
 
-# 检查 API v1 路径
-API_STATUS=$(timeout 10 curl -sk -o /dev/null -w "%{http_code}" https://$DOMAIN/api/v1/health 2>/dev/null || echo "000")
-if [ "$API_STATUS" == "200" ]; then
-    log_success "API v1 路径正常 (HTTP $API_STATUS)"
+# 检查 API v1 路径（测试 /auth/login，应返回400或405而非404）
+API_STATUS=$(timeout 10 curl -sk -o /dev/null -w "%{http_code}" https://$DOMAIN/api/v1/auth/login 2>/dev/null || echo "000")
+if [ "$API_STATUS" == "400" ] || [ "$API_STATUS" == "401" ] || [ "$API_STATUS" == "405" ]; then
+    log_success "API v1 路径正常 (HTTP $API_STATUS - Nginx代理已配置)"
+elif [ "$API_STATUS" == "404" ]; then
+    log_error "API v1 路径返回404（Nginx配置可能有误）"
 else
-    log_warning "API v1 路径可能未配置 (HTTP $API_STATUS)"
+    log_warning "API v1 路径状态码: HTTP $API_STATUS"
 fi
 
 echo ""
