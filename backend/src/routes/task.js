@@ -1,11 +1,22 @@
 'use strict';
 
+console.log('🔧 routes/task.js: 开始加载模块...');
+
 const express = require('express');
 const Joi = require('joi');
 const router = express.Router();
+
+console.log('  加载 middleware/auth...');
 const { authenticate } = require('../middleware/auth');
+console.log('  ✅ auth 中间件加载成功');
+
+console.log('  加载 middleware/validator...');
 const { validate, validateQuery, validateParams } = require('../middleware/validator');
+console.log('  ✅ validator 中间件加载成功');
+
+console.log('  加载 controllers/taskController...');
 const taskController = require('../controllers/taskController');
+console.log('  ✅ taskController 加载成功');
 
 // ---- Joi Schemas ----
 
