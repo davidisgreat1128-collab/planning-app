@@ -1,12 +1,36 @@
 'use strict';
 
+console.log('🔧 taskController.js: 开始加载模块...');
+
+console.log('  加载 taskService...');
 const taskService = require('../services/taskService');
+console.log('  ✅ taskService 加载成功');
+
+console.log('  加载 CompletionRecordRepository...');
 const completionRecordRepository = require('../repositories/CompletionRecordRepository');
+console.log('  ✅ CompletionRecordRepository 加载成功');
+
+console.log('  加载 RRuleCalculationService...');
 const rruleCalculationService = require('../services/RRuleCalculationService');
-const recurringTaskService = require('../services/RecurringTaskService'); // ⭐ 新增（2026-03-16）
+console.log('  ✅ RRuleCalculationService 加载成功');
+
+console.log('  加载 RecurringTaskService...');
+const recurringTaskService = require('../services/RecurringTaskService');
+console.log('  ✅ RecurringTaskService 加载成功');
+
+console.log('  加载 models (Task)...');
 const { Task } = require('../models');
+console.log('  ✅ Task 模型加载成功');
+
+console.log('  加载 utils/response...');
 const { success, created } = require('../utils/response');
+console.log('  ✅ response 工具加载成功');
+
+console.log('  加载 utils/errors...');
 const { ValidationError, NotFoundError } = require('../utils/errors');
+console.log('  ✅ errors 工具加载成功');
+
+console.log('✅ taskController.js: 所有模块加载成功');
 
 /**
  * POST /api/v1/tasks
