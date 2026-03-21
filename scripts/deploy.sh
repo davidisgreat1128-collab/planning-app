@@ -81,11 +81,29 @@ if [ ! -f ".env" ]; then
     exit 1
 fi
 
+# 加载环境变量（关键！）
+log_info "加载环境变量..."
+set -a  # 自动导出所有变量
+source .env
+set +a
+
+# 验证关键变量
+if [ -z "$MYSQL_ROOT_PASSWORD" ]; then
+    log_error "MYSQL_ROOT_PASSWORD 未设置"
+    exit 1
+fi
+
+if [ -z "$REDIS_PASSWORD" ]; then
+    log_error "REDIS_PASSWORD 未设置"
+    exit 1
+fi
+
 # =========================
 # 步骤2: 备份
 # =========================
 log_step "步骤2: 备份配置"
 
+mkdir -p backups  # 确保父目录存在
 mkdir -p "$BACKUP_DIR"
 
 cp .env "$BACKUP_DIR/.env"
@@ -162,17 +180,17 @@ wait_for_service "Redis" \
 "$COMPOSE exec -T redis redis-cli -a ${REDIS_PASSWORD} ping | grep -q PONG" 30
 
 wait_for_service "Backend" \
-"$COMPOSE exec -T backend wget -q -O- http://localhost:3000/health | grep -q healthy" 60
+"$COMPOSE exec -T backend curl -s http://localhost:3000/health | grep -q '\"status\":\"ok\"'" 60
 
 wait_for_service "Nginx" \
-"$COMPOSE exec -T nginx wget -q -O- http://localhost/health | grep -q healthy" 30
+"curl -s http://localhost/health | grep -q '\"status\":\"ok\"'" 30
 
 # =========================
 # 步骤8: 数据库迁移
 # =========================
 log_step "步骤8: 数据库迁移"
 
-$COMPOSE exec -T backend npm run migrate
+$COMPOSE exec -T backend npm run db:migrate
 
 log_info "数据库迁移完成"
 
@@ -183,11 +201,11 @@ log_step "步骤9: 验证部署"
 
 $COMPOSE ps
 
-HEALTH=$($COMPOSE exec -T nginx wget -q -O- http://localhost/health)
+HEALTH=$(curl -s http://localhost/health)
 
 echo "$HEALTH"
 
-if echo "$HEALTH" | grep -q healthy; then
+if echo "$HEALTH" | grep -q '"status":"ok"'; then
     log_info "✅ API 正常"
 else
     log_error "❌ API 异常"

@@ -6,6 +6,15 @@ require('dotenv').config({
     : '.env.development'
 });
 
+// 调试日志：检查环境变量注入（仅在生产环境）
+if (process.env.NODE_ENV === 'production') {
+  console.log('🔍 Database.js 环境变量检查:');
+  console.log('  DB_USERNAME:', process.env.DB_USERNAME ? '✅ 已设置' : '❌ 未设置');
+  console.log('  DB_PASSWORD:', process.env.DB_PASSWORD ? '✅ 已设置' : '❌ 未设置');
+  console.log('  DB_DATABASE:', process.env.DB_DATABASE ? '✅ 已设置' : '❌ 未设置');
+  console.log('  DB_HOST:', process.env.DB_HOST || '❌ 未设置');
+}
+
 /**
  * Sequelize数据库配置
  *

@@ -16,7 +16,25 @@ const initPlanProgressLogModel = require('./planProgressLog');
 const initCompletionRecordModel = require('./completionRecord');
 
 const env = process.env.NODE_ENV || 'development';
+
+// 调试日志：检查环境变量注入
+console.log('🔍 Sequelize 初始化诊断:');
+console.log('  NODE_ENV:', env);
+console.log('  dbConfig keys:', Object.keys(dbConfig));
+console.log('  Selected config exists:', !!dbConfig[env]);
+
 const config = dbConfig[env];
+
+// 错误保护：防止 config 为 undefined
+if (!config) {
+  throw new Error(`❌ Database config for env "${env}" not found. Available envs: ${Object.keys(dbConfig).join(', ')}`);
+}
+
+// 调试日志：检查关键配置
+console.log('  Database:', config.database);
+console.log('  Username:', config.username);
+console.log('  Host:', config.host);
+console.log('  Port:', config.port);
 
 /**
  * 创建Sequelize实例
