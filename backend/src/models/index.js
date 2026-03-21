@@ -5,7 +5,7 @@ const dbConfig = require('../config/database');
 const initUserModel = require('./user');
 const initPlanningRecordModel = require('./planningRecord');
 const initHolidayModel = require('./holiday');
-const initTaskModel = require('./Task');  // ✅ 修正：Task.js（大写T）
+const initTaskModel = require('./task');  // ✅ 修正：匹配 Docker 镜像中的 task.js（小写）
 const initWorkDayModel = require('./workDay');
 const initTaskOccurrenceModel = require('./taskOccurrence');
 const initTaskOverrideModel = require('./TaskOverride');
@@ -13,7 +13,7 @@ const initAlarmSoundModel = require('./alarmSound');
 const initAlarmModel = require('./alarm');
 const initJournalLogModel = require('./journalLog');
 const initPlanProgressLogModel = require('./planProgressLog');
-const initCompletionRecordModel = require('./CompletionRecord');  // ✅ 修正：CompletionRecord.js（大写C）
+const initCompletionRecordModel = require('./CompletionRecord');
 
 const env = process.env.NODE_ENV || 'development';
 
