@@ -3,8 +3,8 @@
 const { Op } = require('sequelize');
 const { Task, TaskOccurrence } = require('../models');
 const { NotFoundError, ValidationError } = require('../utils/errors');
-const rruleCalculationService = require('./rruleCalculationService'); // ⭐ 新增：RRULE实时计算
-const completionRecordRepository = require('../repositories/completionRecordRepository'); // ⭐ 新增：完成记录查询
+const rruleCalculationService = require('./RRuleCalculationService'); // ⭐ 修正：文件名大写 R（Linux 区分大小写）
+const completionRecordRepository = require('../repositories/CompletionRecordRepository'); // ⭐ 修正：文件名大写 C（Linux 区分大小写）
 const taskOverrideRepository = require('../repositories/TaskOverrideRepository'); // ⭐ 新增：单日覆盖查询
 
 /**
