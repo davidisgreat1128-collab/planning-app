@@ -5,9 +5,19 @@ require('dotenv').config({
   path: `.env.${process.env.NODE_ENV || 'development'}`
 });
 
+console.log('🔧 Server.js: 开始加载模块...');
+
+console.log('  加载 app.js...');
 const app = require('./src/app');
+console.log('  ✅ app.js 加载成功');
+
+console.log('  加载 models/index.js...');
 const db = require('./src/models/index');
+console.log('  ✅ models/index.js 加载成功');
+
+console.log('  加载 logger.js...');
 const { logger } = require('./src/middleware/logger');
+console.log('  ✅ logger.js 加载成功');
 
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
