@@ -37,14 +37,25 @@ console.log('  Host:', config.host);
 console.log('  Port:', config.port);
 
 /**
- * 创建Sequelize实例
+ * 创建Sequelize实例（包裹 try-catch 捕获同步异常）
  */
-const sequelize = new Sequelize(
-  config.database,
-  config.username,
-  config.password,
-  config
-);
+let sequelize;
+try {
+  console.log('🔧 正在创建 Sequelize 实例...');
+  sequelize = new Sequelize(
+    config.database,
+    config.username,
+    config.password,
+    config
+  );
+  console.log('✅ Sequelize 实例创建成功');
+} catch (err) {
+  console.error('❌ 创建 Sequelize 实例失败:');
+  console.error('  错误类型:', err.constructor.name);
+  console.error('  错误信息:', err.message);
+  console.error('  完整堆栈:', err.stack);
+  process.exit(1); // 明确退出，避免继续执行
+}
 
 /**
  * 数据库连接测试（支持重试，用于生产环境等待 MySQL 启动）
