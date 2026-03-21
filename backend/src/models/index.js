@@ -89,20 +89,58 @@ async function testConnection(maxRetries = 10, retryDelay = 2000) {
 }
 
 // ============================================================
-// 初始化所有模型
+// 初始化所有模型（添加调试日志，定位哪个模型初始化失败）
 // ============================================================
-const User = initUserModel(sequelize);
-const PlanningRecord = initPlanningRecordModel(sequelize);
-const WorkDay = initWorkDayModel(sequelize);
-const Holiday = initHolidayModel(sequelize);
-const Task = initTaskModel(sequelize);
-const TaskOccurrence = initTaskOccurrenceModel(sequelize);
-const TaskOverride = initTaskOverrideModel(sequelize);
-const AlarmSound = initAlarmSoundModel(sequelize);
-const Alarm = initAlarmModel(sequelize);
-const JournalLog = initJournalLogModel(sequelize);
-const PlanProgressLog = initPlanProgressLogModel(sequelize);
-const CompletionRecord = initCompletionRecordModel(sequelize);
+console.log('🔧 开始初始化模型...');
+
+let User, PlanningRecord, WorkDay, Holiday, Task, TaskOccurrence, TaskOverride;
+let AlarmSound, Alarm, JournalLog, PlanProgressLog, CompletionRecord;
+
+try {
+  console.log('  初始化 User...');
+  User = initUserModel(sequelize);
+
+  console.log('  初始化 PlanningRecord...');
+  PlanningRecord = initPlanningRecordModel(sequelize);
+
+  console.log('  初始化 WorkDay...');
+  WorkDay = initWorkDayModel(sequelize);
+
+  console.log('  初始化 Holiday...');
+  Holiday = initHolidayModel(sequelize);
+
+  console.log('  初始化 Task...');
+  Task = initTaskModel(sequelize);
+
+  console.log('  初始化 TaskOccurrence...');
+  TaskOccurrence = initTaskOccurrenceModel(sequelize);
+
+  console.log('  初始化 TaskOverride...');
+  TaskOverride = initTaskOverrideModel(sequelize);
+
+  console.log('  初始化 AlarmSound...');
+  AlarmSound = initAlarmSoundModel(sequelize);
+
+  console.log('  初始化 Alarm...');
+  Alarm = initAlarmModel(sequelize);
+
+  console.log('  初始化 JournalLog...');
+  JournalLog = initJournalLogModel(sequelize);
+
+  console.log('  初始化 PlanProgressLog...');
+  PlanProgressLog = initPlanProgressLogModel(sequelize);
+
+  console.log('  初始化 CompletionRecord...');
+  CompletionRecord = initCompletionRecordModel(sequelize);
+
+  console.log('✅ 所有模型初始化成功');
+} catch (err) {
+  console.error('❌ 模型初始化失败:');
+  console.error('  错误类型:', err.constructor.name);
+  console.error('  错误信息:', err.message);
+  console.error('  完整堆栈:', err.stack);
+  process.exit(1);
+}
 
 // ============================================================
 // 定义模型关联关系
