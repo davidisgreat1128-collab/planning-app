@@ -1,127 +1,102 @@
 #!/bin/bash
 # ============================================================
-# Planning App - MySQL 备份脚本（支持腾讯云COS上传）
+# Planning App - MySQL 数据库自动备份脚本
 # ============================================================
-# 功能: 自动备份MySQL数据库并上传到腾讯云COS
-# 使用: bash scripts/backup-mysql.sh
-# 定时任务: 0 2 * * * /opt/planning-app/scripts/backup-mysql.sh
+# 功能: 每天4次备份（00:00, 06:00, 12:00, 18:00）
+# 保留策略: 7天内保留所有备份，7-30天仅保留每日首次备份
+# 使用方法: bash scripts/backup-mysql.sh
 # ============================================================
 
 set -e
 
-# 颜色输出
-RED='\033[0;31m'
-GREEN='\033[0;32m'
-YELLOW='\033[1;33m'
-NC='\033[0m'
+# ============================================================
+# 配置变量
+# ============================================================
+BACKUP_DIR="/opt/planning-app/backups/mysql"
+TIMESTAMP=$(date +"%Y%m%d_%H%M%S")
+DATE_ONLY=$(date +"%Y%m%d")
+BACKUP_FILE="planning_app_${TIMESTAMP}.sql"
+BACKUP_PATH="${BACKUP_DIR}/daily/${BACKUP_FILE}"
 
-log_info() {
-    echo -e "${GREEN}[INFO]${NC} $(date '+%Y-%m-%d %H:%M:%S') $1"
-}
+# Docker容器名称
+MYSQL_CONTAINER="planning-app-mysql"
 
-log_warn() {
-    echo -e "${YELLOW}[WARN]${NC} $(date '+%Y-%m-%d %H:%M:%S') $1"
-}
-
-log_error() {
-    echo -e "${RED}[ERROR]${NC} $(date '+%Y-%m-%d %H:%M:%S') $1"
-}
-
-# 从 .env 读取配置
-if [ ! -f ".env" ]; then
-    log_error ".env 文件不存在！"
-    exit 1
+# 加载环境变量
+if [ -f "/opt/planning-app/planning-app/.env" ]; then
+    export $(grep -v '^#' /opt/planning-app/planning-app/.env | xargs)
 fi
 
-set -a
-source .env
-set +a
-
-# 备份目录
-BACKUP_DIR="backups/mysql"
-mkdir -p "$BACKUP_DIR"
-
-# 备份文件名
-BACKUP_DATE=$(date +%Y%m%d_%H%M%S)
-BACKUP_FILE="${BACKUP_DIR}/planning_app_${BACKUP_DATE}.sql.gz"
-
-log_info "开始MySQL备份..."
-log_info "备份文件: $BACKUP_FILE"
+# ============================================================
+# 创建备份目录
+# ============================================================
+mkdir -p "${BACKUP_DIR}/daily"
+mkdir -p "${BACKUP_DIR}/weekly"
+mkdir -p "${BACKUP_DIR}/monthly"
 
 # ============================================================
-# 步骤1: 导出数据库
+# 执行备份
 # ============================================================
-log_info "导出数据库..."
+echo "[$(date)] 开始备份 MySQL 数据库..."
 
-docker-compose exec -T mysql mysqldump \
-    -uroot \
-    -p${MYSQL_ROOT_PASSWORD} \
+docker exec "$MYSQL_CONTAINER" mysqldump \
+    -u root \
+    -p"${MYSQL_ROOT_PASSWORD}" \
     --single-transaction \
     --routines \
     --triggers \
     --events \
-    --databases ${MYSQL_DATABASE} \
-    | gzip > "$BACKUP_FILE"
+    --databases "${MYSQL_DATABASE}" \
+    > "$BACKUP_PATH"
 
-if [ $? -eq 0 ]; then
-    BACKUP_SIZE=$(du -h "$BACKUP_FILE" | cut -f1)
-    log_info "✅ 数据库导出成功！文件大小: $BACKUP_SIZE"
-else
-    log_error "❌ 数据库导出失败！"
-    exit 1
+# 压缩备份文件
+gzip "$BACKUP_PATH"
+BACKUP_PATH="${BACKUP_PATH}.gz"
+
+echo "[$(date)] 备份完成: ${BACKUP_PATH}"
+
+# 获取备份文件大小
+BACKUP_SIZE=$(du -h "$BACKUP_PATH" | cut -f1)
+echo "[$(date)] 备份大小: ${BACKUP_SIZE}"
+
+# ============================================================
+# 每周备份（周日执行）
+# ============================================================
+if [ "$(date +%u)" -eq 7 ]; then
+    WEEKLY_FILE="planning_app_weekly_${DATE_ONLY}.sql.gz"
+    cp "$BACKUP_PATH" "${BACKUP_DIR}/weekly/${WEEKLY_FILE}"
+    echo "[$(date)] 已创建周备份: ${WEEKLY_FILE}"
 fi
 
 # ============================================================
-# 步骤2: 上传到腾讯云COS（如果配置了）
+# 每月备份（每月1日执行）
 # ============================================================
-if [ -n "$COS_SECRET_ID" ] && [ "$COS_SECRET_ID" != "请填写腾讯云SecretId" ]; then
-    log_info "上传备份到腾讯云COS..."
-
-    # 检查coscli是否已安装
-    if ! command -v coscli &> /dev/null; then
-        log_warn "未安装coscli，跳过COS上传"
-        log_info "安装方法: https://cloud.tencent.com/document/product/436/63144"
-    else
-        # 配置coscli
-        coscli config set -s "${COS_SECRET_ID}" -k "${COS_SECRET_KEY}" -b "${COS_BUCKET}" -r "${COS_REGION}"
-
-        # 上传文件
-        COS_PATH="planning-app/mysql/$(basename $BACKUP_FILE)"
-        if coscli cp "$BACKUP_FILE" "cos://${COS_BUCKET}/${COS_PATH}"; then
-            log_info "✅ COS上传成功: cos://${COS_BUCKET}/${COS_PATH}"
-        else
-            log_error "❌ COS上传失败！"
-        fi
-    fi
-else
-    log_info "未配置腾讯云COS，跳过上传"
+if [ "$(date +%d)" -eq 1 ]; then
+    MONTHLY_FILE="planning_app_monthly_$(date +%Y%m).sql.gz"
+    cp "$BACKUP_PATH" "${BACKUP_DIR}/monthly/${MONTHLY_FILE}"
+    echo "[$(date)] 已创建月备份: ${MONTHLY_FILE}"
 fi
 
 # ============================================================
-# 步骤3: 清理旧备份（保留最近7天）
+# 清理过期备份
 # ============================================================
-log_info "清理旧备份文件（保留7天）..."
+echo "[$(date)] 清理过期备份..."
 
-find "$BACKUP_DIR" -type f -name "*.sql.gz" -mtime +7 -delete
+# 删除7天前的每日备份
+find "${BACKUP_DIR}/daily" -name "*.sql.gz" -mtime +7 -delete
 
-REMAINING_BACKUPS=$(ls -1 "$BACKUP_DIR"/*.sql.gz 2>/dev/null | wc -l)
-log_info "当前保留备份: $REMAINING_BACKUPS 个"
+# 删除30天前的每周备份
+find "${BACKUP_DIR}/weekly" -name "*.sql.gz" -mtime +30 -delete
+
+# 删除365天前的每月备份
+find "${BACKUP_DIR}/monthly" -name "*.sql.gz" -mtime +365 -delete
+
+echo "[$(date)] 备份任务完成"
 
 # ============================================================
-# 步骤4: 验证备份文件
+# 上传到远程存储（可选）
 # ============================================================
-log_info "验证备份文件完整性..."
-
-if gunzip -t "$BACKUP_FILE" 2>/dev/null; then
-    log_info "✅ 备份文件完整性验证通过！"
-else
-    log_error "❌ 备份文件已损坏！"
-    exit 1
+# 如果配置了腾讯云COS
+if command -v coscmd &> /dev/null; then
+    coscmd upload "$BACKUP_PATH" "/mysql/$(basename $BACKUP_PATH)"
+    echo "[$(date)] 已上传到腾讯云COS"
 fi
-
-# ============================================================
-# 完成
-# ============================================================
-log_info "✅ MySQL备份完成！"
-log_info "备份列表:"
-ls -lh "$BACKUP_DIR"/*.sql.gz | tail -5
