@@ -44,17 +44,41 @@ app.get('/health', (req, res) => {
 // ============================================================
 // API路由
 // ============================================================
+console.log('🔧 App.js: 开始加载路由...');
+
 const apiV1 = express.Router();
 
+console.log('  加载 routes/auth.js...');
 const authRoutes = require('./routes/auth');
+console.log('  ✅ auth 路由加载成功');
+
+console.log('  加载 routes/user.js...');
 const userRoutes = require('./routes/user');
+console.log('  ✅ user 路由加载成功');
+
+console.log('  加载 routes/planning.js...');
 const planningRoutes = require('./routes/planning');
+console.log('  ✅ planning 路由加载成功');
+
+console.log('  加载 routes/holiday.js...');
 const holidayRoutes = require('./routes/holiday');
+console.log('  ✅ holiday 路由加载成功');
+
+console.log('  加载 routes/task.js...');
 const taskRoutes = require('./routes/task');
+console.log('  ✅ task 路由加载成功');
+
+console.log('  加载 routes/alarm.js...');
 const alarmRoutes = require('./routes/alarm');
+console.log('  ✅ alarm 路由加载成功');
+
+console.log('  加载 routes/log.js...');
 const logRoutes = require('./routes/log');
+console.log('  ✅ log 路由加载成功');
+
 // const ichingRoutes = require('./routes/iching');
 
+console.log('🔧 App.js: 开始注册路由到 Express...');
 apiV1.use('/auth', authRoutes);
 apiV1.use('/users', userRoutes);
 apiV1.use('/planning', planningRoutes);
@@ -65,6 +89,7 @@ apiV1.use('/logs', logRoutes);
 // apiV1.use('/iching', ichingRoutes);
 
 app.use('/api/v1', apiV1);
+console.log('✅ App.js: 所有路由注册成功');
 
 // ============================================================
 // 404处理（必须在所有路由之后）
