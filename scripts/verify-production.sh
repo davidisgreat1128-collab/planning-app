@@ -176,7 +176,7 @@ fi
 TOTAL_TESTS=$((TOTAL_TESTS + 1))
 
 log_info "3.2 验证HTTP跳转HTTPS..."
-HTTP_REDIRECT=$(curl -sI http://$DOMAIN/health | grep -i "location")
+HTTP_REDIRECT=$(timeout 5 curl -sI http://$DOMAIN/health 2>/dev/null | grep -i "location")
 if echo "$HTTP_REDIRECT" | grep -q "https://"; then
     log_success "HTTP自动跳转HTTPS ✓"
     PASSED_TESTS=$((PASSED_TESTS + 1))
@@ -204,8 +204,6 @@ echo ""
 # ============================================================
 log_info "============================================================"
 log_info "第4部分: CORS配置验证"
-log_info "============================================================"
-
 log_info "4.1 验证CORS预检请求..."
 CORS_RESPONSE=$(curl -sI -X OPTIONS https://$DOMAIN/api/v1/auth/login \
     -H "Origin: https://$DOMAIN" \
