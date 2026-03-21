@@ -108,6 +108,14 @@ fi
 
 log_info "复制 planning-app-https.conf 为 planning-app.conf..."
 cp "$HTTPS_CONF" "$FINAL_CONF"
+
+# 禁用原始的 planning-app-https.conf 避免重复加载
+if [ -f "$HTTPS_CONF" ]; then
+    log_info "禁用原始HTTPS配置文件（避免重复加载）..."
+    mv "$HTTPS_CONF" "$HTTPS_CONF.bak"
+    log_success "已禁用 planning-app-https.conf（保留备份）"
+fi
+
 log_success "已启用HTTPS配置"
 
 echo ""
