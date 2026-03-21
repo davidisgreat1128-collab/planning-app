@@ -5,7 +5,7 @@ const dbConfig = require('../config/database');
 const initUserModel = require('./user');
 const initPlanningRecordModel = require('./planningRecord');
 const initHolidayModel = require('./holiday');
-const initTaskModel = require('./task');
+const initTaskModel = require('./Task');  // ✅ 修正：Task.js（大写T）
 const initWorkDayModel = require('./workDay');
 const initTaskOccurrenceModel = require('./taskOccurrence');
 const initTaskOverrideModel = require('./TaskOverride');
@@ -13,7 +13,7 @@ const initAlarmSoundModel = require('./alarmSound');
 const initAlarmModel = require('./alarm');
 const initJournalLogModel = require('./journalLog');
 const initPlanProgressLogModel = require('./planProgressLog');
-const initCompletionRecordModel = require('./completionRecord');
+const initCompletionRecordModel = require('./CompletionRecord');  // ✅ 修正：CompletionRecord.js（大写C）
 
 const env = process.env.NODE_ENV || 'development';
 
