@@ -47,16 +47,33 @@ const sequelize = new Sequelize(
 );
 
 /**
- * 数据库连接测试
+ * 数据库连接测试（支持重试，用于生产环境等待 MySQL 启动）
+ * @param {number} maxRetries - 最大重试次数（默认10次）
+ * @param {number} retryDelay - 初始重试延迟（毫秒，默认2000ms）
  * @returns {Promise<void>}
  */
-async function testConnection() {
-  try {
-    await sequelize.authenticate();
-    console.log('✅ 数据库连接成功:', config.database);
-  } catch (err) {
-    console.error('❌ 数据库连接失败:', err.message);
-    throw err;
+async function testConnection(maxRetries = 10, retryDelay = 2000) {
+  let attempt = 0;
+
+  while (attempt < maxRetries) {
+    try {
+      await sequelize.authenticate();
+      console.log('✅ 数据库连接成功:', config.database);
+      return; // 连接成功，退出函数
+    } catch (err) {
+      attempt++;
+      console.error(`❌ 数据库连接失败 (尝试 ${attempt}/${maxRetries}):`, err.message);
+
+      if (attempt >= maxRetries) {
+        console.error('❌ 达到最大重试次数，放弃连接');
+        throw err; // 最后一次失败，抛出错误
+      }
+
+      // 指数退避：每次重试延迟翻倍（2s → 4s → 8s → 16s → ...）
+      const delay = retryDelay * Math.pow(2, attempt - 1);
+      console.log(`⏳ ${delay}ms 后重试...`);
+      await new Promise(resolve => setTimeout(resolve, delay));
+    }
   }
 }
 
