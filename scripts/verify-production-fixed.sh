@@ -221,12 +221,14 @@ else
     log_error "健康检查接口异常: $HEALTH_RESPONSE"
 fi
 
-# 检查 API v1 路径（测试 /auth/login，应返回400或405而非404）
-API_STATUS=$(timeout 10 curl -sk -o /dev/null -w "%{http_code}" https://$DOMAIN/api/v1/auth/login 2>/dev/null || echo "000")
-if [ "$API_STATUS" == "400" ] || [ "$API_STATUS" == "401" ] || [ "$API_STATUS" == "405" ]; then
-    log_success "API v1 路径正常 (HTTP $API_STATUS - Nginx代理已配置)"
+# 检查 API v1 路径（使用POST请求测试 /auth/login，应返回400参数验证错误）
+API_STATUS=$(timeout 10 curl -sk -o /dev/null -w "%{http_code}" -X POST https://$DOMAIN/api/v1/auth/login 2>/dev/null || echo "000")
+if [ "$API_STATUS" == "400" ]; then
+    log_success "API v1 路径正常 (HTTP 400 - Nginx代理已配置，后端路由正常)"
 elif [ "$API_STATUS" == "404" ]; then
     log_error "API v1 路径返回404（Nginx配置可能有误）"
+elif [ "$API_STATUS" == "401" ] || [ "$API_STATUS" == "405" ]; then
+    log_success "API v1 路径正常 (HTTP $API_STATUS - Nginx代理已配置)"
 else
     log_warning "API v1 路径状态码: HTTP $API_STATUS"
 fi
