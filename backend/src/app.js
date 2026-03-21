@@ -13,10 +13,18 @@ const app = express();
 // 安全中间件
 // ============================================================
 app.use(helmet()); // 设置安全HTTP响应头
+
+// CORS 配置（支持域名访问 + Cookie）
+const corsOrigins = process.env.CORS_ORIGIN
+  ? process.env.CORS_ORIGIN.split(',').map(origin => origin.trim())
+  : ['*'];
+
 app.use(cors({
-  origin: process.env.CORS_ORIGIN || '*',
+  origin: corsOrigins,
+  credentials: true,  // 允许携带 Cookie
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE'],
-  allowedHeaders: ['Content-Type', 'Authorization']
+  allowedHeaders: ['Content-Type', 'Authorization'],
+  optionsSuccessStatus: 200
 }));
 
 // ============================================================
