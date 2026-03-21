@@ -262,21 +262,72 @@ if [ "$DEPLOY_MODE" == "full" ] || [ "$DEPLOY_MODE" == "update" ]; then
         log_info "当前分支: $(git branch --show-current)"
         log_info "最新提交: $(git log -1 --oneline)"
 
-        # 暂存本地修改
-        if ! git diff-index --quiet HEAD --; then
-            log_warning "检测到本地修改，正在暂存..."
-            git stash
-            log_success "本地修改已暂存"
-        fi
+        # 检查Git远程URL类型
+        REMOTE_URL=$(git config --get remote.origin.url || echo "")
+        if [[ "$REMOTE_URL" == git@* ]]; then
+            log_info "检测到SSH协议: $REMOTE_URL"
 
-        # 拉取远程代码
-        log_info "拉取远程develop分支..."
-        if git pull origin develop; then
-            log_success "代码拉取成功"
-            log_info "最新提交: $(git log -1 --oneline)"
+            # 检查SSH agent
+            if [ -z "$SSH_AUTH_SOCK" ] || ! ssh-add -l &>/dev/null; then
+                log_warning "SSH密钥未添加到agent"
+                log_warning "请先执行以下命令（在sudo之前）："
+                log_warning "  eval \"\$(ssh-agent -s)\""
+                log_warning "  ssh-add ~/.ssh/id_ed25519"
+                log_warning ""
+                log_warning "然后使用 sudo -E 保留环境变量："
+                log_warning "  sudo -E bash scripts/deploy-production.sh"
+                log_warning ""
+                log_info "或者跳过代码拉取（如果代码已是最新）："
+                log_info "  1. 手动拉取代码: git pull origin develop"
+                log_info "  2. 然后运行update模式: sudo bash scripts/deploy-production.sh update"
+
+                # 询问是否跳过Git拉取
+                read -p "是否跳过Git拉取，继续部署？(y/N): " SKIP_GIT
+                if [ "$SKIP_GIT" != "y" ] && [ "$SKIP_GIT" != "Y" ]; then
+                    log_error "部署已取消"
+                    exit 1
+                fi
+                log_warning "跳过Git拉取，使用当前代码继续部署..."
+            else
+                # SSH agent正常，执行拉取
+                # 暂存本地修改
+                if ! git diff-index --quiet HEAD --; then
+                    log_warning "检测到本地修改，正在暂存..."
+                    git stash
+                    log_success "本地修改已暂存"
+                fi
+
+                # 拉取远程代码
+                log_info "拉取远程develop分支..."
+                if git pull origin develop; then
+                    log_success "代码拉取成功"
+                    log_info "最新提交: $(git log -1 --oneline)"
+                else
+                    log_error "代码拉取失败"
+                    log_error "请检查SSH密钥配置或网络连接"
+                    exit 1
+                fi
+            fi
         else
-            log_error "代码拉取失败"
-            exit 1
+            # HTTPS协议，直接拉取
+            log_info "使用HTTPS协议拉取代码..."
+
+            # 暂存本地修改
+            if ! git diff-index --quiet HEAD --; then
+                log_warning "检测到本地修改，正在暂存..."
+                git stash
+                log_success "本地修改已暂存"
+            fi
+
+            # 拉取远程代码
+            if git pull origin develop; then
+                log_success "代码拉取成功"
+                log_info "最新提交: $(git log -1 --oneline)"
+            else
+                log_error "代码拉取失败"
+                log_error "请检查GitHub凭证或网络连接"
+                exit 1
+            fi
         fi
     else
         log_warning "不是Git仓库，跳过代码拉取"
