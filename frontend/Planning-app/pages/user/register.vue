@@ -85,7 +85,7 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useUserStore } from '@/store/user.js';
 
 // App 端状态栏高度
@@ -102,7 +102,7 @@ const loading = ref(false);
 
 // #ifdef APP-PLUS
 // 获取 App 端状态栏高度
-onLoad(() => {
+onMounted(() => {
   statusBarHeight.value = plus.navigator.getStatusbarHeight();
 });
 // #endif
