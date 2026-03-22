@@ -5,11 +5,79 @@ import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
 import { usePlanningStore } from '@/store/planning.js';
 import { useTemplateStore } from '@/store/template.js';
+import config from '@/config/index.js';
 // ⭐ 架构统一：规划现在存储在 CategoryRepository（type='plan'），通过 categoryStore.hydrate() 加载
 // import { usePlanStore } from '@/store/plan.js';
 
 export default {
   async onLaunch() {
+    // ============================================================
+    // 🔧 网络环境诊断（测试通过后可删除）
+    // ============================================================
+    console.log('=== 🔧 网络环境诊断 ===');
+    console.log('BASE_URL:', config.BASE_URL);
+    console.log('IS_DEV_MODE:', config.IS_DEV_MODE);
+
+    const systemInfo = uni.getSystemInfoSync();
+    console.log('设备平台:', systemInfo.platform);
+    console.log('系统版本:', systemInfo.system);
+    console.log('UniApp版本:', systemInfo.uniRuntimeVersion || systemInfo.uniCompileVersion);
+
+    // 测试网络类型
+    uni.getNetworkType({
+      success: (res) => {
+        console.log('网络类型:', res.networkType);
+      }
+    });
+
+    // 测试API连通性（使用现有的节假日接口，不需要token）
+    console.log('正在测试服务器连接...');
+    try {
+      const testRes = await uni.request({
+        url: config.BASE_URL + '/holidays',
+        method: 'GET',
+        timeout: 8000,
+        header: {
+          'Content-Type': 'application/json'
+        }
+      });
+
+      console.log('服务器响应状态:', testRes.statusCode);
+
+      if (testRes.statusCode === 200) {
+        console.log('✅ 服务器连接正常');
+        uni.showToast({
+          title: '服务器连接正常',
+          icon: 'success',
+          duration: 2000
+        });
+      } else if (testRes.statusCode === 401) {
+        console.log('✅ 服务器连接正常（需要登录）');
+        uni.showToast({
+          title: '服务器连接正常',
+          icon: 'success',
+          duration: 2000
+        });
+      } else {
+        console.warn('⚠️ 服务器返回异常状态:', testRes.statusCode);
+      }
+    } catch (error) {
+      console.error('❌ 服务器连接失败:', error);
+      console.error('错误详情:', JSON.stringify(error, null, 2));
+
+      uni.showModal({
+        title: '网络诊断',
+        content: `服务器连接失败\n\n错误信息: ${error.errMsg || '未知错误'}\n\nBASE_URL:\n${config.BASE_URL}\n\n请检查网络连接`,
+        showCancel: false,
+        confirmText: '我知道了'
+      });
+    }
+    console.log('=== 🔧 诊断结束 ===\n');
+
+    // ============================================================
+    // 原有代码（保持不变）
+    // ============================================================
+
     // 【已完成测试】访客模式测试阶段已完成，注释掉清除缓存逻辑
     // TODO: 正式发布时实现版本检测，升级时才清除旧数据
     // try {
