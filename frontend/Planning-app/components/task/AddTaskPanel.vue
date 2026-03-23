@@ -10,6 +10,7 @@
       '--tabbar-height': tabBarHeight + 'rpx',
       '--keyboard-height': keyboardHeight + 'px'
     }"
+    @tap.stop
   >
 
     <!-- ① 顶部日期 Tab -->
@@ -1348,7 +1349,7 @@ watch(() => props.visible, (newVal) => {
 
 <style scoped>
 /* ============================================================
-   遮罩层
+   遮罩层（点击关闭弹窗）
    ============================================================ */
 .panel-mask {
   position: fixed;
@@ -1358,6 +1359,8 @@ watch(() => props.visible, (newVal) => {
   bottom: 0;
   background-color: rgba(0, 0, 0, 0.3);
   z-index: 900;
+  /* 确保遮罩层可以接收点击事件 */
+  pointer-events: auto;
 }
 
 /* ============================================================
@@ -1378,15 +1381,20 @@ watch(() => props.visible, (newVal) => {
   box-shadow: 0 -4rpx 24rpx rgba(0, 0, 0, 0.12);
 }
 
+/* #ifndef APP-PLUS */
+/* H5端：面板默认显示（不考虑键盘） */
 .add-task-panel.visible {
   transform: translateY(0);
 }
+/* #endif */
 
 /* #ifdef APP-PLUS */
-/* App端：键盘弹起时，面板整体上移（避免被键盘遮挡） */
+/* App端：键盘弹起时，调整bottom位置（让面板在键盘上方） */
 .add-task-panel.visible {
-  transform: translateY(calc(-1 * var(--keyboard-height, 0px)));
-  transition: transform 0.25s ease;
+  transform: translateY(0);
+  /* 键盘弹起时，bottom = tabbar高度 + 键盘高度 */
+  bottom: calc(var(--tabbar-height, 100rpx) + var(--keyboard-height, 0px));
+  transition: bottom 0.25s ease, transform 0.25s ease;
 }
 /* #endif */
 
