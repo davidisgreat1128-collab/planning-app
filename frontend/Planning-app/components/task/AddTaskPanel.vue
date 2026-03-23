@@ -1370,8 +1370,6 @@ watch(() => props.visible, (newVal) => {
   position: fixed;
   left: 0;
   right: 0;
-  /* ✅ 修复：底部边界 = Tabbar 上边线，避免被遮挡 */
-  bottom: var(--tabbar-height, 100rpx); /* 默认100rpx（H5端Tabbar高度，降级值） */
   background-color: #FFFFFF;
   border-radius: 32rpx 32rpx 0 0;
   z-index: 901;
@@ -1382,18 +1380,25 @@ watch(() => props.visible, (newVal) => {
 }
 
 /* #ifndef APP-PLUS */
-/* H5端：面板默认显示（不考虑键盘） */
+/* H5端：贴着Tabbar上方，面板显示时向上滑入 */
+.add-task-panel {
+  bottom: var(--tabbar-height, 100rpx);
+}
 .add-task-panel.visible {
   transform: translateY(0);
 }
 /* #endif */
 
 /* #ifdef APP-PLUS */
-/* App端：键盘弹起时，调整bottom位置（让面板在键盘上方） */
+/* App端：默认贴底，键盘弹起时动态上移 */
+.add-task-panel {
+  /* 默认位置：贴着底部（0px，不使用tabbar-height） */
+  bottom: 0;
+}
 .add-task-panel.visible {
   transform: translateY(0);
-  /* 键盘弹起时，bottom = tabbar高度 + 键盘高度 */
-  bottom: calc(var(--tabbar-height, 100rpx) + var(--keyboard-height, 0px));
+  /* 键盘弹起时，上移键盘高度 */
+  bottom: var(--keyboard-height, 0px);
   transition: bottom 0.25s ease, transform 0.25s ease;
 }
 /* #endif */
