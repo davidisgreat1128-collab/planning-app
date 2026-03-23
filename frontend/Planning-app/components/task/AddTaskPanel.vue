@@ -6,7 +6,10 @@
   <view
     class="add-task-panel"
     :class="{ visible: visible }"
-    :style="{ '--tabbar-height': tabBarHeight + 'rpx' }"
+    :style="{
+      '--tabbar-height': tabBarHeight + 'rpx',
+      '--keyboard-height': keyboardHeight + 'px'
+    }"
   >
 
     <!-- ① 顶部日期 Tab -->
@@ -250,15 +253,13 @@
       </view>
     </view>
 
-    <!-- ⑤.6 新建分类弹窗（使用teleport传送到body层级，确保全屏居中） -->
-    <teleport to="body">
-      <CategoryDialog
-        :visible="showCategoryDialog"
-        :edit-mode="false"
-        @update:visible="showCategoryDialog = $event"
-        @save="onCategorySave"
-      />
-    </teleport>
+    <!-- ⑤.6 新建分类弹窗（App端不支持teleport，直接渲染） -->
+    <CategoryDialog
+      :visible="showCategoryDialog"
+      :edit-mode="false"
+      @update:visible="showCategoryDialog = $event"
+      @save="onCategorySave"
+    />
 
     <!-- ⑤-B 自定义日期选择器弹窗（点击"其他日期"时） -->
     <CustomDatePicker
@@ -269,26 +270,23 @@
     />
 
     <!-- ⑥ 天数日历弹窗（开关关闭时，选择结束天） - 使用 DayPicker 组件 -->
-    <teleport to="body">
-      <DayPicker
-        v-model:visible="showDayPicker"
-        :startDate="resolvedDate"
-        :initialEndDate="endDate ? formatDate(endDate) : ''"
-        title="设置期限：在"
-        :showDaysCount="true"
-        :showLunar="true"
-        mode="range"
-        @confirm="onDayPickerConfirm"
-        @cancel="closeDayPicker"
-      />
-    </teleport>
+    <DayPicker
+      v-model:visible="showDayPicker"
+      :startDate="resolvedDate"
+      :initialEndDate="endDate ? formatDate(endDate) : ''"
+      title="设置期限：在"
+      :showDaysCount="true"
+      :showLunar="true"
+      mode="range"
+      @confirm="onDayPickerConfirm"
+      @cancel="closeDayPicker"
+    />
 
     <!-- ⑦ 时间选择弹窗（开关开启时） -->
 
     <!-- #ifdef H5 -->
     <!-- H5端：使用增减按钮选择时间 -->
-    <teleport to="body">
-      <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
+    <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
         <view class="tp-sheet-h5" @tap.stop>
           <!-- 顶部日期标题 -->
           <text class="tp-date-title">{{ timePickerDateLabel }}</text>
@@ -378,14 +376,12 @@
             <view class="tp-btn tp-confirm" @tap="confirmTimePicker"><text class="tp-btn-text tp-confirm-text">确定</text></view>
           </view>
         </view>
-      </view>
-    </teleport>
+    </view>
     <!-- #endif -->
 
     <!-- #ifndef H5 -->
     <!-- App端：自定义滚轮选择器 -->
-    <teleport to="body">
-      <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
+    <view v-if="showTimePicker" class="tp-mask" @tap.stop="closeTimePicker">
         <view class="tp-sheet" @tap.stop>
           <!-- 顶部日期标题 -->
           <text class="tp-date-title">{{ timePickerDateLabel }}</text>
@@ -466,8 +462,7 @@
           <view class="tp-btn tp-confirm" @tap="confirmTimePicker"><text class="tp-btn-text tp-confirm-text">确定</text></view>
         </view>
         </view>
-      </view>
-    </teleport>
+    </view>
     <!-- #endif -->
 
   </view>
@@ -526,6 +521,21 @@ const categoryStore = useCategoryStore();
 // 系统布局信息（获取Tabbar高度等）
 // ============================================================
 const { tabBarHeight } = useSystemLayout();
+
+// ============================================================
+// App端键盘适配（监听键盘弹起/收起事件）
+// ============================================================
+const keyboardHeight = ref(0); // 键盘高度（单位：px）
+
+// #ifdef APP-PLUS
+onMounted(() => {
+  // 监听键盘弹起
+  uni.onKeyboardHeightChange((res) => {
+    console.log('[AddTaskPanel] 键盘高度变化:', res.height);
+    keyboardHeight.value = res.height;
+  });
+});
+// #endif
 
 // ============================================================
 // 阶段3：初始化 useTaskForm（创建模式）
@@ -1371,6 +1381,14 @@ watch(() => props.visible, (newVal) => {
 .add-task-panel.visible {
   transform: translateY(0);
 }
+
+/* #ifdef APP-PLUS */
+/* App端：键盘弹起时，面板整体上移（避免被键盘遮挡） */
+.add-task-panel.visible {
+  transform: translateY(calc(-1 * var(--keyboard-height, 0px)));
+  transition: transform 0.25s ease;
+}
+/* #endif */
 
 /* ============================================================
    ① 日期 Tab 栏
