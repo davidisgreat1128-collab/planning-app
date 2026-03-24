@@ -116,6 +116,9 @@ export function useDragDrop(options = {}) {
       startY: y
     };
 
+    // ⭐ 设置长按视觉反馈状态（方案C：背景半透明）
+    pressedTaskId.value = task.id;
+
     // 震动反馈
     uni.vibrateShort?.({ type: 'medium' });
 

@@ -4,7 +4,8 @@
     :class="[
       'task-card-' + quadrant,
       { 'task-done': task.status === 'completed' },
-      { 'dragging': isDragging }
+      { 'dragging': isDragging },
+      { 'pressing': pressing }
     ]"
     @touchstart="handleTouchStart"
     @mousedown="handleMouseDown"
@@ -105,6 +106,14 @@ const props = defineProps({
   isDragging: {
     type: Boolean,
     default: false
+  },
+  quadrant: {
+    type: String,
+    default: ''  // ⭐ 新增：任务所属象限 (q1/q2/q3/q4)，用于Android端拖拽
+  },
+  pressing: {
+    type: Boolean,
+    default: false  // ⭐ 新增：长按视觉反馈（方案C：背景半透明）
   }
 });
 
@@ -203,8 +212,9 @@ function getIconFilter(hexColor) {
 function handleTouchStart(e) {
   if (!props.draggable) return;
 
+  // ⭐ 修复Android端拖拽BUG：传递3个参数 (e, task, quadrant)
   // 触发拖拽开始事件（App端触摸）
-  emit('drag-start', e, props.task);
+  emit('drag-start', e, props.task, props.quadrant);
 }
 
 function handleMouseDown(e) {
@@ -239,6 +249,12 @@ function formatTime(timeStr) {
 .task-card.dragging {
   opacity: 0.6;
   transform: scale(0.98);
+}
+
+/* ⭐ 长按视觉反馈（方案C：背景半透明） */
+.task-card.pressing {
+  opacity: 0.8;
+  transition: opacity 0.2s ease;
 }
 
 .task-card:active {

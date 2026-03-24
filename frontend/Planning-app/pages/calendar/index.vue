@@ -73,6 +73,7 @@
         :not-urgent-not-important="notUrgentNotImportant"
         :not-urgent-not-important-done="notUrgentNotImportantDone"
         :container-name="taskFilterComposable.containerName.value"
+        :pressing-task-id="dragDropComposable.pressedTaskId.value"
         @task-click="openTask"
         @checkbox-click="toggleTaskDone"
         @recurring-click="subtaskModalComposable.handleRecurringTaskComplete"

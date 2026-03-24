@@ -41,10 +41,12 @@
               :key="task.id"
               :task="task"
               :draggable="true"
+              :quadrant="'q1'"
+              :pressing="pressingTaskId === task.id"
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q1')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q1')"
+              @drag-start="(e, task, quadrant) => handleDragStart(e, task, quadrant)"
+              @mouse-drag-start="(e, task, quadrant) => handleMouseDragStart(e, task, quadrant)"
             />
 
             <task-card
@@ -52,10 +54,12 @@
               :key="task.id"
               :task="task"
               :draggable="true"
+              :quadrant="'q1'"
+              :pressing="pressingTaskId === task.id"
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q1')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q1')"
+              @drag-start="(e, task, quadrant) => handleDragStart(e, task, quadrant)"
+              @mouse-drag-start="(e, task, quadrant) => handleMouseDragStart(e, task, quadrant)"
             />
 
             <view v-if="urgentImportant.length === 0 && urgentImportantDone.length === 0" class="empty-quadrant">
@@ -92,10 +96,12 @@
               :key="task.id"
               :task="task"
               :draggable="true"
+              :quadrant="'q3'"
+              :pressing="pressingTaskId === task.id"
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q3')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q3')"
+              @drag-start="(e, task, quadrant) => handleDragStart(e, task, quadrant)"
+              @mouse-drag-start="(e, task, quadrant) => handleMouseDragStart(e, task, quadrant)"
             />
 
             <!-- 已完成任务 -->
@@ -104,10 +110,12 @@
               :key="task.id"
               :task="task"
               :draggable="true"
+              :quadrant="'q3'"
+              :pressing="pressingTaskId === task.id"
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q3')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q3')"
+              @drag-start="(e, task, quadrant) => handleDragStart(e, task, quadrant)"
+              @mouse-drag-start="(e, task, quadrant) => handleMouseDragStart(e, task, quadrant)"
             />
 
             <!-- 空状态 -->
@@ -144,10 +152,12 @@
               :key="task.id"
               :task="task"
               :draggable="true"
+              :quadrant="'q2'"
+              :pressing="pressingTaskId === task.id"
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q2')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q2')"
+              @drag-start="(e, task, quadrant) => handleDragStart(e, task, quadrant)"
+              @mouse-drag-start="(e, task, quadrant) => handleMouseDragStart(e, task, quadrant)"
             />
 
             <task-card
@@ -155,10 +165,12 @@
               :key="task.id"
               :task="task"
               :draggable="true"
+              :quadrant="'q2'"
+              :pressing="pressingTaskId === task.id"
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q2')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q2')"
+              @drag-start="(e, task, quadrant) => handleDragStart(e, task, quadrant)"
+              @mouse-drag-start="(e, task, quadrant) => handleMouseDragStart(e, task, quadrant)"
             />
 
             <view v-if="notUrgentImportant.length === 0 && notUrgentImportantDone.length === 0" class="empty-quadrant">
@@ -191,10 +203,12 @@
               :key="task.id"
               :task="task"
               :draggable="true"
+              :quadrant="'q4'"
+              :pressing="pressingTaskId === task.id"
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q4')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q4')"
+              @drag-start="(e, task, quadrant) => handleDragStart(e, task, quadrant)"
+              @mouse-drag-start="(e, task, quadrant) => handleMouseDragStart(e, task, quadrant)"
             />
 
             <task-card
@@ -202,10 +216,12 @@
               :key="task.id"
               :task="task"
               :draggable="true"
+              :quadrant="'q4'"
+              :pressing="pressingTaskId === task.id"
               @task-click="handleTaskClick"
               @checkbox-click="handleCheckboxClick"
-              @drag-start="(e, task) => handleDragStart(e, task, 'q4')"
-              @mouse-drag-start="(e, task) => handleMouseDragStart(e, task, 'q4')"
+              @drag-start="(e, task, quadrant) => handleDragStart(e, task, quadrant)"
+              @mouse-drag-start="(e, task, quadrant) => handleMouseDragStart(e, task, quadrant)"
             />
 
             <view v-if="notUrgentNotImportant.length === 0 && notUrgentNotImportantDone.length === 0" class="empty-quadrant">
@@ -261,6 +277,10 @@ const props = defineProps({
   notUrgentNotImportantDone: {
     type: Array,
     default: () => []
+  },
+  pressingTaskId: {
+    type: String,
+    default: null
   }
 });
 
