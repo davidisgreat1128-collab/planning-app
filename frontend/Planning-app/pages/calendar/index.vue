@@ -386,6 +386,13 @@ function onContentTouchStart(e) {
 }
 
 function onContentTouchMove(e) {
+  // ⭐ APP端：如果正在拖拽，调用拖拽移动逻辑
+  if (dragDropComposable.dragState.value.dragging) {
+    console.log('📍 [index.vue] onContentTouchMove: 检测到拖拽中，调用 useDragDrop');
+    dragDropComposable.onTaskTouchMove(e);
+    return; // 拖拽时不处理日历折叠
+  }
+
   // 在月视图模式下，如果向上滑动且已滚动到顶部，触发折叠
   if (calendarComposable.calendarMode.value === 'month' && contentScrollTop.value === 0) {
     const dy = e.touches[0].clientY - contentTouchStartY.value;
@@ -395,7 +402,13 @@ function onContentTouchMove(e) {
   }
 }
 
-function onContentTouchEnd() {
+function onContentTouchEnd(e) {
+  // ⭐ APP端：如果正在拖拽，调用拖拽结束逻辑
+  if (dragDropComposable.dragState.value.dragging) {
+    console.log('🔴 [index.vue] onContentTouchEnd: 检测到拖拽中，调用 useDragDrop');
+    dragDropComposable.onTaskTouchEnd(e);
+  }
+
   // 清理状态
   contentTouchStartY.value = 0;
 }
