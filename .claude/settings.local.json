@@ -2,7 +2,10 @@
   "permissions": {
     "allow": [
       "Bash(powershell:*)",
-      "Bash(git add:*)"
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git push:*)",
+      "Read(//d/MyProject/Planning设计/测试日志/**)"
     ],
     "deny": [],
     "ask": []
