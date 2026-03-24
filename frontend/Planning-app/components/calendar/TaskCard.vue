@@ -7,11 +7,15 @@
       { 'dragging': isDragging },
       { 'pressing': pressing }
     ]"
+    <!-- #ifndef H5 -->
     @touchstart="handleTouchStart"
     @touchmove="handleTouchMove"
     @touchend="handleTouchEnd"
     @touchcancel="handleTouchCancel"
+    <!-- #endif -->
+    <!-- #ifdef H5 -->
     @mousedown="handleMouseDown"
+    <!-- #endif -->
     @tap="handleTaskClick"
   >
     <!-- 图标区域（垂直排列，最多2个图标：主图标+子任务） -->
@@ -92,13 +96,15 @@
 import { computed, ref } from 'vue';
 import { getQuadrant, getQuadrantColor } from '@/utils/quadrant';
 
+// #ifndef H5
 // ============================================================
-// 长按检测状态
+// APP端：长按检测状态
 // ============================================================
 let longPressTimer = null;  // 长按定时器
 const touchStartPos = ref({ x: 0, y: 0 });  // 触摸起始位置
 const LONG_PRESS_DELAY = 500;  // 长按延迟（毫秒）
 const MOVE_THRESHOLD = 10;  // 移动阈值（像素）
+// #endif
 
 // Props
 const props = defineProps({
@@ -228,6 +234,7 @@ function getIconFilter(hexColor) {
   return `sepia(100%) saturate(${saturate}) hue-rotate(${hueRotate}deg) brightness(${brightness + 0.5})`;
 }
 
+// #ifndef H5
 /**
  * 处理触摸开始（App端）
  * 启动长按定时器，500ms后触发拖拽
@@ -338,7 +345,13 @@ function handleTouchCancel(e) {
     longPressTimer = null;
   }
 }
+// #endif
 
+// #ifdef H5
+/**
+ * 处理鼠标按下（H5端）
+ * H5端的长按检测在 useDragDrop.js 中实现
+ */
 function handleMouseDown(e) {
   console.log('🖱️ [TaskCard] handleMouseDown 被触发', {
     taskId: props.task?.id,
@@ -358,6 +371,7 @@ function handleMouseDown(e) {
   });
   emit('mouse-drag-start', e, props.task);
 }
+// #endif
 
 function formatTime(timeStr) {
   if (!timeStr) return '';
