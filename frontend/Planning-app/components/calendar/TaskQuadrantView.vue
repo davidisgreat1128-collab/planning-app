@@ -279,7 +279,7 @@ const props = defineProps({
     default: () => []
   },
   pressingTaskId: {
-    type: String,
+    type: [String, Number],  // ⭐ 支持String和Number类型（task.id可能是数字或字符串）
     default: null
   }
 });
