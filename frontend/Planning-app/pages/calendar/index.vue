@@ -250,6 +250,7 @@ import DragOverlay from '@/components/calendar/DragOverlay.vue';
 import AddTaskPanel from '@/components/task/AddTaskPanel.vue';
 import CategoryDrawer from '@/components/category-drawer.vue';
 import SubtaskModal from '@/components/task/SubtaskModal.vue';
+// import KeyboardDebugPanel from '@/components/common/KeyboardDebugPanel.vue'; // 🔍 调试组件（已禁用）
 
 // Store
 const taskStore = useTaskStore();

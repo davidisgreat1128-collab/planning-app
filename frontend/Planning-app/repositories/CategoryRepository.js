@@ -280,11 +280,11 @@ class CategoryRepository {
    * @private
    */
   _loadFromLocalStorage() {
-    // 加载数据
-    const cached = localStorage.getItem(STORAGE_KEY)
+    // 加载数据（使用 uni.getStorageSync 实现三端兼容）
+    const cached = uni.getStorageSync(STORAGE_KEY)
     if (cached) {
       try {
-        const categories = JSON.parse(cached)
+        const categories = typeof cached === 'string' ? JSON.parse(cached) : cached
 
         // ⭐ 自动清理垃圾数据：过滤掉 deletedAt 不为 null 的数据
         const beforeCount = categories.length
@@ -293,8 +293,8 @@ class CategoryRepository {
 
         if (garbageCount > 0) {
           console.warn(`[CategoryRepository] 检测到 ${garbageCount} 个垃圾分类（deletedAt 不为 null），已自动清理`)
-          // 立即保存清理后的数据到 localStorage
-          localStorage.setItem(STORAGE_KEY, JSON.stringify(cleaned))
+          // 立即保存清理后的数据（使用 uni.setStorageSync）
+          uni.setStorageSync(STORAGE_KEY, cleaned)
         }
 
         cleaned.forEach(cat => {
@@ -303,31 +303,31 @@ class CategoryRepository {
         console.log('[CategoryRepository] 从缓存加载', cleaned.length, '个分类（清理后）')
       } catch (err) {
         console.error('[CategoryRepository] 缓存数据损坏，清除缓存', err)
-        localStorage.removeItem(STORAGE_KEY)
+        uni.removeStorageSync(STORAGE_KEY)
       }
     }
 
-    // 加载队列
-    const queue = localStorage.getItem(QUEUE_KEY)
+    // 加载队列（使用 uni.getStorageSync 实现三端兼容）
+    const queue = uni.getStorageSync(QUEUE_KEY)
     if (queue) {
       try {
-        this.operationQueue = JSON.parse(queue)
+        this.operationQueue = typeof queue === 'string' ? JSON.parse(queue) : queue
         console.log('[CategoryRepository] 从缓存加载', this.operationQueue.length, '个待同步操作')
       } catch (err) {
         console.error('[CategoryRepository] 队列数据损坏，清除队列', err)
-        localStorage.removeItem(QUEUE_KEY)
+        uni.removeStorageSync(QUEUE_KEY)
       }
     }
   }
 
   /**
-   * 保存到 localStorage
+   * 保存到 localStorage（使用 uni.setStorageSync 实现三端兼容）
    * @private
    */
   _saveToLocalStorage() {
     const categories = Array.from(this.memoryCache.values())
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(categories))
-    localStorage.setItem(QUEUE_KEY, JSON.stringify(this.operationQueue))
+    uni.setStorageSync(STORAGE_KEY, categories)
+    uni.setStorageSync(QUEUE_KEY, this.operationQueue)
   }
 
   /**

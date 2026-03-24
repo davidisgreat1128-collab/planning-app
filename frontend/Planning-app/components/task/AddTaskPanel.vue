@@ -5,7 +5,10 @@
   <!-- 底部面板 -->
   <view
     class="add-task-panel"
-    :class="{ visible: visible }"
+    :class="{
+      visible: visible,
+      'keyboard-active': keyboardHeight > 0
+    }"
     :style="{
       '--tabbar-height': tabBarHeight + 'rpx',
       '--keyboard-height': keyboardHeight + 'px'
@@ -485,6 +488,7 @@ import DayPicker from './DayPicker.vue';
 import { useTaskForm } from '@/composables/useTaskForm.js';
 import { useCategoryManager } from '@/composables/useCategoryManager.js';
 import { useSystemLayout } from '@/composables/useSystemLayout.js';
+import { useKeyboardHeight } from '@/composables/useKeyboardHeight.js';
 import { formatDate, timeDiffMinutes, formatDuration, formatDateWithWeekday, getRelativeDateLabel } from '@/utils/date.js';
 import { buildRrule } from '@/utils/rruleBuilder.js';
 import { syncCategoryFields } from '@/utils/categorySync.js';
@@ -524,19 +528,12 @@ const categoryStore = useCategoryStore();
 const { tabBarHeight } = useSystemLayout();
 
 // ============================================================
-// App端键盘适配（监听键盘弹起/收起事件）
+// App端键盘适配（使用 useKeyboardHeight composable）
 // ============================================================
-const keyboardHeight = ref(0); // 键盘高度（单位：px）
+const { keyboardHeight } = useKeyboardHeight();
 
-// #ifdef APP-PLUS
-onMounted(() => {
-  // 监听键盘弹起
-  uni.onKeyboardHeightChange((res) => {
-    console.log('[AddTaskPanel] 键盘高度变化:', res.height);
-    keyboardHeight.value = res.height;
-  });
-});
-// #endif
+// App端键盘高度监听（无日志输出）
+// keyboardHeight 由 useKeyboardHeight composable 提供
 
 // ============================================================
 // 阶段3：初始化 useTaskForm（创建模式）
@@ -1349,6 +1346,52 @@ watch(() => props.visible, (newVal) => {
 
 <style scoped>
 /* ============================================================
+   🔍 调试面板样式（仅App端，生产环境删除）
+   ============================================================ */
+/* #ifdef APP-PLUS */
+.debug-panel {
+  position: fixed !important; /* 🔥 强制 fixed 定位 */
+  top: 20rpx !important;
+  right: 20rpx !important;
+  background: rgba(255, 0, 0, 0.95) !important;
+  color: #FFFFFF !important;
+  padding: 20rpx !important;
+  border-radius: 12rpx !important;
+  z-index: 2147483647 !important; /* 🔥 使用 CSS z-index 最大值 */
+  font-size: 24rpx !important;
+  line-height: 1.6 !important;
+  min-width: 400rpx !important;
+  max-width: 500rpx !important;
+  box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.6) !important;
+  border: 4rpx solid #FFFF00 !important; /* 🔥 添加黄色边框，更容易看到 */
+  pointer-events: auto !important; /* 🔥 允许点击（方便拖动） */
+}
+
+.debug-title {
+  font-size: 28rpx;
+  font-weight: bold;
+  margin-bottom: 12rpx;
+  border-bottom: 2rpx solid rgba(255, 255, 255, 0.3);
+  padding-bottom: 8rpx;
+}
+
+.debug-item {
+  margin: 8rpx 0;
+  display: flex;
+  align-items: center;
+}
+
+.debug-value {
+  margin-left: 12rpx;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 4rpx 12rpx;
+  border-radius: 6rpx;
+  font-weight: bold;
+  color: #FFD700;
+}
+/* #endif */
+
+/* ============================================================
    遮罩层（点击关闭弹窗）
    ============================================================ */
 .panel-mask {
@@ -1390,16 +1433,23 @@ watch(() => props.visible, (newVal) => {
 /* #endif */
 
 /* #ifdef APP-PLUS */
-/* App端：默认贴底，键盘弹起时动态上移 */
+/* App端：键盘适配 - 让任务弹窗底部紧贴键盘顶部 */
 .add-task-panel {
-  /* 默认位置：贴着底部（0px，不使用tabbar-height） */
-  bottom: 0;
+  /* 🔥 核心修复：底部 = 键盘高度（弹窗底部 = 键盘顶部） */
+  bottom: var(--keyboard-height, 0px);
+
+  /* 🎯 动画：键盘弹起/收起时平滑过渡 */
+  transition: bottom 0.25s cubic-bezier(0.4, 0, 0.2, 1);
 }
+
+/* 面板显示状态（向上滑入） */
 .add-task-panel.visible {
   transform: translateY(0);
-  /* 键盘弹起时，上移键盘高度 */
-  bottom: var(--keyboard-height, 0px);
-  transition: bottom 0.25s ease, transform 0.25s ease;
+}
+
+/* 🔥 键盘弹起时：移除工具栏底部安全区padding（避免底部空白间隙） */
+.add-task-panel.keyboard-active .toolbar {
+  padding-bottom: 24rpx !important;
 }
 /* #endif */
 
@@ -1664,7 +1714,8 @@ watch(() => props.visible, (newVal) => {
 
 /* #ifdef APP-PLUS */
 .toolbar {
-  /* ✅ App端保留底部安全区适配 */
+  /* 🔥 修复：键盘弹起时不需要安全区适配（底部紧贴键盘） */
+  /* 默认保留安全区适配（键盘收起时） */
   padding-bottom: calc(24rpx + env(safe-area-inset-bottom));
 }
 /* #endif */
