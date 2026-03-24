@@ -101,9 +101,20 @@ export function useDragDrop(options = {}) {
    * @param {string} quadrant - 来源象限 q1/q2/q3/q4
    */
   function startDrag(e, task, quadrant) {
+    console.log('🟢 [useDragDrop] startDrag() 被调用', {
+      taskId: task?.id,
+      taskTitle: task?.title,
+      quadrant: quadrant,
+      eventType: e.type,
+      touches: e.touches?.length,
+      changedTouches: e.changedTouches?.length
+    });
+
     const touch = e.touches?.[0] || e.changedTouches?.[0] || e;
     const x = touch.clientX || e.clientX || 0;
     const y = touch.clientY || e.clientY || 0;
+
+    console.log('📍 [useDragDrop] 触摸坐标', { x, y });
 
     dragState.value = {
       dragging: true,
@@ -116,15 +127,20 @@ export function useDragDrop(options = {}) {
       startY: y
     };
 
+    console.log('✅ [useDragDrop] dragState 已更新', dragState.value);
+
     // ⭐ 设置长按视觉反馈状态（方案C：背景半透明）
     pressedTaskId.value = task.id;
+    console.log('🎨 [useDragDrop] pressedTaskId 设置为', pressedTaskId.value);
 
     // 震动反馈
     uni.vibrateShort?.({ type: 'medium' });
+    console.log('📳 [useDragDrop] 触发震动反馈');
 
     // #ifndef H5
     // APP端:获取所有象限和删除区域的位置信息
     updateQuadrantRects();
+    console.log('🔍 [useDragDrop] APP端: 开始获取象限位置');
     // #endif
   }
 
@@ -175,7 +191,15 @@ export function useDragDrop(options = {}) {
    * @param {object} e - 触摸/鼠标事件
    */
   function onTaskTouchMove(e) {
-    if (!dragState.value.dragging) return;
+    if (!dragState.value.dragging) {
+      console.log('⚠️ [useDragDrop] onTaskTouchMove: 未在拖拽状态，忽略');
+      return;
+    }
+
+    console.log('🔵 [useDragDrop] onTaskTouchMove: 拖拽移动中', {
+      eventType: e.type,
+      dragging: dragState.value.dragging
+    });
 
     e.preventDefault?.();
     e.stopPropagation?.();
@@ -183,6 +207,8 @@ export function useDragDrop(options = {}) {
     const touch = e.touches?.[0] || e.changedTouches?.[0] || e;
     const clientX = touch.clientX || touch.pageX || 0;
     const clientY = touch.clientY || touch.pageY || 0;
+
+    console.log('📍 [useDragDrop] 移动坐标', { x: clientX, y: clientY });
 
     dragState.value.x = clientX;
     dragState.value.y = clientY;
@@ -224,30 +250,56 @@ export function useDragDrop(options = {}) {
    * @param {object} e - 触摸/鼠标事件
    */
   function onTaskTouchEnd(e) {
-    if (!dragState.value.dragging) return;
+    console.log('🔴 [useDragDrop] onTaskTouchEnd: 触摸结束', {
+      eventType: e.type,
+      dragging: dragState.value.dragging,
+      task: dragState.value.task?.title
+    });
+
+    if (!dragState.value.dragging) {
+      console.log('⚠️ [useDragDrop] onTaskTouchEnd: 未在拖拽状态，忽略');
+      return;
+    }
 
     e.preventDefault?.();
     e.stopPropagation?.();
 
     const { task, fromQuadrant, overDelete, x, y } = dragState.value;
 
+    console.log('🎯 [useDragDrop] 拖拽结束信息', {
+      taskId: task?.id,
+      taskTitle: task?.title,
+      fromQuadrant,
+      overDelete,
+      endPosition: { x, y }
+    });
+
     // 重置拖拽状态
     dragState.value.dragging = false;
+    console.log('✅ [useDragDrop] dragState.dragging 重置为 false');
 
     // 如果在删除区域上方,返回标识让调用方显示删除对话框
     if (overDelete) {
+      console.log('🗑️ [useDragDrop] 任务在删除区域上方，触发删除');
       onDragEnd(task, fromQuadrant, null, { shouldDelete: true });
       return;
     }
 
     // 检测拖拽到哪个象限
     const target = detectQuadrantAtPosition(x, y);
+    console.log('🎯 [useDragDrop] 检测目标象限', {
+      fromQuadrant,
+      targetQuadrant: target,
+      changed: target && target !== fromQuadrant
+    });
 
     if (target && target !== fromQuadrant) {
       // 通知调用方处理象限变更
+      console.log('✅ [useDragDrop] 象限变更: ' + fromQuadrant + ' → ' + target);
       onDragEnd(task, fromQuadrant, target, { shouldDelete: false });
     } else {
       // 未移动或回到原象限,取消拖拽
+      console.log('❌ [useDragDrop] 未移动或回到原象限，取消拖拽');
       onDragCancel();
     }
   }
@@ -259,6 +311,8 @@ export function useDragDrop(options = {}) {
    * @returns {string|null} 'q1' | 'q2' | 'q3' | 'q4' | null
    */
   function detectQuadrantAtPosition(x, y) {
+    console.log('🔍 [useDragDrop] detectQuadrantAtPosition', { x, y });
+
     // #ifdef H5
     const quadrants = {
       q1: document.querySelector?.('.quadrant-q1'),
@@ -267,10 +321,13 @@ export function useDragDrop(options = {}) {
       q4: document.querySelector?.('.quadrant-q4')
     };
 
+    console.log('🌐 [useDragDrop] H5端: 检测DOM元素');
     for (const [key, el] of Object.entries(quadrants)) {
       if (!el) continue;
       const rect = el.getBoundingClientRect();
+      console.log(`  ${key}: left=${rect.left}, right=${rect.right}, top=${rect.top}, bottom=${rect.bottom}`);
       if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        console.log('✅ [useDragDrop] H5端: 找到目标象限 ' + key);
         return key;
       }
     }
@@ -278,14 +335,18 @@ export function useDragDrop(options = {}) {
 
     // #ifndef H5
     // APP端:使用缓存的位置信息
+    console.log('📱 [useDragDrop] APP端: 使用缓存位置', quadrantRects.value);
     for (const [key, rect] of Object.entries(quadrantRects.value)) {
       if (key === 'delete' || !rect) continue;
+      console.log(`  ${key}: left=${rect.left}, right=${rect.right}, top=${rect.top}, bottom=${rect.bottom}`);
       if (x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom) {
+        console.log('✅ [useDragDrop] APP端: 找到目标象限 ' + key);
         return key;
       }
     }
     // #endif
 
+    console.log('❌ [useDragDrop] 未找到目标象限');
     return null;
   }
 

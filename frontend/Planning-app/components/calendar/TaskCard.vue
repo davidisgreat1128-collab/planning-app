@@ -145,10 +145,18 @@ const subtaskCompletedCount = computed(() => {
 
 // 方法
 function handleTaskClick() {
+  console.log('🎯 [TaskCard] handleTaskClick 被触发', {
+    taskId: props.task?.id,
+    taskTitle: props.task?.title
+  });
   emit('task-click', props.task);
 }
 
 function handleCheckboxClick() {
+  console.log('☑️ [TaskCard] handleCheckboxClick 被触发', {
+    taskId: props.task?.id,
+    taskTitle: props.task?.title
+  });
   emit('checkbox-click', props.task);
 }
 
@@ -210,17 +218,46 @@ function getIconFilter(hexColor) {
 }
 
 function handleTouchStart(e) {
-  if (!props.draggable) return;
+  console.log('👆 [TaskCard] handleTouchStart 被触发', {
+    taskId: props.task?.id,
+    taskTitle: props.task?.title,
+    quadrant: props.quadrant,
+    draggable: props.draggable,
+    eventType: e.type,
+    touches: e.touches?.length
+  });
+
+  if (!props.draggable) {
+    console.log('⚠️ [TaskCard] draggable=false，不触发拖拽');
+    return;
+  }
 
   // ⭐ 修复Android端拖拽BUG：传递3个参数 (e, task, quadrant)
   // 触发拖拽开始事件（App端触摸）
+  console.log('🚀 [TaskCard] emit("drag-start")', {
+    task: props.task?.title,
+    quadrant: props.quadrant
+  });
   emit('drag-start', e, props.task, props.quadrant);
 }
 
 function handleMouseDown(e) {
-  if (!props.draggable) return;
+  console.log('🖱️ [TaskCard] handleMouseDown 被触发', {
+    taskId: props.task?.id,
+    taskTitle: props.task?.title,
+    draggable: props.draggable,
+    eventType: e.type
+  });
+
+  if (!props.draggable) {
+    console.log('⚠️ [TaskCard] draggable=false，不触发拖拽');
+    return;
+  }
 
   // 触发拖拽开始事件（H5端鼠标）
+  console.log('🚀 [TaskCard] emit("mouse-drag-start")', {
+    task: props.task?.title
+  });
   emit('mouse-drag-start', e, props.task);
 }
 
