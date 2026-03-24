@@ -435,14 +435,35 @@ function addLog() {
 }
 
 function openTask(task) {
+  console.log('🎯 [index.vue] openTask 被调用', {
+    taskId: task.id,
+    taskTitle: task.title
+  });
+
+  // #ifndef H5
+  // APP端：检查拖拽状态，避免拖拽结束时误触发跳转
+  if (dragDropComposable.dragState.value.dragging) {
+    console.log('⚠️ [index.vue] openTask: 拖拽状态中，忽略点击');
+    return;
+  }
+  // #endif
+
   // 如果有子任务，打开弹窗
   if (task.subtasks && task.subtasks.length > 0) {
+    console.log('📋 [index.vue] openTask: 任务有子任务，打开弹窗');
     currentSubtaskParent.value = task;
     showSubtaskPopup.value = true;
   } else {
     // 否则跳转到编辑页
+    console.log('✅ [index.vue] openTask: 准备跳转到任务详情页');
     uni.navigateTo({
-      url: '/pages/calendar/task-edit?id=' + task.id
+      url: '/pages/calendar/task-edit?id=' + task.id,
+      success: () => {
+        console.log('✅ [index.vue] openTask: 跳转任务详情页成功');
+      },
+      fail: (err) => {
+        console.error('❌ [index.vue] openTask: 跳转任务详情页失败', err);
+      }
     });
   }
 }

@@ -138,9 +138,11 @@ export function useDragDrop(options = {}) {
     console.log('📳 [useDragDrop] 触发震动反馈');
 
     // #ifndef H5
-    // APP端:获取所有象限和删除区域的位置信息
-    updateQuadrantRects();
-    console.log('🔍 [useDragDrop] APP端: 开始获取象限位置');
+    // APP端:延迟获取位置信息（等待拖拽蒙层DOM渲染完成）
+    setTimeout(() => {
+      updateQuadrantRects();
+      console.log('🔍 [useDragDrop] APP端: 延迟100ms后获取象限和删除区域位置');
+    }, 100);
     // #endif
   }
 
@@ -164,6 +166,7 @@ export function useDragDrop(options = {}) {
    * APP端:更新象限位置信息
    */
   function updateQuadrantRects() {
+    console.log('🔍 [useDragDrop] updateQuadrantRects: 开始查询DOM元素位置');
     const query = uni.createSelectorQuery();
 
     query.select('.quadrant-q1').boundingClientRect();
@@ -173,6 +176,15 @@ export function useDragDrop(options = {}) {
     query.select('.delete-zone').boundingClientRect();
 
     query.exec((res) => {
+      console.log('🔍 [useDragDrop] updateQuadrantRects: 查询结果', {
+        resultLength: res?.length,
+        hasQ1: !!res?.[0],
+        hasQ2: !!res?.[1],
+        hasQ3: !!res?.[2],
+        hasQ4: !!res?.[3],
+        hasDelete: !!res?.[4]
+      });
+
       if (res && res.length === 5) {
         quadrantRects.value = {
           q1: res[0],
@@ -181,6 +193,14 @@ export function useDragDrop(options = {}) {
           q4: res[3],
           delete: res[4]
         };
+        console.log('✅ [useDragDrop] updateQuadrantRects: 位置信息已更新', {
+          deleteRect: res[4]
+        });
+      } else {
+        console.warn('⚠️ [useDragDrop] updateQuadrantRects: 查询结果不完整', {
+          expected: 5,
+          actual: res?.length
+        });
       }
     });
   }
@@ -241,6 +261,8 @@ export function useDragDrop(options = {}) {
           uni.vibrateShort?.({ type: 'light' });
         }
       }
+    } else {
+      console.log('⚠️ [useDragDrop] deleteRect为null，无法检测删除区域');
     }
     // #endif
   }
