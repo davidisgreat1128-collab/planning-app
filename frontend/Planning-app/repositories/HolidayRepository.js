@@ -50,12 +50,20 @@ class HolidayRepository {
         this.holidayMap = JSON.parse(cachedHoliday);
         holidayCount = Object.keys(this.holidayMap).length;
         console.log('[HolidayRepository] 从缓存加载节日数据:', holidayCount, '条');
+
+        // ⭐ 调试：输出前5条数据查看结构
+        const samples = Object.entries(this.holidayMap).slice(0, 5);
+        console.log('[HolidayRepository] 缓存数据示例:', samples);
       }
 
       if (cachedWorkDay) {
         this.workDayMap = JSON.parse(cachedWorkDay);
         workDayCount = Object.keys(this.workDayMap).length;
         console.log('[HolidayRepository] 从缓存加载工作日数据:', workDayCount, '条');
+
+        // ⭐ 调试：输出前5条数据查看结构
+        const workSamples = Object.entries(this.workDayMap).slice(0, 5);
+        console.log('[HolidayRepository] 工作日数据示例:', workSamples);
       }
 
       return { holidayCount, workDayCount };
