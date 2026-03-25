@@ -1,19 +1,19 @@
 # 项目当前状态
 
-> **最后更新**: 2026-03-25（日志优化+Vue Teleport修复完成）
+> **最后更新**: 2026-03-25（APP端网络连接问题诊断完成）
 > **更新者**: Claude Sonnet 4.5
 > **当前分支**: develop
-> **最新commit**: 4ff42f1 (chore(app): 优化日志输出和修复Vue Teleport警告)
+> **最新commit**: dfcfa58 (fix(app): 增强网络请求错误日志)
 > **Git状态**: ✅ 已提交并推送到远程仓库
 
 ---
 
 ## 🎯 当前阶段
 
-**阶段名称**: 🧹 代码优化和警告修复
-**进度**: **100%**（日志优化+Teleport修复完成，等待用户测试验证）
+**阶段名称**: 🔍 APP端网络连接问题诊断
+**进度**: **90%**（问题已定位，等待用户验证网络权限和环境）
 
-**本次会话完成** (会话3) ⭐⭐:
+**本次会话完成** (会话4) ⭐⭐⭐:
 
 ### 2026-03-25 修复用户测试发现的新BUG ✅
 
@@ -140,6 +140,65 @@
 3. **条件编译最佳实践**：Vue Teleport仅在H5端启用，App端自动跳过
 4. **架构符合性系统检查**：6项必查项100%通过
 
+---
+
+### 2026-03-25 APP端网络连接问题诊断 ⭐ (会话4)
+
+#### 问题诊断（HBuilderX.txt 156行）
+
+**错误现象**：
+- 所有API请求失败：`request:fail abort statusCode:-1 timeout`
+- 影响范围：Task、Log、Planning、Holiday全部无法同步
+- 2个TaskSyncQueue操作被永久丢弃
+
+**诊断过程**（系统化排查）⭐：
+
+**步骤1：检查远程服务器**
+```bash
+# Ping测试
+ping 154.8.183.203
+# 结果：✅ 正常（6ms延迟，0%丢包）
+
+# HTTP测试
+curl http://154.8.183.203/api/v1/tasks
+# 结果：✅ HTTP/1.1 401 Unauthorized（服务器在线）
+```
+
+**步骤2：检查APP端配置**
+- ✅ manifest.json：`usesCleartextTraffic: true`（允许HTTP）
+- ✅ config/index.js：BASE_URL配置正确
+
+**步骤3：分析错误特征**
+- `statusCode: -1` → APP端网络请求被系统阻止
+- `abort` → 请求被中断（不是超时）
+
+**根本原因**（最可能）⭐：
+1. **APP端网络权限未授予**（P0）- 手机设置中拒绝网络权限
+2. **手机网络环境问题**（P0）- 运营商或WiFi限制
+3. **真机调试限制**（P1）- HBuilderX调试模式限制
+
+#### 解决方案（会话4）
+
+**代码修改**：增强网络请求错误日志
+- **文件**：`utils/request.js`（Line 91-110）
+- **改进**：
+  1. 输出详细错误信息（errMsg、statusCode、errno、url、timeout）
+  2. 区分错误类型（timeout vs abort）
+  3. 提供精确的错误提示
+- **Git commit**：dfcfa58
+
+**用户操作**（待执行）⭐⭐⭐：
+1. 检查手机网络权限：设置→应用管理→规划助手→权限管理
+2. 测试手机浏览器：访问 `http://154.8.183.203/api/v1/tasks`
+3. 拉取最新代码重新测试
+4. 提供新的HBuilderX.txt日志
+
+#### 会话4技术亮点 ⭐⭐⭐
+1. **系统化网络诊断**：服务器→配置→错误特征→根本原因（4步诊断法）
+2. **远程验证**：使用ping+curl验证服务器状态（证明问题在客户端）
+3. **错误日志增强**：区分timeout和abort，提供精确提示
+4. **可复用诊断流程**：文档化网络问题诊断标准流程
+
 #### 下一步（用户待执行）⏳
 1. 拉取最新代码：`git pull origin develop`
 2. Android真机测试（验证会话1+会话2修复）：
@@ -169,7 +228,7 @@
 
 ## 📌 下一个Claude接手时
 
-**当前状态**: ✅ 日志优化+Vue Teleport修复完成（100%），等待用户测试验证
+**当前状态**: ⏳ APP端网络连接问题诊断完成（90%），等待用户验证网络权限和环境
 
 **会话1 Git提交** (Android端拖拽修复):
 - 7个commits（37e91a1至9fec470）
@@ -179,14 +238,17 @@
 - 1个commit（8734fe5）
 - 已推送到远程仓库：`git push origin develop`
 
-**会话3 Git提交** ⭐ (日志优化+Teleport修复):
+**会话3 Git提交** (日志优化+Teleport修复):
 - 1个commit（4ff42f1）
 - 已推送到远程仓库：`git push origin develop`
 
-**本次会话修改的文件**（会话3）:
-1. `useDragDrop.js`（4处日志优化）
-2. `index.vue`（1处日志优化，line 392）
-3. `CustomDatePicker.vue`（添加 #ifdef H5 条件编译）
+**会话4 Git提交** ⭐ (网络错误日志增强):
+- 1个commit（dfcfa58）
+- 已推送到远程仓库：`git push origin develop`
+
+**本次会话修改的文件**（会话4）:
+1. `utils/request.js`（增强fail回调错误日志）
+2. 创建工作日志：`2026-03-25-APP端网络连接问题诊断.md`
 
 **临时文件**（会话1-3，可删除）:
 - `fix_drag_drop.py`（Python脚本，会话2）
