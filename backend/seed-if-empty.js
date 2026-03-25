@@ -1,128 +1,66 @@
 #!/usr/bin/env node
 /**
- * 智能种子数据导入脚本
+ * 种子数据导入入口脚本
  *
- * 功能：检查数据库表是否为空，仅在空表时才导入种子数据
- * 使用场景：生产环境首次部署、容器重启时
+ * 职责（单一职责）：
+ * - 作为 Docker 容器启动时的入口脚本
+ * - 调用 Service 层完成数据检查和导入
+ * - 输出启动日志和错误信息
  *
- * 工作流程：
- * 1. 连接数据库
- * 2. 检查 holidays 和 work_days 表是否为空
- * 3. 如果为空，运行对应的种子文件
- * 4. 如果已有数据，跳过导入（避免重复）
+ * 架构层级：启动脚本（不属于四层架构，但必须遵循分层调用）
+ * 调用关系：启动脚本 → Service 层 → Repository/Model → Database
+ *
+ * ⭐ 架构改进（2026-03-25）：
+ * - 从直接操作数据库 → 改为调用 Service 层
+ * - 符合四层架构规范
+ * - 符合单一职责原则（SRP）
  *
  * 创建时间：2026-03-25
- * 最后更新：2026-03-25
+ * 最后更新：2026-03-25（重构为符合四层架构）
+ * 作者：Claude Sonnet 4.5
  */
 
-const { execSync } = require('child_process');
-const { Sequelize } = require('sequelize');
 require('dotenv').config();
-
-// 创建数据库连接
-const sequelize = new Sequelize(
-  process.env.DB_DATABASE || 'planning_app_prod',
-  process.env.DB_USERNAME || 'planning_user',
-  process.env.DB_PASSWORD,
-  {
-    host: process.env.DB_HOST || 'mysql',
-    port: process.env.DB_PORT || 3306,
-    dialect: 'mysql',
-    logging: false, // 关闭SQL日志
-    pool: {
-      max: 5,
-      min: 0,
-      acquire: 30000,
-      idle: 10000
-    }
-  }
-);
-
-/**
- * 检查表是否为空
- * @param {string} tableName - 表名
- * @returns {Promise<boolean>} true表示空表，false表示有数据
- */
-async function isTableEmpty(tableName) {
-  try {
-    const [results] = await sequelize.query(`SELECT COUNT(*) as count FROM ${tableName}`);
-    const count = results[0].count;
-    console.log(`  📊 ${tableName} 表当前数据量: ${count}`);
-    return count === 0;
-  } catch (error) {
-    console.error(`  ❌ 检查 ${tableName} 表失败:`, error.message);
-    // 如果表不存在，返回 true（需要导入）
-    return true;
-  }
-}
-
-/**
- * 运行指定的种子文件
- * @param {string} seedFile - 种子文件名（不含路径）
- * @returns {Promise<boolean>} 成功返回true
- */
-async function runSeedFile(seedFile) {
-  try {
-    console.log(`  🌱 运行种子文件: ${seedFile}`);
-    execSync(`npx sequelize-cli db:seed --seed ${seedFile}`, {
-      stdio: 'inherit',
-      cwd: __dirname
-    });
-    console.log(`  ✅ 种子文件 ${seedFile} 导入成功`);
-    return true;
-  } catch (error) {
-    console.error(`  ❌ 种子文件 ${seedFile} 导入失败:`, error.message);
-    return false;
-  }
-}
 
 /**
  * 主函数
  */
 async function main() {
   console.log('=========================================');
-  console.log('🌱 智能种子数据导入脚本');
+  console.log('🌱 节假日数据初始化');
   console.log('=========================================');
 
   try {
-    // 测试数据库连接
-    await sequelize.authenticate();
-    console.log('✅ 数据库连接成功');
+    // ⭐ 调用 Service 层（符合四层架构）
+    const holidayDataManager = require('./src/services/holidayDataManager');
+    const result = await holidayDataManager.initialize();
 
-    // 检查 holidays 表
-    console.log('\n📋 检查 holidays 表...');
-    const holidaysEmpty = await isTableEmpty('holidays');
-    if (holidaysEmpty) {
-      console.log('  ⚠️ holidays 表为空，需要导入数据');
-      await runSeedFile('20260219000001-holidays.js');
-    } else {
-      console.log('  ✅ holidays 表已有数据，跳过导入');
-    }
-
-    // 检查 work_days 表
-    console.log('\n📋 检查 work_days 表...');
-    const workDaysEmpty = await isTableEmpty('work_days');
-    if (workDaysEmpty) {
-      console.log('  ⚠️ work_days 表为空，需要导入数据');
-      await runSeedFile('20260306152306-work-days-2026.js');
-    } else {
-      console.log('  ✅ work_days 表已有数据，跳过导入');
-    }
-
+    // 输出结果摘要
     console.log('\n=========================================');
-    console.log('✅ 种子数据检查完成');
+    if (result.success && result.errors.length === 0) {
+      console.log('✅ 节假日数据检查完成，所有数据正常');
+    } else {
+      console.log('⚠️ 节假日数据检查完成，但有警告：');
+      result.errors.forEach(err => console.log(`   - ${err}`));
+    }
     console.log('=========================================');
 
+    // 容错处理：即使有警告，也不阻塞应用启动
+    process.exit(0);
+
   } catch (error) {
-    console.error('❌ 种子数据导入失败:', error.message);
-    process.exit(1);
-  } finally {
-    await sequelize.close();
+    console.error('❌ 节假日数据初始化失败:', error.message);
+    console.error(error.stack);
+
+    // 容错处理：失败也不阻塞应用启动（应用可降级运行）
+    console.warn('⚠️ 应用将继续启动（降级模式）');
+    process.exit(0);
   }
 }
 
 // 运行主函数
 main().catch(error => {
   console.error('❌ 脚本执行失败:', error);
-  process.exit(1);
+  // 容错：失败也不阻塞应用启动
+  process.exit(0);
 });

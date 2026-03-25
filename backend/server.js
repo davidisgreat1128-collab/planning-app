@@ -19,6 +19,10 @@ console.log('  加载 logger.js...');
 const { logger } = require('./src/middleware/logger');
 console.log('  ✅ logger.js 加载成功');
 
+console.log('  加载 scheduler.js...');
+const scheduler = require('./src/services/scheduler');
+console.log('  ✅ scheduler.js 加载成功');
+
 const PORT = process.env.PORT || 3000;
 const HOST = process.env.HOST || '0.0.0.0';
 
@@ -39,9 +43,13 @@ async function startServer() {
       });
       logger.info(`📋 健康检查: http://localhost:${PORT}/health`);
       logger.info(`🔗 API地址: http://localhost:${PORT}/api/v1`);
+
+      // 3. 启动定时任务调度器（每天凌晨2点检查工作日数据有效期）
+      logger.info('🕐 启动定时任务调度器...');
+      scheduler.start();
     });
 
-    // 3. 优雅关机处理（关闭 HTTP + 数据库连接池）
+    // 4. 优雅关机处理（关闭 HTTP + 数据库连接池 + 定时任务）
     const shutdown = async (signal) => {
       logger.warn(`收到 ${signal} 信号，正在优雅关机...`);
 
@@ -54,13 +62,19 @@ async function startServer() {
 
       server.close(async () => {
         try {
+          // 停止定时任务
+          scheduler.stop();
+          logger.info('定时任务调度器已停止');
+
+          // 关闭数据库连接
           await db.sequelize.close();
           logger.info('数据库连接池已关闭');
+
           logger.info('服务器已安全关闭');
           clearTimeout(forceExit);
           process.exit(0);
         } catch (err) {
-          logger.error('关闭数据库时发生错误', { error: err.message });
+          logger.error('关闭服务时发生错误', { error: err.message });
           process.exit(1);
         }
       });
