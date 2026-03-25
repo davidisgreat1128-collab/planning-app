@@ -11,9 +11,15 @@
  * - Composable 只负责业务流程编排，调用 Repository
  * - 符合单一职责原则（SRP）
  *
+ * ⭐ 响应式说明（Vue 3）：
+ * - holidayMap 和 workDayMap 使用 Vue reactive()，确保响应性
+ * - Composable 中直接引用 repository.holidayMap（无需computed）
+ *
  * @author Claude Sonnet 4.5
  * @date 2026-03-25
  */
+
+import { reactive } from 'vue';
 
 // ============================================================
 // 缓存键名常量
@@ -28,10 +34,12 @@ const WORKDAY_CACHE_KEY = 'planning_app_workday_map';
 class HolidayRepository {
   constructor() {
     /** 节日农历缓存 key=YYYY-MM-DD, value=节日名称 */
-    this.holidayMap = {};
+    /** ⭐ 使用 Vue reactive() 确保响应性 */
+    this.holidayMap = reactive({});
 
     /** 工作日调整缓存 key=YYYY-MM-DD, value={ type, holidayName, remark } */
-    this.workDayMap = {};
+    /** ⭐ 使用 Vue reactive() 确保响应性 */
+    this.workDayMap = reactive({});
   }
 
   /**
@@ -47,7 +55,9 @@ class HolidayRepository {
       let workDayCount = 0;
 
       if (cachedHoliday) {
-        this.holidayMap = JSON.parse(cachedHoliday);
+        const parsed = JSON.parse(cachedHoliday);
+        // ⭐ 保持响应性：使用 Object.assign() 而非直接赋值
+        Object.assign(this.holidayMap, parsed);
         holidayCount = Object.keys(this.holidayMap).length;
         console.log('[HolidayRepository] 从缓存加载节日数据:', holidayCount, '条');
 
@@ -57,7 +67,9 @@ class HolidayRepository {
       }
 
       if (cachedWorkDay) {
-        this.workDayMap = JSON.parse(cachedWorkDay);
+        const parsed = JSON.parse(cachedWorkDay);
+        // ⭐ 保持响应性：使用 Object.assign() 而非直接赋值
+        Object.assign(this.workDayMap, parsed);
         workDayCount = Object.keys(this.workDayMap).length;
         console.log('[HolidayRepository] 从缓存加载工作日数据:', workDayCount, '条');
 
@@ -151,12 +163,16 @@ class HolidayRepository {
 
   /**
    * 获取所有缓存的节日数据（用于导出）
+   * ⭐ 已废弃：直接使用 repository.holidayMap 和 repository.workDayMap
+   * ⭐ 这两个属性是 Vue reactive() 对象，具有响应性
    * @returns {object} { holidayMap, workDayMap }
+   * @deprecated 直接引用 holidayMap 和 workDayMap 属性
    */
   getAllData() {
+    // ⭐ 不再返回拷贝，直接返回响应式对象的引用
     return {
-      holidayMap: { ...this.holidayMap },
-      workDayMap: { ...this.workDayMap }
+      holidayMap: this.holidayMap,
+      workDayMap: this.workDayMap
     };
   }
 

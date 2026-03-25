@@ -130,11 +130,12 @@ export function useCalendar() {
   const currentMonthFirst = ref(null);
 
   /**
-   * 节日农历缓存 - computed属性，从 Repository 读取
+   * 节日农历缓存 - 直接引用 Repository 的响应式对象
    * ⭐ 四层架构优化：不在 Composable 中直接管理数据，而是从 Repository 读取
+   * ⭐ Vue 3 响应性：Repository 中的 holidayMap/workDayMap 使用 reactive()，具有响应性
    */
-  const holidayMap = computed(() => holidayRepository.getAllData().holidayMap);
-  const workDayMap = computed(() => holidayRepository.getAllData().workDayMap);
+  const holidayMap = holidayRepository.holidayMap;
+  const workDayMap = holidayRepository.workDayMap;
 
   // ============ 常量 ============
   /** 周一到周日 */
@@ -192,10 +193,10 @@ export function useCalendar() {
 
       const hasTask = dateTasks.length > 0;
       return {
-        workDay: workDayMap.value[dateStr] || null, // 工作日信息
+        workDay: workDayMap[dateStr] || null, // 工作日信息
         dateStr,
         day: d.getDate(),
-        lunarLabel: holidayMap.value[dateStr] || '',
+        lunarLabel: holidayMap[dateStr] || '',
         hasTask,
         taskDots: hasTask ? getTaskDots(dateStr) : []
       };
@@ -228,10 +229,10 @@ export function useCalendar() {
         });
 
         row.push({
-          workDay: workDayMap.value[dateStr] || null, // 工作日信息
+          workDay: workDayMap[dateStr] || null, // 工作日信息
           dateStr,
           day: d.getDate(),
-          lunarLabel: holidayMap.value[dateStr] || '',
+          lunarLabel: holidayMap[dateStr] || '',
           hasTask,
           taskDots: hasTask ? getTaskDots(dateStr) : [],
           otherMonth: d.getMonth() !== curMonth
