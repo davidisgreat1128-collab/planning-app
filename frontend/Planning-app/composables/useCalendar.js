@@ -290,43 +290,24 @@ export function useCalendar() {
 
   /**
    * 加载当前周的节日+农历
+   * ⭐ 已优化：App启动时已全量加载近3年数据，此函数已不再需要
+   * ⭐ 保留此函数仅用于兼容性，实际不执行任何操作
    */
   async function loadHolidays() {
-    console.log('[useCalendar] loadHolidays 被调用');
-
-    try {
-      if (!currentWeekStart.value) {
-        console.warn('[useCalendar] loadHolidays 失败: currentWeekStart 为空');
-        return;
-      }
-
-      const weekEnd = new Date(currentWeekStart.value);
-      weekEnd.setDate(weekEnd.getDate() + 6);
-      const start = formatDate(currentWeekStart.value);
-      const end = formatDate(weekEnd);
-
-      //console.log('[useCalendar] loadHolidays 即将加载节日范围:', start, '~', end);
-      await _loadHolidayRange(start, end);
-     // console.log('[useCalendar] loadHolidays 完成');
-    } catch (err) {
-      console.error('[useCalendar] 节日农历加载失败:', err);
-    }
+    console.log('[useCalendar] loadHolidays 被调用（已全量加载，跳过）');
+    // ⭐ 不再需要按周加载，数据已在 App.vue 启动时全量加载
+    return;
   }
 
   /**
    * 加载当前月(+上下各补位行)的节日+农历
+   * ⭐ 已优化：App启动时已全量加载近3年数据，此函数已不再需要
+   * ⭐ 保留此函数仅用于兼容性，实际不执行任何操作
    */
   async function loadHolidaysForMonth() {
-    try {
-      if (!currentMonthFirst.value) return;
-      // 42格的起止范围
-      const gridStart = getWeekMonday(currentMonthFirst.value);
-      const gridEnd = new Date(gridStart);
-      gridEnd.setDate(gridStart.getDate() + 41);
-      await _loadHolidayRange(formatDate(gridStart), formatDate(gridEnd));
-    } catch (err) {
-      console.warn('[useCalendar] 月历农历加载失败:', err);
-    }
+    console.log('[useCalendar] loadHolidaysForMonth 被调用（已全量加载，跳过）');
+    // ⭐ 不再需要按月加载，数据已在 App.vue 启动时全量加载
+    return;
   }
 
   // ============ 导航方法 ============

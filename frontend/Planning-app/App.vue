@@ -5,6 +5,7 @@ import { useTaskStore } from '@/store/task.js';
 import { useLogStore } from '@/store/log.js';
 import { usePlanningStore } from '@/store/planning.js';
 import { useTemplateStore } from '@/store/template.js';
+import holidayDataService from '@/services/HolidayDataService.js';
 // ⭐ 架构统一：规划现在存储在 CategoryRepository（type='plan'），通过 categoryStore.hydrate() 加载
 // import { usePlanStore } from '@/store/plan.js';
 
@@ -48,18 +49,22 @@ export default {
     // const planStore = usePlanStore();
 
     try {
-      // 并行加载所有 Store 数据
-      await Promise.all([
+      // 并行加载所有 Store 数据 + 节日数据初始化
+      const [, , , , , , holidayResult] = await Promise.all([
         userStore.hydrate(),      // 加载用户数据（token + userInfo）
         categoryStore.hydrate(),  // ⭐ 加载分类数据（包括规划type='plan'）
         taskStore.hydrate(),      // 加载任务数据
         logStore.hydrate(),       // 加载日志数据
         planningStore.hydrate(),  // 加载规划数据
-        templateStore.hydrate()   // 加载模板数据
+        templateStore.hydrate(),  // 加载模板数据
+        holidayDataService.initHolidayData() // ⭐ 初始化节日数据（版本检测+全量加载）
       ]);
 
       // ⭐ 架构统一：规划现在统一由 categoryStore.hydrate() 加载（type='plan'）
       console.log('[App] 所有数据已加载，规划数量:', categoryStore.plans.length);
+
+      // 输出节日数据加载结果
+      console.log('[App] 节日数据加载结果:', holidayResult);
     } catch (err) {
       console.error('[App] Repository 数据加载失败:', err);
     }
