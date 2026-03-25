@@ -89,8 +89,24 @@ function request({ url, method = 'GET', data = {}, auth = true } = {}) {
         }
       },
       fail: (err) => {
+        // ⭐ 增强错误日志：输出详细的错误信息帮助诊断
         console.error(`[RequestFail] ${method} ${fullUrl}`, err);
-        reject(new Error('网络连接失败，请检查网络'));
+        console.error('[RequestFail] 错误详情:', {
+          errMsg: err.errMsg,
+          statusCode: err.statusCode,
+          errno: err.errno,
+          url: fullUrl,
+          timeout: config.REQUEST_TIMEOUT
+        });
+
+        // 判断具体错误类型
+        if (err.errMsg && err.errMsg.includes('timeout')) {
+          reject(new Error(`请求超时(${config.REQUEST_TIMEOUT}ms)，请检查网络或服务器`));
+        } else if (err.errMsg && err.errMsg.includes('abort')) {
+          reject(new Error('网络请求被中断，请检查网络权限和连接'));
+        } else {
+          reject(new Error('网络连接失败，请检查网络'));
+        }
       }
     });
   });

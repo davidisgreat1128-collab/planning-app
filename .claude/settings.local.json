@@ -12,7 +12,9 @@
       "Bash(python fix_drag_drop.py:*)",
       "Bash(python fix_index_vue.py:*)",
       "Bash(python fix_current_status.py:*)",
-      "Bash(python optimize_logs.py:*)"
+      "Bash(python optimize_logs.py:*)",
+      "Bash(ping:*)",
+      "Bash(curl -v --connect-timeout 5 http://154.8.183.203/api/v1/tasks)"
     ],
     "deny": [],
     "ask": []
