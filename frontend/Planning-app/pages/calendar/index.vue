@@ -298,12 +298,6 @@ const todayStr = computed(() => getToday());
 const urgentImportant = computed(() => {
   const raw = taskStore.urgentImportant;
   const filtered = taskFilterComposable.filterTasks(raw);
-  console.log('[index.vue urgentImportant]', {
-    'taskStore.tasks.length': taskStore.tasks.length,
-    'taskStore.urgentImportant.length': raw.length,
-    '过滤后.length': filtered.length,
-    '任务ID列表': filtered.map(t => ({ id: t.id, title: t.title }))
-  });
   return filtered;
 });
 const urgentImportantDone = computed(() =>
@@ -314,11 +308,6 @@ const urgentImportantDone = computed(() =>
 const notUrgentImportant = computed(() => {
   const raw = taskStore.notUrgentImportant;
   const filtered = taskFilterComposable.filterTasks(raw);
-  console.log('[index.vue notUrgentImportant]', {
-    'taskStore.notUrgentImportant.length': raw.length,
-    '过滤后.length': filtered.length,
-    '任务ID列表': filtered.map(t => ({ id: t.id, title: t.title }))
-  });
   return filtered;
 });
 const notUrgentImportantDone = computed(() =>
@@ -408,7 +397,6 @@ function onContentTouchEnd(e) {
   // #ifndef H5
   // ⭐ APP端：如果正在拖拽，调用拖拽结束逻辑
   if (dragDropComposable.dragState.value.dragging) {
-    console.log('🔴 [index.vue] onContentTouchEnd: 检测到拖拽中，调用 useDragDrop');
     dragDropComposable.onTaskTouchEnd(e);
   }
   // #endif
@@ -435,34 +423,23 @@ function addLog() {
 }
 
 function openTask(task) {
-  console.log('🎯 [index.vue] openTask 被调用', {
-    taskId: task.id,
-    taskTitle: task.title
-  });
-
   // #ifndef H5
   // APP端：检查拖拽状态，避免拖拽结束时误触发跳转
   if (dragDropComposable.dragState.value.dragging) {
-    console.log('⚠️ [index.vue] openTask: 拖拽状态中，忽略点击');
     return;
   }
   // #endif
 
   // 如果有子任务，打开弹窗
   if (task.subtasks && task.subtasks.length > 0) {
-    console.log('📋 [index.vue] openTask: 任务有子任务，打开弹窗');
     currentSubtaskParent.value = task;
     showSubtaskPopup.value = true;
   } else {
     // 否则跳转到编辑页
-    console.log('✅ [index.vue] openTask: 准备跳转到任务详情页');
     uni.navigateTo({
       url: '/pages/calendar/task-edit?id=' + task.id,
-      success: () => {
-        console.log('✅ [index.vue] openTask: 跳转任务详情页成功');
-      },
       fail: (err) => {
-        console.error('❌ [index.vue] openTask: 跳转任务详情页失败', err);
+        console.error('[index.vue] openTask: 跳转任务详情页失败', err);
       }
     });
   }
@@ -496,7 +473,6 @@ async function toggleTaskDone(task) {
         const record = records[0];
         const newStatus = record.status === 'completed' ? 'pending' : 'completed';
         await taskApi.updateCompletionRecord(task.id, completionDate, { status: newStatus });
-        console.log('[index.vue] 重复任务状态已切换:', task.title, '→', newStatus);
       } else {
         // 无记录 → 创建完成记录
         await taskApi.completeRecurringTask(task.id, {
@@ -505,13 +481,11 @@ async function toggleTaskDone(task) {
           subtaskCompletion: task.subtasks ? {} : null, // 子任务完成状态（初始为空对象）
           note: null
         });
-        console.log('[index.vue] 重复任务已标记完成:', task.title);
       }
     } else {
       // ✅ 普通任务：直接更新 task.status
       const newStatus = task.status === 'completed' ? 'pending' : 'completed';
       await taskStore.updateTask(task.id, { status: newStatus });
-      console.log('[index.vue] 普通任务状态已切换:', task.title, '→', newStatus);
     }
 
     // 刷新任务列表
@@ -544,11 +518,8 @@ async function toggleSubtask(subtask) {
  * ⭐ RRULE架构升级（2026-03-17）：拖拽删除时打开删除对话框
  */
 async function handleDragEnd(task, fromQuadrant, toQuadrant, options = {}) {
-  console.log('[index.vue] handleDragEnd - 任务:', task?.title, ', 从:', fromQuadrant, ', 到:', toQuadrant, ', 选项:', options);
-
   // 场景1: 拖拽到删除区域 → 打开删除对话框
   if (options.shouldDelete || toQuadrant === null) {
-    console.log('[index.vue] handleDragEnd - 触发删除流程，打开删除对话框');
     // ⭐ 如果是重复任务，打开删除选项对话框；否则直接删除
     if (task.isRecurring || task.rrule) {
       quadrantComposable.openDeleteDialog(task);
@@ -563,12 +534,10 @@ async function handleDragEnd(task, fromQuadrant, toQuadrant, options = {}) {
 
   // 场景2: 回到原象限或无效移动
   if (!toQuadrant || fromQuadrant === toQuadrant) {
-    console.log('[index.vue] handleDragEnd - 无效移动,取消');
     return;
   }
 
   // 场景3: 象限切换
-  console.log('[index.vue] handleDragEnd - 触发象限切换');
   await quadrantComposable.changeTaskQuadrant(
     task,
     fromQuadrant,
@@ -659,17 +628,10 @@ onMounted(async () => {
 
     // 恢复选中的容器（分类/规划）
     taskFilterComposable.restoreSelectedContainer();
-    console.log('[index.vue] 容器已恢复:', taskFilterComposable.selectedContainer.value);
 
     // 初始化日历（这会设置 currentWeekStart、selectedDate，并触发 loadHolidays）
-    //console.log('[index.vue] 开始初始化日历...');
     calendarComposable.init();
-    //console.log('[index.vue] 日历初始化完成');
-    //console.log('[index.vue] 当前选中日期:', calendarComposable.selectedDate.value);
-    //console.log('[index.vue] 日历模式:', calendarComposable.calendarMode.value);
-    //console.log('[index.vue] 当周日期数据:', calendarComposable.currentWeekDates.value);
 
-    //console.log('[index.vue] ========== onMounted 完成 ==========');
   } catch (error) {
     console.error('[index.vue] onMounted 执行出错:', error);
     console.error('[index.vue] 错误堆栈:', error.stack);
@@ -680,14 +642,8 @@ onMounted(async () => {
 // 问题：从规划详情页创建任务后返回，selectedDate 未变化，watch 不触发
 // 解决：onShow 时强制重新加载当前日期任务，确保 UI 显示最新数据
 onShow(async () => {
-  console.log('[index.vue onShow] 页面显示，检查是否需要刷新任务');
-  console.log('[index.vue onShow] selectedDate:', calendarComposable.selectedDate.value);
-  console.log('[index.vue onShow] tasks.value.length:', taskStore.tasks.length);
-
   if (calendarComposable.selectedDate.value) {
-    console.log('[index.vue onShow] 重新加载当前日期任务');
     await taskStore.fetchTasksByDate(calendarComposable.selectedDate.value);
-    console.log('[index.vue onShow] 刷新完成，tasks.value.length:', taskStore.tasks.length);
   }
 });
 </script>
