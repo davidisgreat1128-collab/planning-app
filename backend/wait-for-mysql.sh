@@ -32,7 +32,7 @@ echo "========================================="
 echo "🗄️ 运行数据库迁移..."
 echo "========================================="
 
-if npm run migrate; then
+if npm run db:migrate; then
   echo "✅ Migration 执行成功"
 else
   echo "⚠️ Migration 执行失败（可能是首次启动或无新迁移）"
