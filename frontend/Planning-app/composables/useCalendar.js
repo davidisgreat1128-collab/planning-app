@@ -35,6 +35,7 @@ import { usePlanTaskGenerator } from '@/composables/usePlanTaskGenerator.js';
 import { usePlanningStore } from '@/store/planning';
 import { useLogStore } from '@/store/log';
 import { getHolidaysByRange, getLunarInfoRange, getWorkDaysByRange } from '@/api/holiday';
+import holidayRepository from '@/repositories/HolidayRepository'; // ⭐ 四层架构：Composable调用Repository
 
 // ============================================================
 // 工具函数
@@ -128,48 +129,12 @@ export function useCalendar() {
   /** 月模式:当前月的1号(Date对象) */
   const currentMonthFirst = ref(null);
 
-  /** 节日农历缓存 key=YYYY-MM-DD */
-  const holidayMap = ref({});
-  /** 工作日调整缓存 key=YYYY-MM-DD, value={ type: 'holiday'|'workday', holidayName, remark } */
-  const workDayMap = ref({});
-
-  // ============ 持久化缓存键名 ============
-  const HOLIDAY_CACHE_KEY = 'planning_app_holiday_map';
-  const WORKDAY_CACHE_KEY = 'planning_app_workday_map';
-
   /**
-   * 从 localStorage 加载缓存的节日数据
+   * 节日农历缓存 - computed属性，从 Repository 读取
+   * ⭐ 四层架构优化：不在 Composable 中直接管理数据，而是从 Repository 读取
    */
-  function _loadHolidayCacheFromStorage() {
-    try {
-      const cachedHoliday = uni.getStorageSync(HOLIDAY_CACHE_KEY);
-      const cachedWorkDay = uni.getStorageSync(WORKDAY_CACHE_KEY);
-
-      if (cachedHoliday) {
-        holidayMap.value = JSON.parse(cachedHoliday);
-        console.log('[useCalendar] 从缓存加载节日数据:', Object.keys(holidayMap.value).length, '条');
-      }
-
-      if (cachedWorkDay) {
-        workDayMap.value = JSON.parse(cachedWorkDay);
-        console.log('[useCalendar] 从缓存加载工作日数据:', Object.keys(workDayMap.value).length, '条');
-      }
-    } catch (err) {
-      console.error('[useCalendar] 加载节日缓存失败:', err);
-    }
-  }
-
-  /**
-   * 保存节日数据到 localStorage
-   */
-  function _saveHolidayCacheToStorage() {
-    try {
-      uni.setStorageSync(HOLIDAY_CACHE_KEY, JSON.stringify(holidayMap.value));
-      uni.setStorageSync(WORKDAY_CACHE_KEY, JSON.stringify(workDayMap.value));
-    } catch (err) {
-      console.error('[useCalendar] 保存节日缓存失败:', err);
-    }
-  }
+  const holidayMap = computed(() => holidayRepository.getAllData().holidayMap);
+  const workDayMap = computed(() => holidayRepository.getAllData().workDayMap);
 
   // ============ 常量 ============
   /** 周一到周日 */
@@ -309,47 +274,11 @@ export function useCalendar() {
         getWorkDaysByRange(start, end)
       ]);
 
-
-
-      // 节日:按优先级排序（中国节日 > 西方节日 > 节气 > 国际节日）
-      const hMap = holidayRes?.holidayMap || {};
-
-      let holidayCount = 0;
-      Object.entries(hMap).forEach(([date, list]) => {
-        if (Array.isArray(list) && list.length > 0) {
-          const sorted = [...list].sort((a, b) => {
-            const priority = { cn_solar: 1, cn_lunar: 1, western: 2, solar_term: 3, intl: 4 };
-            return (priority[a.type] || 999) - (priority[b.type] || 999);
-          });
-          holidayMap.value[date] = sorted[0].name;
-          holidayCount++;
-        } else {
-        }
-      });
-
-
-      // 农历:如果该日期无节日,则显示农历
-      const lMap = lunarRes?.lunarMap || {};
-
-      let lunarCount = 0;
-      Object.entries(lMap).forEach(([date, info]) => {
-        if (!holidayMap.value[date]) {
-          // 优先显示农历节日,其次显示月日
-          holidayMap.value[date] = info.lunarFestival || info.lunarDayName || '';
-          lunarCount++;
-        }
-      });
-
-      // 工作日调整:存储到workDayMap
-      const wMap = workDayRes?.workDayMap || {};
-      let workDayCount = 0;
-      Object.entries(wMap).forEach(([date, info]) => {
-        workDayMap.value[date] = info; // { type, holidayName, remark }
-        workDayCount++;
-      });
+      // ⭐ 四层架构：由 Repository 处理数据合并和持久化
+      holidayRepository.mergeServerData(holidayRes, lunarRes, workDayRes);
 
       // ⭐ 保存到 localStorage，确保APP端重启后仍能显示
-      _saveHolidayCacheToStorage();
+      holidayRepository.saveToCache();
 
     } catch (err) {
       console.error('[useCalendar] _loadHolidayRange 错误:', err);
@@ -545,8 +474,8 @@ export function useCalendar() {
   function init() {
    // console.log('[useCalendar] ========== init 初始化开始 ==========');
 
-    // ⭐ 先从 localStorage 加载缓存的节日数据（确保APP端重启后能立即显示）
-    _loadHolidayCacheFromStorage();
+    // ⭐ 四层架构：由 Repository 负责从 localStorage 加载缓存
+    holidayRepository.loadFromCache();
 
     // 初始化为当前周
     currentWeekStart.value = getWeekMonday(new Date());

@@ -14,7 +14,12 @@
       "Bash(python fix_current_status.py:*)",
       "Bash(python optimize_logs.py:*)",
       "Bash(ping:*)",
-      "Bash(curl -v --connect-timeout 5 http://154.8.183.203/api/v1/tasks)"
+      "Bash(curl -v --connect-timeout 5 http://154.8.183.203/api/v1/tasks)",
+      "Bash(git log:*)",
+      "Bash(findstr:*)",
+      "Bash(curl:*)",
+      "Bash(rm:*)",
+      "Read(//d/**)"
     ],
     "deny": [],
     "ask": []
