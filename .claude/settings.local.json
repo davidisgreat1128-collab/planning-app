@@ -5,7 +5,14 @@
       "Bash(git add:*)",
       "Bash(git commit:*)",
       "Bash(git push:*)",
-      "Read(//d/MyProject/Planning设计/测试日志/**)"
+      "Read(//d/MyProject/Planning设计/测试日志/**)",
+      "Bash(cat:*)",
+      "Bash(cp:*)",
+      "Bash(sed:*)",
+      "Bash(python fix_drag_drop.py:*)",
+      "Bash(python fix_index_vue.py:*)",
+      "Bash(python fix_current_status.py:*)",
+      "Bash(python optimize_logs.py:*)"
     ],
     "deny": [],
     "ask": []

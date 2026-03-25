@@ -1,6 +1,8 @@
 <template>
   <!-- 自定义日期选择器弹窗（点击"其他日期"时） -->
+  <!-- #ifdef H5 -->
   <teleport to="body">
+  <!-- #endif -->
     <view v-if="visible" class="cdp-mask" @tap.stop="handleCancel">
       <view class="cdp-sheet" @tap.stop>
         <!-- 月份导航 -->
@@ -37,7 +39,9 @@
         </view>
       </view>
     </view>
+  <!-- #ifdef H5 -->
   </teleport>
+  <!-- #endif -->
 </template>
 
 <script setup>

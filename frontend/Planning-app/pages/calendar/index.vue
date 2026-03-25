@@ -389,7 +389,7 @@ function onContentTouchMove(e) {
   // #ifndef H5
   // ⭐ APP端：如果正在拖拽，调用拖拽移动逻辑
   if (dragDropComposable.dragState.value.dragging) {
-    console.log('📍 [index.vue] onContentTouchMove: 检测到拖拽中，调用 useDragDrop');
+    // 日志已优化：移除频繁的移动检测日志
     dragDropComposable.onTaskTouchMove(e);
     return; // 拖拽时不处理日历折叠
   }
