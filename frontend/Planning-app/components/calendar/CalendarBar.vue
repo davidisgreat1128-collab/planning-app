@@ -128,7 +128,7 @@
  * @author Claude Sonnet 4.5
  * @date 2026-03-05
  */
-import { ref } from 'vue';
+import { ref, watch } from 'vue';
 
 // ============ Props ============
 const props = defineProps({
@@ -184,6 +184,18 @@ const emit = defineEmits([
   'expand',          // 向下拉展开为月视图
   'collapse'         // 向上滑折叠为周视图
 ]);
+
+// ⭐ 调试：监听 currentWeekDates 变化
+watch(() => props.currentWeekDates, (newVal) => {
+  if (newVal && newVal.length > 0) {
+    console.log('[CalendarBar] currentWeekDates 更新:', {
+      length: newVal.length,
+      firstDay: newVal[0],
+      hasLunarLabel: !!newVal[0]?.lunarLabel,
+      hasWorkDay: !!newVal[0]?.workDay
+    });
+  }
+}, { immediate: true, deep: true });
 
 
 // ============ 触摸状态 ============

@@ -180,7 +180,7 @@ export function useCalendar() {
       return [];
     }
 
-    return Array.from({ length: 7 }, (_, i) => {
+    const result = Array.from({ length: 7 }, (_, i) => {
       const d = new Date(currentWeekStart.value);
       d.setDate(d.getDate() + i);
       const dateStr = formatDate(d);
@@ -192,15 +192,34 @@ export function useCalendar() {
       });
 
       const hasTask = dateTasks.length > 0;
+
+      // ⭐ 调试日志：查看数据来源
+      const workDayData = workDayMap[dateStr] || null;
+      const lunarLabelData = holidayMap[dateStr] || '';
+
+      if (i === 0) { // 只打印第一天的详细信息
+        console.log('[useCalendar] currentWeekDates - 第一天数据:', {
+          dateStr,
+          workDay: workDayData,
+          lunarLabel: lunarLabelData,
+          holidayMapKeys: Object.keys(holidayMap).length,
+          workDayMapKeys: Object.keys(workDayMap).length,
+          holidayMapSample: Object.keys(holidayMap).slice(0, 3)
+        });
+      }
+
       return {
-        workDay: workDayMap[dateStr] || null, // 工作日信息
+        workDay: workDayData, // 工作日信息
         dateStr,
         day: d.getDate(),
-        lunarLabel: holidayMap[dateStr] || '',
+        lunarLabel: lunarLabelData,
         hasTask,
         taskDots: hasTask ? getTaskDots(dateStr) : []
       };
     });
+
+    console.log('[useCalendar] currentWeekDates 生成完成，第一天数据:', result[0]);
+    return result;
   });
 
   /**
