@@ -197,6 +197,28 @@ export const useTaskStore = defineStore('task', () => {
           }
           break
 
+        case 'deleteTaskSingleDay':
+          // ⭐ 新增（2026-03-25）：删除重复任务的单日实例（EXDATE）
+          // Repository 已更新 is_deleted 字段，需要重新查询后端获取过滤后的任务列表
+          console.log('  [deleteTaskSingleDay事件] 开始处理')
+          console.log('  任务ID:', data.taskId)
+          console.log('  删除日期:', data.date)
+          console.log('  is_deleted:', data.isDeleted)
+
+          // 重新加载当前日期任务（后端会过滤掉 is_deleted=1 的实例）
+          if (selectedDate.value) {
+            console.log('  ⭐ 重新加载当前日期任务，确保删除生效')
+            // 注意：这里不直接调用 fetchTasksByDate()，因为它是 async 的
+            // 而且 useTaskQuadrant 已经会手动刷新，所以这里只是提供一个备用机制
+            // 如果将来其他地方调用 deleteTaskSingleDay，也能自动更新 UI
+            fetchTasksByDate(selectedDate.value).then(() => {
+              console.log('  ✅ 任务列表已刷新')
+            })
+          } else {
+            console.log('  ✖ selectedDate 为空，跳过刷新')
+          }
+          break
+
         default:
           console.warn(`[taskStore] 未知事件类型: ${event}`)
       }
