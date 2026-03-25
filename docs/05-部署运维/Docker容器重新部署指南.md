@@ -48,11 +48,14 @@ git fetch origin
 git pull origin develop
 ```
 
-**验证**：确认拉取了 commit c8d962e
+**验证**：确认拉取了最新的修复commits
 
 ```bash
-git log --oneline -1
-# 应显示：c8d962e fix(docker): 容器启动时自动运行数据库迁移
+git log --oneline -3
+# 应显示：
+# 3f29110 fix(docker): 修正migration脚本名称为db:migrate
+# 4cf9688 docs(deploy): 添加Docker容器重新部署指南
+# c8d962e fix(docker): 容器启动时自动运行数据库迁移
 ```
 
 ### 步骤4：停止并删除旧容器
