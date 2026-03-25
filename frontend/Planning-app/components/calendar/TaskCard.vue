@@ -162,18 +162,10 @@ const subtaskCompletedCount = computed(() => {
 
 // 方法
 function handleTaskClick() {
-  console.log('🎯 [TaskCard] handleTaskClick 被触发', {
-    taskId: props.task?.id,
-    taskTitle: props.task?.title
-  });
   emit('task-click', props.task);
 }
 
 function handleCheckboxClick() {
-  console.log('☑️ [TaskCard] handleCheckboxClick 被触发', {
-    taskId: props.task?.id,
-    taskTitle: props.task?.title
-  });
   emit('checkbox-click', props.task);
 }
 
@@ -240,17 +232,7 @@ function getIconFilter(hexColor) {
  * 启动长按定时器，500ms后触发拖拽
  */
 function handleTouchStart(e) {
-  console.log('👆 [TaskCard] handleTouchStart 被触发', {
-    taskId: props.task?.id,
-    taskTitle: props.task?.title,
-    quadrant: props.quadrant,
-    draggable: props.draggable,
-    eventType: e.type,
-    touches: e.touches?.length
-  });
-
   if (!props.draggable) {
-    console.log('⚠️ [TaskCard] draggable=false，不启动长按检测');
     return;
   }
 
@@ -261,24 +243,15 @@ function handleTouchStart(e) {
       x: touch.clientX || touch.pageX || 0,
       y: touch.clientY || touch.pageY || 0
     };
-    console.log('📍 [TaskCard] 记录触摸起始位置', touchStartPos.value);
   }
 
   // 清除之前的定时器（防止重复）
   if (longPressTimer) {
     clearTimeout(longPressTimer);
-    console.log('🧹 [TaskCard] 清除旧的长按定时器');
   }
 
   // 启动长按定时器
-  console.log('⏰ [TaskCard] 启动长按定时器（500ms）');
   longPressTimer = setTimeout(() => {
-    console.log('✅ [TaskCard] 长按定时器到期，触发拖拽');
-    console.log('🚀 [TaskCard] emit("drag-start")', {
-      task: props.task?.title,
-      quadrant: props.quadrant
-    });
-
     // 触发拖拽开始事件（App端触摸）
     emit('drag-start', e, props.task, props.quadrant);
 
@@ -305,14 +278,8 @@ function handleTouchMove(e) {
   const deltaX = Math.abs(currentX - touchStartPos.value.x);
   const deltaY = Math.abs(currentY - touchStartPos.value.y);
 
-  console.log('📍 [TaskCard] handleTouchMove', {
-    delta: { x: deltaX, y: deltaY },
-    threshold: MOVE_THRESHOLD
-  });
-
   // 如果移动超过阈值，取消长按
   if (deltaX > MOVE_THRESHOLD || deltaY > MOVE_THRESHOLD) {
-    console.log('❌ [TaskCard] 移动超过阈值，取消长按');
     clearTimeout(longPressTimer);
     longPressTimer = null;
   }
@@ -323,10 +290,7 @@ function handleTouchMove(e) {
  * 取消长按定时器
  */
 function handleTouchEnd(e) {
-  console.log('🔴 [TaskCard] handleTouchEnd 被触发');
-
   if (longPressTimer) {
-    console.log('❌ [TaskCard] 清除长按定时器（未到时）');
     clearTimeout(longPressTimer);
     longPressTimer = null;
   }
@@ -337,10 +301,7 @@ function handleTouchEnd(e) {
  * 系统中断触摸时调用
  */
 function handleTouchCancel(e) {
-  console.log('⚠️ [TaskCard] handleTouchCancel 被触发');
-
   if (longPressTimer) {
-    console.log('❌ [TaskCard] 清除长按定时器（触摸被取消）');
     clearTimeout(longPressTimer);
     longPressTimer = null;
   }
@@ -353,22 +314,11 @@ function handleTouchCancel(e) {
  * H5端的长按检测在 useDragDrop.js 中实现
  */
 function handleMouseDown(e) {
-  console.log('🖱️ [TaskCard] handleMouseDown 被触发', {
-    taskId: props.task?.id,
-    taskTitle: props.task?.title,
-    draggable: props.draggable,
-    eventType: e.type
-  });
-
   if (!props.draggable) {
-    console.log('⚠️ [TaskCard] draggable=false，不触发拖拽');
     return;
   }
 
   // 触发拖拽开始事件（H5端鼠标）
-  console.log('🚀 [TaskCard] emit("mouse-drag-start")', {
-    task: props.task?.title
-  });
   emit('mouse-drag-start', e, props.task);
 }
 // #endif
