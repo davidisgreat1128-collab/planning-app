@@ -18,7 +18,7 @@
 
 const { Holiday, WorkDay } = require('../models');
 const { execSync } = require('child_process');
-const logger = require('../middleware/logger');
+const { logger } = require('../middleware/logger');
 
 class HolidayDataManager {
   /**

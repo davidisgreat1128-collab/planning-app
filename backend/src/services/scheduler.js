@@ -16,7 +16,7 @@
 
 'use strict';
 
-const logger = require('../middleware/logger');
+const { logger } = require('../middleware/logger');
 const holidayDataManager = require('./holidayDataManager');
 
 class Scheduler {
