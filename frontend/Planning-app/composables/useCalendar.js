@@ -133,6 +133,44 @@ export function useCalendar() {
   /** 工作日调整缓存 key=YYYY-MM-DD, value={ type: 'holiday'|'workday', holidayName, remark } */
   const workDayMap = ref({});
 
+  // ============ 持久化缓存键名 ============
+  const HOLIDAY_CACHE_KEY = 'planning_app_holiday_map';
+  const WORKDAY_CACHE_KEY = 'planning_app_workday_map';
+
+  /**
+   * 从 localStorage 加载缓存的节日数据
+   */
+  function _loadHolidayCacheFromStorage() {
+    try {
+      const cachedHoliday = uni.getStorageSync(HOLIDAY_CACHE_KEY);
+      const cachedWorkDay = uni.getStorageSync(WORKDAY_CACHE_KEY);
+
+      if (cachedHoliday) {
+        holidayMap.value = JSON.parse(cachedHoliday);
+        console.log('[useCalendar] 从缓存加载节日数据:', Object.keys(holidayMap.value).length, '条');
+      }
+
+      if (cachedWorkDay) {
+        workDayMap.value = JSON.parse(cachedWorkDay);
+        console.log('[useCalendar] 从缓存加载工作日数据:', Object.keys(workDayMap.value).length, '条');
+      }
+    } catch (err) {
+      console.error('[useCalendar] 加载节日缓存失败:', err);
+    }
+  }
+
+  /**
+   * 保存节日数据到 localStorage
+   */
+  function _saveHolidayCacheToStorage() {
+    try {
+      uni.setStorageSync(HOLIDAY_CACHE_KEY, JSON.stringify(holidayMap.value));
+      uni.setStorageSync(WORKDAY_CACHE_KEY, JSON.stringify(workDayMap.value));
+    } catch (err) {
+      console.error('[useCalendar] 保存节日缓存失败:', err);
+    }
+  }
+
   // ============ 常量 ============
   /** 周一到周日 */
   const weekDays = ['周一', '周二', '周三', '周四', '周五', '周六', '周日'];
@@ -310,10 +348,13 @@ export function useCalendar() {
         workDayCount++;
       });
 
+      // ⭐ 保存到 localStorage，确保APP端重启后仍能显示
+      _saveHolidayCacheToStorage();
 
     } catch (err) {
       console.error('[useCalendar] _loadHolidayRange 错误:', err);
-      throw err;
+      // ⭐ 网络失败时，不抛出错误，使用缓存数据即可
+      // throw err;
     }
   }
 
@@ -504,6 +545,9 @@ export function useCalendar() {
   function init() {
    // console.log('[useCalendar] ========== init 初始化开始 ==========');
 
+    // ⭐ 先从 localStorage 加载缓存的节日数据（确保APP端重启后能立即显示）
+    _loadHolidayCacheFromStorage();
+
     // 初始化为当前周
     currentWeekStart.value = getWeekMonday(new Date());
     currentMonthFirst.value = getMonthFirst(new Date());
@@ -517,7 +561,7 @@ export function useCalendar() {
     // 选中今天
     selectDate(todayStr);
 
-    // 加载节日数据
+    // 加载节日数据（异步更新，失败也不影响显示缓存数据）
     loadHolidays();
 
    // console.log('[useCalendar] ========== init 初始化完成 ==========');
