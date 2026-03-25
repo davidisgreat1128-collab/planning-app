@@ -2,11 +2,11 @@
 
 const express = require('express');
 const router = express.Router();
-const { authenticate } = require('../middleware/auth');
+// const { authenticate } = require('../middleware/auth');  // 节假日API不需要认证
 const holidayController = require('../controllers/holidayController');
 
-// 所有节日接口需要登录（防止滥用）
-router.use(authenticate);
+// 节假日接口为公开接口（无需登录），支持游客模式和离线缓存
+// router.use(authenticate);  // ⭐ 已移除：节假日数据是公开数据
 
 // GET /api/v1/holidays/year/:year - 获取指定年份所有节日
 router.get('/year/:year', holidayController.getByYear);
