@@ -67,7 +67,6 @@ class TaskRepository {
    * @returns {Promise<void>}
    */
   async hydrate() {
-    console.log('[TaskRepository] 开始 hydrate...')
 
     // ⭐ 重构（2026-03-17）：使用缓存管理器加载
     this.cacheManager.loadFromLocalStorage()
@@ -86,7 +85,6 @@ class TaskRepository {
     // ⭐ 传入回调函数处理 create 成功后的缓存更新
     await this.syncQueue.sync(request, this._handleSyncSuccess.bind(this))
 
-    console.log('[TaskRepository] hydrate 完成，任务数量:', this.cacheManager.size())
 
     // ⭐ 发布事件：通知订阅者数据已加载完成
     this._notify('hydrate', null)
@@ -132,16 +130,6 @@ class TaskRepository {
    * @returns {Promise<object>}
    */
   async create(data) {
-    // ⭐⭐⭐ 详细日志：追踪任务创建来源
-    console.log('========================================')
-    console.log('[TaskRepository.create] 开始创建任务')
-    console.log('  调用时间:', new Date().toISOString())
-    console.log('  任务标题:', data.title)
-    console.log('  任务日期:', data.taskDate)
-    console.log('  分类ID:', data.categoryId)
-    console.log('  调用栈:', new Error().stack)
-    console.log('  当前缓存任务数:', this.cacheManager.size())
-
     const task = {
       id: this._generateId(),
       ...data,
@@ -150,11 +138,8 @@ class TaskRepository {
       deletedAt: null
     }
 
-    console.log('  生成的任务ID:', task.id)
-
     // 更新内存缓存
     this.cacheManager.set(task.id, task)
-    console.log('  缓存更新后任务数:', this.cacheManager.size())
 
     // 添加到操作队列
     this._addToQueue({
@@ -168,10 +153,7 @@ class TaskRepository {
     this._debouncedSync()
 
     // ⭐ 发布事件：通知订阅者任务已创建
-    console.log('  准备发布 create 事件，订阅者数量:', this.listeners.length)
     this._notify('create', task)
-    console.log('[TaskRepository.create] 任务创建完成')
-    console.log('========================================')
 
     return task
   }
@@ -188,7 +170,6 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 更新任务:', task.title || task.id)
 
     // ⭐ 处理 subtasks 字段（确保格式正确）
     // 如果 data 中包含 subtasks 字段，验证其格式
@@ -250,7 +231,6 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 更新未来实例:', task.title || task.id, '分界日期:', currentDate)
 
     try {
       // 调用后端API（scope=future）
@@ -298,7 +278,6 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 更新单日实例:', task.title || task.id, '日期:', date)
 
     try {
       // 调用后端API
@@ -339,7 +318,6 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 修改单日实例（task_overrides）:', task.title || task.id, '日期:', date, '更新:', data)
 
     try {
       // 调用后端API（POST /tasks/:id/modify-single-day）
@@ -383,7 +361,6 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 修改未来实例（拆分规则）:', task.title || task.id, '拆分日期:', splitDate, '更新:', data)
 
     try {
       // 调用后端API（POST /tasks/:id/modify-future）
@@ -449,7 +426,6 @@ class TaskRepository {
 
     // 2. ⭐ 从内存缓存中移除（立即生效，避免刷新页面恢复）
     this.cacheManager.delete(id)
-    console.log('[TaskRepository] 已从内存缓存中移除:', id)
 
     // 3. 持久化到 localStorage（memoryCache 已移除，所以 localStorage 中也会移除）
     this._saveToLocalStorage()
@@ -485,7 +461,6 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 删除单日实例（is_deleted）:', task.title || task.id, '日期:', date)
 
     try {
       // 调用后端API（POST /tasks/:id/delete-single-day）
@@ -529,7 +504,6 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 删除全部实例（软删除）:', task.title || task.id)
 
     try {
       // 调用后端API（DELETE /tasks/:id）
@@ -540,8 +514,7 @@ class TaskRepository {
 
       // 从内存缓存中移除
       this.cacheManager.delete(id)
-      console.log('[TaskRepository] 已从内存缓存中移除:', id)
-
+  
       // 持久化
       this._saveToLocalStorage()
 
@@ -572,7 +545,6 @@ class TaskRepository {
       throw new Error(`任务不存在：${id}`)
     }
 
-    console.log('[TaskRepository] 删除未来实例（修改UNTIL）:', task.title || task.id, '开始日期:', fromDate)
 
     try {
       // 调用后端API（POST /tasks/:id/delete-future）
@@ -610,13 +582,11 @@ class TaskRepository {
    */
   async sync() {
     if (this.isSyncing) {
-      console.log('[TaskRepository] 已在同步中，跳过')
       return
     }
 
     this.isSyncing = true
     try {
-      console.log('[TaskRepository] 开始同步...')
 
       // TODO: 调用后端 API（待后续集成）
       // const serverData = await taskApi.getAll()
@@ -626,7 +596,6 @@ class TaskRepository {
       await this._uploadQueue()
 
       this.lastSyncTime = Date.now()
-      console.log('[TaskRepository] 同步完成')
     } finally {
       this.isSyncing = false
     }
@@ -651,7 +620,6 @@ class TaskRepository {
 
     // 直接更新缓存（不添加到操作队列）
     this.cacheManager.set(task.id, task)
-    console.log('[TaskRepository] 缓存已更新:', task.id, task.title)
 
     // 持久化到 localStorage
     this._saveToLocalStorage()
@@ -723,7 +691,6 @@ class TaskRepository {
     // ⭐ 委托给同步队列管理器，传入request函数和成功回调
     const result = await this.syncQueue.sync(request, this._handleSyncSuccess.bind(this))
 
-    console.log(`[TaskRepository] 同步完成: 成功 ${result.success} 个，失败 ${result.failed} 个`)
 
     // 如果有成功的操作，保存缓存（因为可能更新了任务）
     if (result.success > 0) {

@@ -106,41 +106,14 @@ export const useTaskStore = defineStore('task', () => {
    */
   function _initEventSubscription() {
     TaskRepository.subscribe((event, data) => {
-      // ⭐⭐⭐ 详细日志：追踪事件处理
-      console.log('========================================')
-      console.log(`[taskStore] 收到 Repository 事件: ${event}`)
-      console.log('  事件时间:', new Date().toISOString())
-      console.log('  当前选中日期:', selectedDate.value)
-      console.log('  当前列表任务数:', tasks.value.length)
-      if (data) {
-        console.log('  事件数据:', {
-          id: data.id,
-          title: data.title,
-          taskDate: data.taskDate,
-          categoryId: data.categoryId
-        })
-      }
-
       switch (event) {
         case 'create':
-          console.log('  [create事件] 开始处理')
           // 如果新任务属于当前选中日期，自动添加到列表
           if (selectedDate.value && data.taskDate) {
             const taskDate = new Date(data.taskDate).toISOString().split('T')[0]
-            console.log('  任务日期:', taskDate, '当前选中:', selectedDate.value)
             if (taskDate === selectedDate.value) {
-              console.log('  ⭐ 任务属于当前日期，添加到列表')
-              console.log('  添加前列表长度:', tasks.value.length)
               tasks.value.push(data)
-              console.log('  添加后列表长度:', tasks.value.length)
-              console.log('  [taskStore] 自动添加新任务到列表:', data.title || data.id)
-            } else {
-              console.log('  ✖ 任务不属于当前日期，不添加')
             }
-          } else {
-            console.log('  ✖ selectedDate 或 taskDate 为空，不添加')
-            console.log('    selectedDate.value:', selectedDate.value)
-            console.log('    data.taskDate:', data.taskDate)
           }
           break
 
@@ -149,14 +122,12 @@ export const useTaskStore = defineStore('task', () => {
           const updateIndex = tasks.value.findIndex(t => t.id === data.id)
           if (updateIndex > -1) {
             tasks.value[updateIndex] = data
-            console.log('[taskStore] 自动更新任务:', data.title || data.id)
           } else {
             // 如果更新后的任务属于当前日期，但列表中没有，添加它
             if (selectedDate.value && data.taskDate) {
               const taskDate = new Date(data.taskDate).toISOString().split('T')[0]
               if (taskDate === selectedDate.value) {
                 tasks.value.push(data)
-                console.log('[taskStore] 更新后任务进入当前日期，自动添加:', data.title || data.id)
               }
             }
           }
@@ -167,7 +138,6 @@ export const useTaskStore = defineStore('task', () => {
           const deleteIndex = tasks.value.findIndex(t => t.id === data.id)
           if (deleteIndex > -1) {
             tasks.value.splice(deleteIndex, 1)
-            console.log('[taskStore] 自动移除已删除任务:', data.id)
           }
           break
 
@@ -175,59 +145,29 @@ export const useTaskStore = defineStore('task', () => {
           // hydrate 完成：重新加载当前日期任务
           if (selectedDate.value) {
             tasks.value = TaskRepository.getByDate(selectedDate.value)
-            console.log('[taskStore] hydrate 完成，自动刷新列表，任务数:', tasks.value.length)
           }
           break
 
         case 'idUpdated':
-          // ⭐ 新增（2026-03-18）：任务ID更新（create同步成功后，临时ID → 真实ID）
-          console.log('  [idUpdated事件] 开始处理')
-          console.log('  临时ID:', data.tempId)
-          console.log('  真实ID:', data.realId)
-
-          // 查找tasks数组中是否有旧ID的任务
+          // ⭐ 任务ID更新（create同步成功后，临时ID → 真实ID）
           const idUpdateIndex = tasks.value.findIndex(t => t.id === data.tempId)
           if (idUpdateIndex > -1) {
-            // 替换为后端返回的任务对象（含真实ID）
             tasks.value[idUpdateIndex] = data.task
-            console.log(`  ⭐ 任务ID已更新：${data.tempId} → ${data.realId}`)
-            console.log('  任务标题:', data.task.title || '(无标题)')
-          } else {
-            console.log('  ✖ 当前列表中未找到旧ID的任务，可能不在当前日期')
           }
           break
 
         case 'deleteTaskSingleDay':
-          // ⭐ 新增（2026-03-25）：删除重复任务的单日实例（EXDATE）
+          // ⭐ 删除重复任务的单日实例（EXDATE）
           // Repository 已更新 is_deleted 字段，需要重新查询后端获取过滤后的任务列表
-          console.log('  [deleteTaskSingleDay事件] 开始处理')
-          console.log('  任务ID:', data.taskId)
-          console.log('  删除日期:', data.date)
-          console.log('  is_deleted:', data.isDeleted)
-
-          // 重新加载当前日期任务（后端会过滤掉 is_deleted=1 的实例）
           if (selectedDate.value) {
-            console.log('  ⭐ 重新加载当前日期任务，确保删除生效')
-            // 注意：这里不直接调用 fetchTasksByDate()，因为它是 async 的
-            // 而且 useTaskQuadrant 已经会手动刷新，所以这里只是提供一个备用机制
-            // 如果将来其他地方调用 deleteTaskSingleDay，也能自动更新 UI
-            fetchTasksByDate(selectedDate.value).then(() => {
-              console.log('  ✅ 任务列表已刷新')
-            })
-          } else {
-            console.log('  ✖ selectedDate 为空，跳过刷新')
+            fetchTasksByDate(selectedDate.value)
           }
           break
 
         default:
           console.warn(`[taskStore] 未知事件类型: ${event}`)
       }
-
-      console.log('  [taskStore] 事件处理完成，最终列表任务数:', tasks.value.length)
-      console.log('========================================')
     })
-
-    console.log('[taskStore] 事件订阅已初始化')
   }
 
   // ⭐ Store 初始化时自动订阅事件
@@ -274,29 +214,17 @@ export const useTaskStore = defineStore('task', () => {
       // ⭐ 调用后端 API 获取任务（包含重复任务的 RRULE 实时计算）
       const response = await taskApi.getTasks({ date })
 
-      console.log('[TaskStore] fetchTasksByDate - 后端返回:', response)
-
       // 处理后端返回的 { date, single, range, recurring } 结构
-      // ⭐ request.js 已经返回解包后的 data 字段，所以直接从 response 解构
-      // ⭐ 注意：后端返回包含 date 字段，需要一起解构（避免解构失败）
       const { date: _, single = [], range = [], recurring = [] } = response || {}
 
       // 合并三种类型的任务
       const allTasks = [...single, ...range, ...recurring]
 
-      console.log('[TaskStore] fetchTasksByDate - 合并后任务数:', allTasks.length)
-      console.log('  - 单日任务:', single.length)
-      console.log('  - 跨天任务:', range.length)
-      console.log('  - 重复任务:', recurring.length)
-
       // ⭐ 同步到本地 Repository（更新缓存）
-      // ⭐ 修复（2026-03-17）：改用TaskRepository.updateCache()公共方法，避免直接访问memoryCache
-      // ⭐ BUG修复（2026-03-18）：防御性检查deletedAt字段，避免后端BUG导致已删除任务重新加入缓存
-
       allTasks.forEach(task => {
         // ⭐ 防御性检查：忽略已软删除的任务（后端bug兜底）
         if (task.deletedAt) {
-          console.warn('[TaskStore] 后端返回了已删除任务（后端BUG），已过滤:', task.id, task.title, task.deletedAt)
+          console.warn('[TaskStore] 后端返回了已删除任务，已过滤:', task.id, task.deletedAt)
           return  // 跳过该任务，不添加到缓存
         }
 
@@ -305,11 +233,9 @@ export const useTaskStore = defineStore('task', () => {
         if (!existingTask) {
           // 新任务：直接添加到缓存
           TaskRepository.updateCache(task)
-          console.log('[TaskStore] 新任务已添加到缓存:', task.id, task.title)
         } else if (task.updatedAt > existingTask.updatedAt) {
           // 任务已存在但服务器版本更新：覆盖本地缓存
           TaskRepository.updateCache(task)
-          console.log('[TaskStore] 任务缓存已更新（服务器版本更新）:', task.id, task.title)
         }
       })
 
