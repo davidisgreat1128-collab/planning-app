@@ -62,11 +62,13 @@ COPY --chown=nodejs:nodejs ./src ./src
 COPY --chown=nodejs:nodejs ./server.js ./
 COPY --chown=nodejs:nodejs ./.sequelizerc ./
 COPY --chown=nodejs:nodejs ./wait-for-mysql.sh ./
+COPY --chown=nodejs:nodejs ./seed-if-empty.js ./
 
-# 创建日志和上传目录，并赋予等待脚本执行权限
+# 创建日志和上传目录，并赋予脚本执行权限
 RUN mkdir -p logs uploads && \
     chown -R nodejs:nodejs logs uploads && \
-    chmod +x /app/wait-for-mysql.sh
+    chmod +x /app/wait-for-mysql.sh && \
+    chmod +x /app/seed-if-empty.js
 
 # 切换到非root用户
 USER nodejs
