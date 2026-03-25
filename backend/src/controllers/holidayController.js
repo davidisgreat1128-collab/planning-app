@@ -83,12 +83,12 @@ async function getLunarInfoRange(req, res, next) {
     if (!start || !end || start > end) {
       throw new ValidationError('请提供有效的start和end日期参数');
     }
-    // 限制最大范围为3个月，防止滥用
+    // 限制最大范围为36个月（3年），防止滥用
     const startMs = new Date(start).getTime();
     const endMs = new Date(end).getTime();
     const diffDays = (endMs - startMs) / (1000 * 60 * 60 * 24);
-    if (diffDays > 93) {
-      throw new ValidationError('日期范围最大不能超过3个月');
+    if (diffDays > 1095) { // 365 * 3 = 1095天
+      throw new ValidationError('日期范围最大不能超过36个月');
     }
     const lunarMap = holidayService.getLunarInfoRange(start, end);
     return success(res, { start, end, lunarMap });
