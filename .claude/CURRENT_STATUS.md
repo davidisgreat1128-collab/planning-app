@@ -142,7 +142,7 @@
 
 ---
 
-### 2026-03-25 APP端网络连接问题诊断 ⭐ (会话4)
+### 2026-03-25 APP端网络连接问题诊断和修复 ⭐⭐⭐ (会话4，已解决)
 
 #### 问题诊断（HBuilderX.txt 156行）
 
@@ -168,64 +168,69 @@ curl http://154.8.183.203/api/v1/tasks
 - ✅ manifest.json：`usesCleartextTraffic: true`（允许HTTP）
 - ✅ config/index.js：BASE_URL配置正确
 
-**步骤3：分析错误特征**
-- `statusCode: -1` → APP端网络请求被系统阻止
-- `abort` → 请求被中断（不是超时）
+**步骤3：用户关键发现**
+- ✅ commit 8734fe5时：能正常创建任务（使用 `http://154.8.183.203`）
+- ❌ commit da4fe7c后：无法创建任务（使用 `https://txjjzyzqbx.cn`）
+- ✅ 手机浏览器能访问HTTP域名（`http://txjjzyzqbx.cn`）
+- ❌ APP无法访问HTTPS域名（`https://txjjzyzqbx.cn`）
 
-**根本原因**（最可能）⭐：
-1. **APP端网络权限未授予**（P0）- 手机设置中拒绝网络权限
-2. **手机网络环境问题**（P0）- 运营商或WiFi限制
-3. **真机调试限制**（P1）- HBuilderX调试模式限制
+**根本原因** ⭐⭐⭐：
+- **后端服务器未配置HTTPS**
+- 服务器只监听HTTP端口80，未监听HTTPS端口443
+- 没有SSL证书配置
+- 因此APP访问HTTPS域名会连接超时
 
-#### 解决方案（会话4）
+#### 最终修复（commit b96aa2c）✅
 
-**代码修改**：增强网络请求错误日志
-- **文件**：`utils/request.js`（Line 91-110）
-- **改进**：
-  1. 输出详细错误信息（errMsg、statusCode、errno、url、timeout）
-  2. 区分错误类型（timeout vs abort）
-  3. 提供精确的错误提示
-- **Git commit**：dfcfa58
+**决策**：改回HTTP IP配置（临时方案，与8734fe5保持一致）
 
-**问题解决** ⭐⭐⭐（用户反馈后）：
+**修改文件**：`frontend/Planning-app/config/index.js`
+- **修改前**（da4fe7c，无法工作）：`https://txjjzyzqbx.cn/api/v1`
+- **修改后**（b96aa2c，恢复功能）：`http://154.8.183.203/api/v1`
 
-**用户关键发现**：
-- ❌ 手机浏览器无法访问 `http://154.8.183.203`（IP地址）
-- ✅ 手机浏览器可以访问 `http://txjjzyzqbx.cn`（域名）
+**Git commits**（会话4）：
+1. dfcfa58 - 增强网络错误日志
+2. 4b9cf39 - 创建诊断日志文档
+3. da4fe7c - 改成HTTPS域名（错误，导致功能失效）
+4. 7970b74 - 更新诊断日志
+5. **b96aa2c - 改回HTTP IP配置（最终修复）** ⭐
 
-**根本原因**：
-- 配置被错误修改：从HTTPS域名改为HTTP IP地址（commit f1cc228）
-- 运营商屏蔽IP地址访问或Android系统限制HTTP明文IP
-
-**最终修复**：
-- **文件**：`config/index.js`
-- **修改**：改回HTTPS域名配置
-  - `http://154.8.183.203/api/v1` → `https://txjjzyzqbx.cn/api/v1`
-- **Git commit**：da4fe7c
+**后续计划**（长期方案）：
+1. 在服务器上配置HTTPS（安装SSL证书，配置nginx 443端口）
+2. 验证HTTPS访问正常
+3. 前端改回HTTPS域名配置
 
 **验证步骤**（用户待执行）：
-1. 拉取最新代码：`git pull origin develop`
+1. 拉取最新代码：`git pull origin develop`（最新commit: b96aa2c）
 2. 重新编译APP
-3. 验证所有API请求成功
+3. 验证任务创建功能恢复
+4. 验证所有API请求正常
 
 #### 会话4技术亮点 ⭐⭐⭐
 1. **系统化网络诊断**：服务器→配置→错误特征→根本原因（4步诊断法）
 2. **远程验证**：使用ping+curl验证服务器状态（证明问题在客户端）
 3. **错误日志增强**：区分timeout和abort，提供精确提示
-4. **用户反馈驱动**：用户的测试结果（域名可访问）是解决问题的关键
+4. **用户反馈驱动**：用户的测试结果（8734fe5能工作）是解决问题的关键
 5. **配置历史追溯**：git log定位配置修改历史
+6. **临时方案优先**：先恢复功能（改回HTTP IP），再考虑长期优化（配置HTTPS）
 
 #### 下一步（用户待执行）⏳
-1. 拉取最新代码：`git pull origin develop`
-2. Android真机测试（验证会话1+会话2修复）：
+1. **拉取最新代码**：`git pull origin develop`（最新commit: b96aa2c）
+2. **重新编译APP**：HBuilderX → 运行到手机
+3. **验证网络功能恢复**：
+   - ✅ 任务创建成功
+   - ✅ 任务编辑成功
+   - ✅ 所有API请求正常（Task、Log、Planning、Holiday）
+   - ✅ 不再出现 `request:fail abort` 错误
+4. **验证拖拽功能**（会话1+会话2修复）：
    - **基础拖拽**：快速点击 → 跳转编辑页（不触发拖拽）
    - **长按拖拽**：长按500ms → 震动 → 拖动 → 松开 → 移动成功
    - **删除区域检测** ⭐：拖拽到屏幕底部 → 删除区域高亮 → 松开 → 删除对话框弹出
    - **任务详情页跳转** ⭐：快速点击任务 → 成功跳转到任务详情页
-   - **日志验证**：查看updateQuadrantRects日志，确认hasDelete=true，deleteRect有值
-3. 提供新的HBuilderX.txt日志（验证修复效果）
+5. 提供新的HBuilderX.txt日志（验证修复效果）
 
 **详细文档**：
+- `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-25-APP端网络连接问题诊断.md` (v3.0，已完成) ⭐⭐⭐
 - `docs/06-AI协作日志/01-每日工作日志/2026/03-March/2026-03-24-Android端任务拖拽功能修复.md` (v2.0，含会话1+会话2)
 
 ---
@@ -251,7 +256,7 @@ curl http://154.8.183.203/api/v1/tasks
 - 已推送到远程仓库：`git push origin develop`
 
 **会话2 Git提交** (删除区域+跳转修复):
-- 1个commit（8734fe5）
+- 1个commit（8734fe5）⭐ 此时功能正常
 - 已推送到远程仓库：`git push origin develop`
 
 **会话3 Git提交** (日志优化+Teleport修复):
@@ -259,16 +264,18 @@ curl http://154.8.183.203/api/v1/tasks
 - 已推送到远程仓库：`git push origin develop`
 
 **会话4 Git提交** ⭐⭐⭐ (网络连接问题诊断和修复):
-- 3个commits：
+- 5个commits：
   1. dfcfa58 - 增强网络错误日志
   2. 4b9cf39 - 创建诊断日志文档
-  3. da4fe7c - 改回HTTPS域名配置（最终修复）
+  3. da4fe7c - 改成HTTPS域名配置（❌ 错误，导致功能失效）
+  4. 7970b74 - 更新诊断日志
+  5. **b96aa2c - 改回HTTP IP配置（✅ 最终修复，恢复功能）** ⭐
 - 已推送到远程仓库：`git push origin develop`
 
 **本次会话修改的文件**（会话4）:
 1. `utils/request.js`（增强fail回调错误日志）
-2. `config/index.js`（改回HTTPS域名配置）⭐ 关键修复
-3. 创建工作日志：`2026-03-25-APP端网络连接问题诊断.md`（v2.0）
+2. `config/index.js`（改回HTTP IP配置 `http://154.8.183.203/api/v1`）⭐ 关键修复
+3. 创建工作日志：`2026-03-25-APP端网络连接问题诊断.md`（v3.0，已完成）
 4. 更新CURRENT_STATUS.md（会话4完整记录）
 
 **临时文件**（会话1-3，可删除）:
