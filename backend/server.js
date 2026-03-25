@@ -35,7 +35,7 @@ async function startServer() {
     await db.testConnection();
 
     // 2. 启动HTTP服务
-    const server = app.listen(PORT, HOST, () => {
+    const server = app.listen(PORT, HOST, async () => {
       logger.info(`🚀 服务器已启动`, {
         env: process.env.NODE_ENV,
         port: PORT,
@@ -46,7 +46,7 @@ async function startServer() {
 
       // 3. 启动定时任务调度器（每天凌晨2点检查工作日数据有效期）
       logger.info('🕐 启动定时任务调度器...');
-      scheduler.start();
+      await scheduler.start(); // ⭐ 修复：加await确保scheduler初始化完成
     });
 
     // 4. 优雅关机处理（关闭 HTTP + 数据库连接池 + 定时任务）

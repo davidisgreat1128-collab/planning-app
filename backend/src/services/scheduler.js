@@ -89,20 +89,20 @@ class Scheduler {
   /**
    * 启动定时任务（应用启动时调用一次）
    */
-  start() {
+  async start() {
     logger.info('[Scheduler] ========== 启动定时任务调度器 ==========');
 
     // 1. 立即执行一次检查（应用启动时）
     logger.info('[Scheduler] 应用启动时执行首次检查');
-    this.checkWorkDayExpiry();
+    await this.checkWorkDayExpiry(); // ⭐ 修复：加await确保异步完成
 
     // 2. 设置每天凌晨2点的定时检查
     const scheduleNextCheck = () => {
       const delay = this.calculateNextCheckTime();
       logger.info(`[Scheduler] 下一次检查将在 ${new Date(Date.now() + delay).toLocaleString('zh-CN')} 执行`);
 
-      this.timers.workDayCheck = setTimeout(() => {
-        this.checkWorkDayExpiry();
+      this.timers.workDayCheck = setTimeout(async () => {
+        await this.checkWorkDayExpiry(); // ⭐ 修复：加await确保异步完成
         scheduleNextCheck(); // 递归调度下一次检查
       }, delay);
     };

@@ -1,25 +1,9 @@
 {
   "permissions": {
     "allow": [
-      "Bash(powershell:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git push:*)",
-      "Read(//d/MyProject/Planning设计/测试日志/**)",
-      "Bash(cat:*)",
-      "Bash(cp:*)",
-      "Bash(sed:*)",
-      "Bash(python fix_drag_drop.py:*)",
-      "Bash(python fix_index_vue.py:*)",
-      "Bash(python fix_current_status.py:*)",
-      "Bash(python optimize_logs.py:*)",
-      "Bash(ping:*)",
-      "Bash(curl -v --connect-timeout 5 http://154.8.183.203/api/v1/tasks)",
-      "Bash(git log:*)",
-      "Bash(findstr:*)",
-      "Bash(curl:*)",
-      "Bash(rm:*)",
-      "Read(//d/**)"
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT COUNT(*) as holiday_count FROM holidays;\")",
+      "Bash(\"C:\\Program Files\\MySQL\\MySQL Server 8.0\\bin\\mysql\" -u root -pwokao@53231812 planning_app_dev -e \"SELECT COUNT(*) as workday_count FROM work_days;\")",
+      "Bash(ssh root@154.8.183.203 \"sudo docker exec -it planning-app-mysql mysql -u planning_user -pLSyV7CqXMUhXrxH planning_app_prod -e ''SELECT COUNT(*) as holiday_count FROM holidays; SELECT COUNT(*) as workday_count FROM work_days;''\")"
     ],
     "deny": [],
     "ask": []
