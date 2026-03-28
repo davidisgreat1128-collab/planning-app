@@ -42,6 +42,8 @@ import { VIEW_MODE, VIEW_OFFSET } from '@/utils/calendarConstants'
 export function useCalendarCore(initialDate = new Date(), options = {}) {
   const { enableTaskIntegration = true } = options
 
+  console.log('[useCalendarCore] 初始化 - initialDate:', initialDate.toISOString().slice(0, 10))
+
   // ============================================================
   // 1. 状态定义
   // ============================================================
@@ -147,7 +149,7 @@ export function useCalendarCore(initialDate = new Date(), options = {}) {
    * 计算3个视图的数据（prev/current/next）
    */
   const views = computed(() => {
-    return [VIEW_OFFSET.PREV, VIEW_OFFSET.CURRENT, VIEW_OFFSET.NEXT].map(offset =>
+    const result = [VIEW_OFFSET.PREV, VIEW_OFFSET.CURRENT, VIEW_OFFSET.NEXT].map(offset =>
       generateViewData(
         state.baseDate,
         offset,
@@ -155,6 +157,11 @@ export function useCalendarCore(initialDate = new Date(), options = {}) {
         state.currentDate
       )
     )
+    const current = result.find(v => v.offset === VIEW_OFFSET.CURRENT)
+    console.log('[useCalendarCore] views 重算 - baseDate:', state.baseDate.toISOString().slice(0, 10),
+      '模式:', state.viewMode, '当前视图标题:', current?.title,
+      '日期数量:', current?.days?.length)
+    return result
   })
 
   /**

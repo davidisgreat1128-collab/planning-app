@@ -54,7 +54,7 @@
  * @date 2026-03-28
  */
 
-import { computed } from 'vue'
+import { computed, watch } from 'vue'
 import CalendarHeader from './CalendarHeader.vue'
 import CalendarWeekdays from './CalendarWeekdays.vue'
 import CalendarGrid from './CalendarGrid.vue'
@@ -114,7 +114,9 @@ const {
   containerStyle,
   contentStyle,
   handleDrag,
-  endDrag
+  endDrag,
+  dragOffset,
+  isDragging
 } = useInfiniteScroll(state, views)
 
 // 3. 手势处理
@@ -124,6 +126,27 @@ const {
   handleTouchEnd,
   handleTouchCancel
 } = useGesture(state, { handleDrag, endDrag })
+
+// 调试：监听关键状态变化
+watch(dragOffset, (val) => {
+  if (Math.abs(val) > 5) {
+    console.log('[InfiniteCalendar] dragOffset:', val.toFixed(1), 'isDragging:', isDragging.value)
+  }
+})
+
+watch(() => state.baseDate, (val) => {
+  console.log('[InfiniteCalendar] baseDate 变化 →', val.toISOString().slice(0, 10))
+})
+
+watch(() => state.viewMode, (val) => {
+  console.log('[InfiniteCalendar] viewMode 变化 →', val, 'progress:', state.transitionProgress.toFixed(3))
+})
+
+watch(() => state.transitionProgress, (val) => {
+  if (val === 0 || val === 1 || Math.abs(val - 0.5) < 0.02) {
+    console.log('[InfiniteCalendar] transitionProgress:', val.toFixed(3))
+  }
+})
 
 // ============================================================
 // 计算属性

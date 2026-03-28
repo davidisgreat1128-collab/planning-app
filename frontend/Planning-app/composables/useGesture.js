@@ -3,20 +3,25 @@
  *
  * 职责：
  * - 识别横向/纵向手势方向
- * - 处理横向滑动（翻页）
- * - 处理纵向滑动（周/月切换）
- * - 确保三端兼容（H5 / Android / iOS）
+ * - 横向：调用 handleDrag(deltaX)，deltaX 与手指方向一致
+ * - 纵向：控制 transitionProgress（周/月切换）
+ * - 三端兼容（H5 / Android / iOS）
+ *
+ * 坐标系约定（与 useInfiniteScroll 一致）：
+ * - 手指向右移动：deltaX > 0 → 看上一页
+ * - 手指向左移动：deltaX < 0 → 看下一页
+ * - 手指向上移动：deltaY < 0 → 月视图展开
+ * - 手指向下移动：deltaY > 0 → 月视图收起成周视图
  *
  * 关键设计：
- * - 首次移动时判断方向（避免横纵冲突）
- * - 锁定方向后只响应一个手势
- * - 使用 RAF 节流确保60fps
+ * - 首次移动 > 10px 时锁定方向
+ * - 方向锁定后只响应一个轴
+ * - 每帧传入的是"增量"（本帧移动距离），不是累计值
  *
  * 架构层级：Composable 层
- * 依赖：useCalendarCore 的 state，useInfiniteScroll 的方法
  *
  * @module composables/useGesture
- * @author Claude Sonnet 4.5
+ * @author Claude Sonnet 4.6
  * @date 2026-03-28
  */
 
@@ -28,118 +33,138 @@ import { GESTURE_DIRECTION, GESTURE_THRESHOLD, ANIMATION_CONFIG } from '@/utils/
  *
  * @param {Object} state - 日历核心状态（来自 useCalendarCore）
  * @param {Object} scrollMethods - 滚动方法（来自 useInfiniteScroll）
- * @returns {Object} 手势处理方法
+ * @param {Function} scrollMethods.handleDrag - 处理增量拖拽
+ * @param {Function} scrollMethods.endDrag - 结束拖拽
+ * @returns {Object} 触摸事件处理方法
  */
 export function useGesture(state, scrollMethods) {
   const { handleDrag, endDrag } = scrollMethods
 
   // ============================================================
-  // 1. 手势状态
+  // 1. 手势内部状态
   // ============================================================
 
   /**
-   * 手势状态
-   * @type {Ref<Object>}
+   * 触摸追踪状态
    */
   const gesture = ref({
-    startX: 0,
-    startY: 0,
-    currentX: 0,
-    currentY: 0,
-    direction: GESTURE_DIRECTION.NONE, // 'horizontal' | 'vertical' | null
-    isTracking: false,
-    startTime: 0, // 用于计算速度
-    lastMoveTime: 0 // 用于 RAF 节流
+    startX: 0,           // 触摸起始 X
+    startY: 0,           // 触摸起始 Y
+    prevX: 0,            // 上一帧的 X（用于计算增量）
+    prevY: 0,            // 上一帧的 Y
+    direction: GESTURE_DIRECTION.NONE,  // 锁定的方向
+    isTracking: false,   // 是否正在追踪
+    lastMoveTime: 0      // 上次 move 时间（节流用）
   })
 
   // ============================================================
-  // 2. 触摸事件处理（三端兼容）
+  // 2. 触摸事件处理
   // ============================================================
 
   /**
-   * 触摸开始
+   * 触摸开始 - 记录起始点
    *
-   * @param {Event} e - 触摸事件
+   * @param {TouchEvent} e
    */
   function handleTouchStart(e) {
-    // 获取触摸点坐标（兼容 H5 和 APP）
     const touch = e.touches ? e.touches[0] : e
-    const clientX = touch.clientX || touch.pageX
-    const clientY = touch.clientY || touch.pageY
+    const x = touch.clientX
+    const y = touch.clientY
 
     gesture.value = {
-      startX: clientX,
-      startY: clientY,
-      currentX: clientX,
-      currentY: clientY,
+      startX: x,
+      startY: y,
+      prevX: x,
+      prevY: y,
       direction: GESTURE_DIRECTION.NONE,
       isTracking: true,
-      startTime: Date.now(),
       lastMoveTime: Date.now()
     }
+
+    console.log('[useGesture] touchStart - x:', x.toFixed(1), 'y:', y.toFixed(1))
   }
 
   /**
-   * 触摸移动
+   * 触摸移动 - 识别方向并分发
    *
-   * @param {Event} e - 触摸事件
+   * @param {TouchEvent} e
    */
   function handleTouchMove(e) {
     if (!gesture.value.isTracking) return
 
-    // RAF 节流（确保60fps）
+    // 节流：约60fps
     const now = Date.now()
     if (now - gesture.value.lastMoveTime < ANIMATION_CONFIG.RAF_THROTTLE) {
       return
     }
     gesture.value.lastMoveTime = now
 
-    // 获取触摸点坐标
     const touch = e.touches ? e.touches[0] : e
-    const clientX = touch.clientX || touch.pageX
-    const clientY = touch.clientY || touch.pageY
+    const x = touch.clientX
+    const y = touch.clientY
 
-    const deltaX = clientX - gesture.value.startX
-    const deltaY = clientY - gesture.value.startY
+    // 与起始点的累计位移（用于首次方向判断）
+    const totalDeltaX = x - gesture.value.startX
+    const totalDeltaY = y - gesture.value.startY
 
-    // 1. 首次移动判断方向（避免横纵冲突）
+    // 与上一帧的增量（用于实时驱动）
+    const frameDeltaX = x - gesture.value.prevX
+    const frameDeltaY = y - gesture.value.prevY
+
+    // 1. 首次移动超过阈值时，锁定方向
     if (gesture.value.direction === GESTURE_DIRECTION.NONE) {
-      if (Math.abs(deltaX) > GESTURE_THRESHOLD.DIRECTION ||
-          Math.abs(deltaY) > GESTURE_THRESHOLD.DIRECTION) {
-        gesture.value.direction = Math.abs(deltaX) > Math.abs(deltaY)
-          ? GESTURE_DIRECTION.HORIZONTAL
-          : GESTURE_DIRECTION.VERTICAL
+      const absX = Math.abs(totalDeltaX)
+      const absY = Math.abs(totalDeltaY)
+
+      if (absX > GESTURE_THRESHOLD.DIRECTION || absY > GESTURE_THRESHOLD.DIRECTION) {
+        if (absX >= absY) {
+          gesture.value.direction = GESTURE_DIRECTION.HORIZONTAL
+          console.log('[useGesture] 锁定方向 → 横向（totalDeltaX:', totalDeltaX.toFixed(1), '）')
+        } else {
+          gesture.value.direction = GESTURE_DIRECTION.VERTICAL
+          console.log('[useGesture] 锁定方向 → 纵向（totalDeltaY:', totalDeltaY.toFixed(1), '）')
+        }
       }
     }
 
-    // 2. 根据方向处理（三端兼容的阻止默认行为）
+    // 2. 根据锁定方向处理
     if (gesture.value.direction === GESTURE_DIRECTION.HORIZONTAL) {
-      // 横向滑动：翻页
+      // 阻止页面滚动
       preventDefaultCompat(e)
-      const moveDelta = clientX - gesture.value.currentX
-      handleDrag(-moveDelta) // 注意：方向相反
-      gesture.value.currentX = clientX
+
+      // 传递增量（正=右，负=左），useInfiniteScroll 负责累积
+      handleDrag(frameDeltaX)
+
+      console.log('[useGesture] 横向移动 - 帧增量:', frameDeltaX.toFixed(1))
+
     } else if (gesture.value.direction === GESTURE_DIRECTION.VERTICAL) {
-      // 纵向滑动：周/月切换
       preventDefaultCompat(e)
-      handleVerticalDrag(deltaY)
+
+      // 传递帧增量给纵向处理
+      handleVerticalDrag(frameDeltaY)
+
+      console.log('[useGesture] 纵向移动 - 帧增量:', frameDeltaY.toFixed(1), 'progress:', state.transitionProgress.toFixed(3))
     }
+
+    // 更新上一帧坐标
+    gesture.value.prevX = x
+    gesture.value.prevY = y
   }
 
   /**
-   * 触摸结束
+   * 触摸结束 - 根据方向决定最终状态
    *
-   * @param {Event} e - 触摸事件
+   * @param {TouchEvent} e
    */
   function handleTouchEnd(e) {
     if (!gesture.value.isTracking) return
 
-    const direction = gesture.value.direction
+    const dir = gesture.value.direction
+    console.log('[useGesture] touchEnd - 方向:', dir)
 
-    // 松手后自动吸附到最近的视图
-    if (direction === GESTURE_DIRECTION.HORIZONTAL) {
-      endDrag() // 交给 useInfiniteScroll 处理
-    } else if (direction === GESTURE_DIRECTION.VERTICAL) {
+    if (dir === GESTURE_DIRECTION.HORIZONTAL) {
+      endDrag()
+    } else if (dir === GESTURE_DIRECTION.VERTICAL) {
       snapToViewMode()
     }
 
@@ -147,129 +172,129 @@ export function useGesture(state, scrollMethods) {
   }
 
   /**
-   * 触摸取消（用户手指离开屏幕或被系统中断）
-   *
-   * @param {Event} e - 触摸事件
+   * 触摸取消（系统中断）
    */
   function handleTouchCancel(e) {
+    console.log('[useGesture] touchCancel')
     handleTouchEnd(e)
   }
 
   // ============================================================
-  // 3. 纵向滚动处理（周/月切换）
+  // 3. 纵向滑动：控制 transitionProgress
   // ============================================================
 
   /**
-   * 处理纵向拖拽（控制 transitionProgress）
+   * 处理纵向拖拽（增量模式）
    *
-   * @param {number} deltaY - 纵向滑动距离（<0向上，>0向下）
+   * 物理模型：
+   * - 向上拖（frameDeltaY < 0）→ progress 增大 → 展开月视图
+   * - 向下拖（frameDeltaY > 0）→ progress 减小 → 收起成周视图
+   *
+   * 灵敏度：每拖动 150px 完成 0→1 或 1→0 的完整过渡
+   *
+   * @param {number} frameDeltaY - 本帧纵向增量（正=向下，负=向上）
    */
-  function handleVerticalDrag(deltaY) {
-    // 向下滑：month → week（progress: 1 → 0）
-    // 向上滑：week → month（progress: 0 → 1）
-    const maxDelta = 200 // 最大滑动距离200px
-    const delta = -deltaY / maxDelta // 反向
-    const newProgress = Math.max(0, Math.min(1, state.transitionProgress + delta))
+  function handleVerticalDrag(frameDeltaY) {
+    const SENSITIVITY = 150  // 完整过渡所需的像素距离
 
+    // 向上拖（frameDeltaY < 0）→ 展开月视图（progress → 1）
+    // 向下拖（frameDeltaY > 0）→ 收起周视图（progress → 0）
+    const delta = -frameDeltaY / SENSITIVITY
+
+    const newProgress = Math.max(0, Math.min(1, state.transitionProgress + delta))
     state.transitionProgress = newProgress
   }
 
   /**
-   * 吸附到视图模式（纵向滑动结束后）
+   * 松手后吸附到最近的视图模式
+   *
+   * - progress < 0.5 → 吸附到周视图（0）
+   * - progress >= 0.5 → 吸附到月视图（1）
    */
   function snapToViewMode() {
-    // 根据 progress 吸附到 week(0) 或 month(1)
     const targetProgress = state.transitionProgress < 0.5 ? 0 : 1
     const targetMode = targetProgress === 0 ? 'week' : 'month'
+
+    console.log('[useGesture] snapToViewMode - 当前 progress:', state.transitionProgress.toFixed(3), '目标:', targetMode)
 
     animateProgress(state.transitionProgress, targetProgress, () => {
       state.viewMode = targetMode
     })
   }
 
+  // ============================================================
+  // 4. 动画工具（三端兼容）
+  // ============================================================
+
   /**
-   * 动画过渡到目标 progress
+   * 缓动动画（easeOutCubic）
+   * 三端兼容：H5 用 requestAnimationFrame，APP 用 setTimeout
    *
    * @param {number} from - 起始值
    * @param {number} to - 目标值
-   * @param {Function} [callback] - 完成回调
+   * @param {Function} [callback] - 完成时的回调
    */
   function animateProgress(from, to, callback) {
     const duration = ANIMATION_CONFIG.DURATION
+    const RAF_THROTTLE = ANIMATION_CONFIG.RAF_THROTTLE
     const startTime = Date.now()
 
-    function animate() {
+    function step() {
       const elapsed = Date.now() - startTime
-      const progress = Math.min(1, elapsed / duration)
+      const t = Math.min(1, elapsed / duration)
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - t, 3)
+      state.transitionProgress = from + (to - from) * eased
 
-      // 缓动函数（easeOutCubic）
-      const easeProgress = 1 - Math.pow(1 - progress, 3)
-      state.transitionProgress = from + (to - from) * easeProgress
-
-      if (progress < 1) {
-        // 三端兼容：APP端不支持 requestAnimationFrame，使用 setTimeout 模拟
+      if (t < 1) {
         // #ifdef H5
-        requestAnimationFrame(animate)
+        requestAnimationFrame(step)
         // #endif
         // #ifndef H5
-        setTimeout(animate, ANIMATION_CONFIG.RAF_THROTTLE)
+        setTimeout(step, RAF_THROTTLE)
         // #endif
       } else {
-        state.transitionProgress = to // 确保精确到终点
-        if (callback) {
-          callback()
-        }
+        state.transitionProgress = to  // 确保精确落点
+        if (callback) callback()
       }
     }
 
-    // 三端兼容启动动画
     // #ifdef H5
-    requestAnimationFrame(animate)
+    requestAnimationFrame(step)
     // #endif
     // #ifndef H5
-    setTimeout(animate, ANIMATION_CONFIG.RAF_THROTTLE)
+    setTimeout(step, RAF_THROTTLE)
     // #endif
   }
 
   // ============================================================
-  // 4. 三端兼容工具函数
+  // 5. 三端兼容工具
   // ============================================================
 
   /**
-   * 阻止默认行为（三端兼容）
+   * 阻止默认滚动行为（三端兼容）
    *
-   * 注意：
-   * - H5 端：直接使用 e.preventDefault()
-   * - APP 端：部分情况需要特殊处理
-   *
-   * @param {Event} e - 事件对象
+   * @param {Event} e
    */
   function preventDefaultCompat(e) {
     // #ifdef H5
-    if (e.cancelable) {
+    if (e && e.cancelable) {
       e.preventDefault()
     }
     // #endif
-
     // #ifdef APP-PLUS
-    // APP 端某些情况下 preventDefault 不生效
-    // 可能需要通过其他方式阻止（如设置 @touchmove.stop.prevent）
-    // 这里保持调用，由外部通过修饰符处理
-    if (e.preventDefault) {
+    if (e && e.preventDefault) {
       e.preventDefault()
     }
     // #endif
   }
 
   // ============================================================
-  // 5. 返回公开接口
+  // 6. 返回公开接口
   // ============================================================
 
   return {
-    // 状态
     gesture,
-
-    // 触摸事件处理
     handleTouchStart,
     handleTouchMove,
     handleTouchEnd,
