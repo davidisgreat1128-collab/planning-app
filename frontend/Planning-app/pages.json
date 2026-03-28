@@ -51,6 +51,13 @@
 			}
 		},
 		{
+			"path": "pages/calendar/infinite-demo",
+			"style": {
+				"navigationBarTitleText": "无限日历测试",
+				"navigationStyle": "custom"
+			}
+		},
+		{
 			"path": "pages/calendar/focus",
 			"style": {
 				"navigationBarTitleText": "专注"
@@ -194,6 +201,10 @@
 			{
 				"pagePath": "pages/calendar/focus",
 				"text": "专注"
+			},
+			{
+				"pagePath": "pages/calendar/infinite-demo",
+				"text": "测试"
 			},
 			{
 				"pagePath": "pages/user/profile",
