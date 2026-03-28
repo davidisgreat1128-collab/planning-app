@@ -41,7 +41,7 @@ export const GRID_CONFIG = {
  */
 export const GESTURE_THRESHOLD = {
   DIRECTION: 10,     // 方向判断阈值（10px）
-  SWIPE: 0.5,        // 滑动切换阈值（50%屏幕宽度）
+  SWIPE: 0.3,        // 滑动切换阈值（30%屏幕宽度，更接近iOS体验）
   VELOCITY: 0.3      // 快速滑动速度阈值（像素/毫秒）
 }
 

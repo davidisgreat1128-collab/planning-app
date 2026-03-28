@@ -186,9 +186,12 @@ export function useGesture(state, scrollMethods) {
   /**
    * 处理纵向拖拽（增量模式）
    *
-   * 物理模型：
-   * - 向上拖（frameDeltaY < 0）→ progress 增大 → 展开月视图
-   * - 向下拖（frameDeltaY > 0）→ progress 减小 → 收起成周视图
+   * 物理模型（与用户期望对齐）：
+   * - 周视图（progress=0）下，向下拖（frameDeltaY > 0）→ progress 增大 → 展开成月视图
+   * - 月视图（progress=1）下，向上拖（frameDeltaY < 0）→ progress 减小 → 收起成周视图
+   *
+   * 即：progress 与手指向下的位移正相关
+   * delta = +frameDeltaY / SENSITIVITY
    *
    * 灵敏度：每拖动 150px 完成 0→1 或 1→0 的完整过渡
    *
@@ -197,9 +200,9 @@ export function useGesture(state, scrollMethods) {
   function handleVerticalDrag(frameDeltaY) {
     const SENSITIVITY = 150  // 完整过渡所需的像素距离
 
-    // 向上拖（frameDeltaY < 0）→ 展开月视图（progress → 1）
-    // 向下拖（frameDeltaY > 0）→ 收起周视图（progress → 0）
-    const delta = -frameDeltaY / SENSITIVITY
+    // 向下拖（frameDeltaY > 0）→ progress 增大 → 展开月视图（周→月）
+    // 向上拖（frameDeltaY < 0）→ progress 减小 → 收起月视图（月→周）
+    const delta = frameDeltaY / SENSITIVITY
 
     const newProgress = Math.max(0, Math.min(1, state.transitionProgress + delta))
     state.transitionProgress = newProgress
