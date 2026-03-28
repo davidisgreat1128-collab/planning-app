@@ -207,13 +207,28 @@ export function useGesture(state, scrollMethods) {
       state.transitionProgress = from + (to - from) * easeProgress
 
       if (progress < 1) {
+        // 三端兼容：APP端不支持 requestAnimationFrame，使用 setTimeout 模拟
+        // #ifdef H5
         requestAnimationFrame(animate)
-      } else if (callback) {
-        callback()
+        // #endif
+        // #ifndef H5
+        setTimeout(animate, ANIMATION_CONFIG.RAF_THROTTLE)
+        // #endif
+      } else {
+        state.transitionProgress = to // 确保精确到终点
+        if (callback) {
+          callback()
+        }
       }
     }
 
+    // 三端兼容启动动画
+    // #ifdef H5
     requestAnimationFrame(animate)
+    // #endif
+    // #ifndef H5
+    setTimeout(animate, ANIMATION_CONFIG.RAF_THROTTLE)
+    // #endif
   }
 
   // ============================================================

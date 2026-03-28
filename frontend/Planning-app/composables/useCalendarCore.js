@@ -269,6 +269,7 @@ export function useCalendarCore(initialDate = new Date(), options = {}) {
    */
   function animateProgress(from, to, callback) {
     const duration = 300
+    const RAF_THROTTLE = 16 // 约60fps
     const startTime = Date.now()
 
     function animate() {
@@ -280,13 +281,28 @@ export function useCalendarCore(initialDate = new Date(), options = {}) {
       state.transitionProgress = from + (to - from) * easeProgress
 
       if (progress < 1) {
+        // 三端兼容：APP端不支持 requestAnimationFrame，使用 setTimeout 模拟
+        // #ifdef H5
         requestAnimationFrame(animate)
-      } else if (callback) {
-        callback()
+        // #endif
+        // #ifndef H5
+        setTimeout(animate, RAF_THROTTLE)
+        // #endif
+      } else {
+        state.transitionProgress = to // 确保精确到终点
+        if (callback) {
+          callback()
+        }
       }
     }
 
+    // 三端兼容启动动画
+    // #ifdef H5
     requestAnimationFrame(animate)
+    // #endif
+    // #ifndef H5
+    setTimeout(animate, RAF_THROTTLE)
+    // #endif
   }
 
   /**
