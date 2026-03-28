@@ -13,7 +13,6 @@
  * 里程碑详情弹窗组件
  * 职责：展示里程碑详情（弹窗形式）
  */
-import { defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
   /** 是否显示弹窗 */

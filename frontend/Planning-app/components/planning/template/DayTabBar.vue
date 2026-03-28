@@ -24,7 +24,6 @@
  * Day标签栏组件
  * 职责：展示和切换Day标签
  */
-import { defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
   /** Day列表 */

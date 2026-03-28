@@ -34,7 +34,6 @@
  * 里程碑列表组件
  * 职责：展示里程碑横向滚动列表
  */
-import { defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
   /** 里程碑列表 */

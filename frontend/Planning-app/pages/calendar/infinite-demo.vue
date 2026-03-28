@@ -1,12 +1,14 @@
 <template>
   <view class="demo-page">
-    <!-- 无限日历组件 -->
-    <infinite-calendar
-      :initial-date="initialDate"
-      :enable-task-integration="true"
-      @select="handleSelectDate"
-      @view-change="handleViewChange"
-    />
+    <!-- 无限日历组件（flex:1 确保撑满剩余空间） -->
+    <view class="calendar-wrapper">
+      <infinite-calendar
+        :initial-date="initialDate"
+        :enable-task-integration="true"
+        @select="handleSelectDate"
+        @view-change="handleViewChange"
+      />
+    </view>
 
     <!-- 底部信息面板（演示用） -->
     <view class="info-panel">
@@ -33,6 +35,7 @@
  */
 
 import { ref, computed } from 'vue'
+import { onLoad } from '@dcloudio/uni-app'
 import InfiniteCalendar from '@/components/calendar/InfiniteCalendar.vue'
 import { formatDate } from '@/utils/dateCalculator'
 
@@ -119,11 +122,18 @@ onLoad(() => {
 
 <style scoped lang="scss">
 .demo-page {
-  width: 100vw;
+  width: 100%;
   height: 100vh;
   display: flex;
   flex-direction: column;
   background-color: #F5F5F5;
+}
+
+/* 日历容器，撑满剩余空间 */
+.calendar-wrapper {
+  flex: 1;
+  min-height: 0; /* 关键：防止 flex 子元素溢出 */
+  overflow: hidden;
 }
 
 /* 信息面板 */

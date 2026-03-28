@@ -21,7 +21,6 @@
  * 用户坚持信息组件
  * 职责：展示用户头像和坚持人数
  */
-import { defineProps } from 'vue'
 
 const props = defineProps({
   /** 用户头像列表（显示前3个） */

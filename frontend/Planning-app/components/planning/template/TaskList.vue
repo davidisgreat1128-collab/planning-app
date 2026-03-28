@@ -19,7 +19,6 @@
  * 任务列表组件
  * 职责：展示任务列表
  */
-import { defineProps } from 'vue'
 
 const props = defineProps({
   /** 任务列表 */

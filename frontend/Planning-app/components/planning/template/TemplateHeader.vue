@@ -23,7 +23,6 @@
  * 模板头部组件
  * 职责：展示模板封面、标题、标签和返回按钮
  */
-import { defineProps, defineEmits } from 'vue'
 
 const props = defineProps({
   /** 封面图片URL */
