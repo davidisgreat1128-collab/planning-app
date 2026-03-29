@@ -6,25 +6,21 @@
  * - 处理横向拖拽和重置逻辑
  * - 管理滚动位置和动画
  *
- * 核心原理：
- * - 只渲染3个视图（prev/current/next）
- * - 初始位置 = screenWidth（显示中间的 current 视图）
- * - 拖拽时 dragOffset 实时跟随手指
- * - 松手超过阈值 → 更新 baseDate + 重置 dragOffset
+ * 坐标系约定（标准写法）：
+ * - translateX = 0        → 当前视图居中显示
+ * - translateX = -width   → 内容左移一页（显示下一页/下一月）
+ * - translateX = +width   → 内容右移一页（显示上一页/上一月）
  *
- * 坐标系约定（重要！）：
- * - dragOffset > 0：内容向右移动（手指向右滑，看上一页）
- * - dragOffset < 0：内容向左移动（手指向左滑，看下一页）
- * - 最终 translateX = -(scrollPosition + dragOffset)
- *   - scrollPosition 固定为 screenWidth（始终指向中间视图）
- *   - dragOffset 跟随手指变化
+ * 动画流程（以向左滑去下一月为例）：
+ * 1. 手指滑动：translateX 实时跟随手指（负值）
+ * 2. 松手超过阈值：translateX 动画到 -width（CSS transition）
+ * 3. 动画结束（transitionend）：更新 baseDate，瞬间重置 translateX=0（无动画）
  *
  * 架构层级：Composable 层
- * 依赖：useCalendarCore 的 state 和 views
  *
  * @module composables/useInfiniteScroll
  * @author Claude Sonnet 4.6
- * @date 2026-03-28
+ * @date 2026-03-29
  */
 
 import { ref, computed, watch } from 'vue'
@@ -40,42 +36,34 @@ import { VIEW_MODE, GESTURE_THRESHOLD } from '@/utils/calendarConstants'
  */
 export function useInfiniteScroll(state, views) {
   // ============================================================
-  // 1. 获取屏幕宽度
+  // 1. 屏幕宽度
   // ============================================================
 
   const systemInfo = uni.getSystemInfoSync()
   const screenWidth = systemInfo.windowWidth
-
-  // 滑动切换阈值（30%屏幕宽度，更灵敏）
   const SWIPE_THRESHOLD = screenWidth * GESTURE_THRESHOLD.SWIPE
 
   console.log('[useInfiniteScroll] 初始化，屏幕宽度:', screenWidth, '切换阈值:', SWIPE_THRESHOLD)
 
   // ============================================================
-  // 2. 滚动状态
+  // 2. 状态
   // ============================================================
 
   /**
-   * 基础滚动位置：固定为 screenWidth（始终显示中间视图）
-   * 不会变化，只是初始定位
+   * 当前内容的横向位移
+   * - 0       → 当前视图居中
+   * - 负值    → 内容左移（手指向左滑，看下一页）
+   * - 正值    → 内容右移（手指向右滑，看上一页）
    */
-  const scrollPosition = ref(screenWidth)
+  const translateX = ref(0)
 
   /**
-   * 拖拽偏移量（实时跟随手指）
-   *
-   * 正值 = 内容向右偏移（用户向右滑，看上一页）
-   * 负值 = 内容向左偏移（用户向左滑，看下一页）
-   */
-  const dragOffset = ref(0)
-
-  /**
-   * 是否正在拖拽（拖拽时禁用 transition 动画）
+   * 是否正在拖拽（true = 禁用 CSS transition，手指跟随无动画）
    */
   const isDragging = ref(false)
 
   /**
-   * 翻页动画是否正在进行（防止快速连续滑动时 setTimeout 堆积）
+   * 翻页动画是否进行中（防止连续快速滑动时堆叠）
    */
   const isAnimating = ref(false)
 
@@ -94,26 +82,25 @@ export function useInfiniteScroll(state, views) {
   }))
 
   /**
-   * 滚动内容样式（关键：通过 transform 驱动滑动）
+   * 滚动内容样式
    *
-   * translateX = -(scrollPosition + dragOffset)
-   * - scrollPosition = screenWidth（固定，指向中间视图）
-   * - dragOffset 跟随手指实时变化
+   * 3个视图水平排列，总宽度 = 3 * screenWidth
+   * 初始偏移 -screenWidth，显示中间视图（current）
+   * 再叠加 translateX，跟随手指或执行吸附动画
    *
-   * 例：screenWidth = 390
-   * - 初始：translateX = -390px（显示中间视图）
-   * - 向左拖 50px：dragOffset = -50，translateX = -440px（内容左移）
-   * - 向右拖 50px：dragOffset = +50，translateX = -340px（内容右移）
+   * 最终 transform = -(screenWidth - translateX) = -(screenWidth) + translateX
+   * - translateX=0    → -screenWidth（居中）
+   * - translateX=-100 → -screenWidth-100（内容左移，看右边）
+   * - translateX=+100 → -screenWidth+100（内容右移，看左边）
    */
   const contentStyle = computed(() => {
-    const translateX = scrollPosition.value - dragOffset.value
+    const offset = screenWidth - translateX.value
 
     return {
-      width: `${screenWidth * 3}px`,  // 3个视图的总宽度
+      width: `${screenWidth * 3}px`,
       height: '100%',
       display: 'flex',
-      transform: `translateX(-${translateX}px)`,
-      // 拖拽中禁用 transition（避免卡顿），松手后启用（吸附动画）
+      transform: `translateX(-${offset}px)`,
       transition: isDragging.value ? 'none' : 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
       willChange: 'transform'
     }
@@ -124,174 +111,174 @@ export function useInfiniteScroll(state, views) {
   // ============================================================
 
   /**
-   * 处理横向拖拽（由 useGesture 调用）
+   * 处理横向拖拽增量（由 useGesture 逐帧调用）
    *
-   * 坐标系：
-   * - deltaX > 0：手指向右移动（向右滑，看上一页）
-   * - deltaX < 0：手指向左移动（向左滑，看下一页）
-   *
-   * @param {number} deltaX - 本次增量（手指位移，正=右，负=左）
+   * @param {number} deltaX - 本帧位移（正=右，负=左）
    */
   function handleDrag(deltaX) {
     isDragging.value = true
-
-    // dragOffset 累积手指位移（与手指方向一致）
-    dragOffset.value += deltaX
-
-    // 【日志D】每帧拖拽增量和累计值，带时间戳
-    console.log(`[Scroll:DRAG] t=${Date.now()} delta=${deltaX.toFixed(1)} offset=${dragOffset.value.toFixed(1)}`)
+    translateX.value += deltaX
+    console.log(`[Scroll:DRAG] t=${Date.now()} delta=${deltaX.toFixed(1)} translateX=${translateX.value.toFixed(1)}`)
   }
 
   /**
-   * 结束拖拽（由 useGesture 调用）
+   * 结束拖拽，判断吸附目标
    *
-   * 判断逻辑：
-   * - dragOffset < -SWIPE_THRESHOLD：向左滑超过阈值 → 切换到下一个视图（goNext）
-   * - dragOffset > +SWIPE_THRESHOLD：向右滑超过阈值 → 切换到上一个视图（goPrev）
-   * - 否则：吸附回当前视图
+   * 标准逻辑：
+   * - translateX <= -阈值 → 左滑超过阈值 → 去下一页（target = -width）
+   * - translateX >= +阈值 → 右滑超过阈值 → 去上一页（target = +width）
+   * - 否则              → 回当前页（target = 0）
    */
   function endDrag() {
-    const offset = dragOffset.value
+    const current = translateX.value
+    console.log(`[Scroll:END] t=${Date.now()} translateX=${current.toFixed(1)} 阈值=${SWIPE_THRESHOLD.toFixed(1)} isAnimating=${isAnimating.value}`)
 
-    // 【日志E】endDrag 触发时间戳，对比日志B 确认调用顺序
-    console.log(`[Scroll:END] t=${Date.now()} offset=${offset.toFixed(1)} 阈值=${SWIPE_THRESHOLD.toFixed(1)} isAnimating=${isAnimating.value}`)
-
-    // 动画进行中时直接吸附，防止 setTimeout 堆积
+    // 动画进行中，忽略本次松手（防止堆叠）
     if (isAnimating.value) {
-      console.log('[useInfiniteScroll] 动画进行中，吸附回原位')
+      console.log('[Scroll:END] 动画进行中，吸附回原位')
       isDragging.value = false
-      snapToCurrent()
+      snapTo(0)
       return
     }
 
-    if (offset < -SWIPE_THRESHOLD) {
-      // 向左超过阈值 → 下一页（goNext 内部负责关闭 isDragging）
-      console.log('[useInfiniteScroll] 触发 → 下一页')
-      goNext()
-    } else if (offset > SWIPE_THRESHOLD) {
-      // 向右超过阈值 → 上一页（goPrev 内部负责关闭 isDragging）
-      console.log('[useInfiniteScroll] 触发 → 上一页')
-      goPrev()
-    } else {
-      // 未超过阈值 → 吸附回当前视图
-      console.log('[useInfiniteScroll] 未超阈值 → 吸附回原位')
-      isDragging.value = false
-      snapToCurrent()
+    let target = 0
+    if (current <= -SWIPE_THRESHOLD) {
+      target = -screenWidth   // 左滑超阈值 → 去下一页
+    } else if (current >= SWIPE_THRESHOLD) {
+      target = screenWidth    // 右滑超阈值 → 去上一页
+    }
+
+    console.log(`[Scroll:END] target=${target}`)
+
+    // 开启 transition，设置目标位置
+    isDragging.value = false
+    snapTo(target)
+
+    if (target === -screenWidth) {
+      waitForAnimation(() => goNext())
+    } else if (target === screenWidth) {
+      waitForAnimation(() => goPrev())
     }
   }
 
   /**
-   * 吸附回当前视图（有动画：transition 已在 contentStyle 中开启）
+   * 吸附到指定位置（开启 transition 后设置目标值）
+   *
+   * @param {number} target - 目标 translateX 值
    */
-  function snapToCurrent() {
-    dragOffset.value = 0
+  function snapTo(target) {
+    translateX.value = target
+  }
+
+  /**
+   * 等待 CSS transition 动画结束后执行回调
+   * 使用 setTimeout(300) 对齐 CSS transition 时长
+   *
+   * 动画结束后：
+   * 1. 先禁用 transition（isDragging=true）
+   * 2. 瞬间重置 translateX=0
+   * 3. 更新 baseDate（数据切换）
+   * 4. 下一帧开启 transition
+   *
+   * @param {Function} updateFn - 更新 baseDate 的函数
+   */
+  function waitForAnimation(updateFn) {
+    isAnimating.value = true
+
+    setTimeout(() => {
+      console.log(`[Scroll:ANIM] t=${Date.now()} 动画结束，准备重置`)
+
+      // 关键：先禁用 transition，再同步执行重置+数据更新
+      // 这样 translateX=0 和 baseDate 变化在同一帧内完成，GPU 看到的是已更新内容居中
+      isDragging.value = true    // 关闭 transition
+      translateX.value = 0       // 瞬间归零（无动画）
+      updateFn()                 // 更新 baseDate（views 重算）
+
+      console.log(`[Scroll:ANIM] t=${Date.now()} 重置完成，translateX=0`)
+
+      // 下一帧开启 transition
+      // #ifdef H5
+      requestAnimationFrame(() => {
+        isDragging.value = false
+        isAnimating.value = false
+        console.log(`[Scroll:ANIM] t=${Date.now()} transition 已恢复`)
+      })
+      // #endif
+      // #ifndef H5
+      setTimeout(() => {
+        isDragging.value = false
+        isAnimating.value = false
+        console.log(`[Scroll:ANIM] t=${Date.now()} transition 已恢复`)
+      }, 16)
+      // #endif
+    }, 305)  // 略大于 CSS transition 的 300ms，确保动画已完成
   }
 
   /**
    * 切换到下一个视图（手指向左滑）
-   *
-   * 原理：
-   * 1. 先把 dragOffset 设为 -screenWidth（内容左移一整页，视觉上看到 next 视图）
-   * 2. 等 transition 动画完成（300ms）
-   * 3. 更新 baseDate（数据前进一周/月）
-   * 4. 重置 dragOffset = 0（视图数据已更新，重置后仍显示"中间"视图）
    */
   function goNext() {
-    // 【日志F】goNext 开始，记录此时 dragOffset
-    console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=start offset=${dragOffset.value.toFixed(1)}`)
-    isAnimating.value = true
-    isDragging.value = false
-    // 【日志G】isDragging 关闭后，dragOffset 赋值前
-    console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=isDragging→false offset=${dragOffset.value.toFixed(1)}`)
-    dragOffset.value = -screenWidth
-    // 【日志H】dragOffset 赋值后
-    console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=dragOffset→${dragOffset.value}`)
-
-    setTimeout(() => {
-      // 【日志I】300ms 后回调触发，检查 dragOffset 是否被意外修改
-      console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=300ms回调 offset=${dragOffset.value.toFixed(1)}`)
-
-      // 更新基准日期（触发 views 重算）
-      if (state.viewMode === VIEW_MODE.WEEK) {
-        state.baseDate = addDate(state.baseDate, 1, 'week')
-      } else {
-        state.baseDate = addDate(state.baseDate, 1, 'month')
-      }
-      console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=baseDate更新完成 新值=${state.baseDate.toISOString().slice(0, 10)}`)
-
-      // 无动画地重置（因为 baseDate 变了，views 重算，current 视图变成新内容）
-      isDragging.value = true   // 先禁用 transition
-      dragOffset.value = 0
-      console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=dragOffset归零`)
-
-      // 下一帧再开启 transition，同时解除动画锁
-      setTimeout(() => {
-        isDragging.value = false
-        isAnimating.value = false
-        console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=动画解锁完成`)
-      }, 16)
-    }, 300)
+    console.log(`[Scroll:NEXT] t=${Date.now()} baseDate 更新前`)
+    if (state.viewMode === VIEW_MODE.WEEK) {
+      state.baseDate = addDate(state.baseDate, 1, 'week')
+    } else {
+      state.baseDate = addDate(state.baseDate, 1, 'month')
+    }
+    console.log(`[Scroll:NEXT] t=${Date.now()} 新 baseDate=${state.baseDate.toISOString().slice(0, 10)}`)
   }
 
   /**
    * 切换到上一个视图（手指向右滑）
    */
   function goPrev() {
-    // 【日志J】goPrev 开始，记录此时 dragOffset
-    console.log(`[Scroll:PREV] t=${Date.now()} 步骤=start offset=${dragOffset.value.toFixed(1)}`)
-    isAnimating.value = true
-    isDragging.value = false
-    console.log(`[Scroll:PREV] t=${Date.now()} 步骤=isDragging→false offset=${dragOffset.value.toFixed(1)}`)
-    dragOffset.value = screenWidth
-    console.log(`[Scroll:PREV] t=${Date.now()} 步骤=dragOffset→${dragOffset.value}`)
-
-    setTimeout(() => {
-      console.log(`[Scroll:PREV] t=${Date.now()} 步骤=300ms回调 offset=${dragOffset.value.toFixed(1)}`)
-
-      // 更新基准日期
-      if (state.viewMode === VIEW_MODE.WEEK) {
-        state.baseDate = addDate(state.baseDate, -1, 'week')
-      } else {
-        state.baseDate = addDate(state.baseDate, -1, 'month')
-      }
-      console.log(`[Scroll:PREV] t=${Date.now()} 步骤=baseDate更新完成 新值=${state.baseDate.toISOString().slice(0, 10)}`)
-
-      isDragging.value = true
-      dragOffset.value = 0
-      console.log(`[Scroll:PREV] t=${Date.now()} 步骤=dragOffset归零`)
-
-      // 下一帧再开启 transition，同时解除动画锁
-      setTimeout(() => {
-        isDragging.value = false
-        isAnimating.value = false
-        console.log(`[Scroll:PREV] t=${Date.now()} 步骤=动画解锁完成`)
-      }, 16)
-    }, 300)
+    console.log(`[Scroll:PREV] t=${Date.now()} baseDate 更新前`)
+    if (state.viewMode === VIEW_MODE.WEEK) {
+      state.baseDate = addDate(state.baseDate, -1, 'week')
+    } else {
+      state.baseDate = addDate(state.baseDate, -1, 'month')
+    }
+    console.log(`[Scroll:PREV] t=${Date.now()} 新 baseDate=${state.baseDate.toISOString().slice(0, 10)}`)
   }
 
   // ============================================================
-  // 5. 监听视图模式切换（重置滚动状态）
+  // 5. 兼容旧接口（供外部直接调用）
+  // ============================================================
+
+  function snapToCurrent() {
+    isDragging.value = false
+    translateX.value = 0
+  }
+
+  // ============================================================
+  // 6. 监听视图模式切换（重置滚动状态）
   // ============================================================
 
   watch(
     () => state.viewMode,
     () => {
       isDragging.value = true
-      dragOffset.value = 0
-      setTimeout(() => {
-        isDragging.value = false
-      }, 16)
+      translateX.value = 0
+      // #ifdef H5
+      requestAnimationFrame(() => { isDragging.value = false })
+      // #endif
+      // #ifndef H5
+      setTimeout(() => { isDragging.value = false }, 16)
+      // #endif
     }
   )
 
   // ============================================================
-  // 6. 返回公开接口
+  // 7. 返回公开接口
   // ============================================================
 
+  // dragOffset 兼容旧代码（InfiniteCalendar.vue 里有 watch(dragOffset)）
+  const dragOffset = translateX
+
   return {
-    scrollPosition,
     dragOffset,
+    translateX,
     isDragging,
+    isAnimating,
     containerStyle,
     contentStyle,
     handleDrag,
