@@ -59,14 +59,6 @@ const props = defineProps({
   },
 
   /**
-   * 视图模式（'week' | 'month'）
-   */
-  viewMode: {
-    type: String,
-    required: true
-  },
-
-  /**
    * 过渡进度（0=week, 1=month）
    */
   transitionProgress: {
