@@ -106,7 +106,7 @@ export function useInfiniteScroll(state, views) {
    * - 向右拖 50px：dragOffset = +50，translateX = -340px（内容右移）
    */
   const contentStyle = computed(() => {
-    const translateX = scrollPosition.value + dragOffset.value
+    const translateX = scrollPosition.value - dragOffset.value
 
     return {
       width: `${screenWidth * 3}px`,  // 3个视图的总宽度
