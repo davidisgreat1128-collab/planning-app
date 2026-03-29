@@ -151,28 +151,29 @@ export function useInfiniteScroll(state, views) {
    */
   function endDrag() {
     const offset = dragOffset.value
-    isDragging.value = false
 
     console.log('[useInfiniteScroll] endDrag - dragOffset:', offset.toFixed(1), '阈值:', SWIPE_THRESHOLD.toFixed(1))
 
     // 动画进行中时直接吸附，防止 setTimeout 堆积
     if (isAnimating.value) {
       console.log('[useInfiniteScroll] 动画进行中，吸附回原位')
+      isDragging.value = false
       snapToCurrent()
       return
     }
 
     if (offset < -SWIPE_THRESHOLD) {
-      // 向左超过阈值 → 下一页
+      // 向左超过阈值 → 下一页（goNext 内部负责关闭 isDragging）
       console.log('[useInfiniteScroll] 触发 → 下一页')
       goNext()
     } else if (offset > SWIPE_THRESHOLD) {
-      // 向右超过阈值 → 上一页
+      // 向右超过阈值 → 上一页（goPrev 内部负责关闭 isDragging）
       console.log('[useInfiniteScroll] 触发 → 上一页')
       goPrev()
     } else {
       // 未超过阈值 → 吸附回当前视图
       console.log('[useInfiniteScroll] 未超阈值 → 吸附回原位')
+      isDragging.value = false
       snapToCurrent()
     }
   }
@@ -195,7 +196,7 @@ export function useInfiniteScroll(state, views) {
    */
   function goNext() {
     isAnimating.value = true
-    // 先动画到 next 视图位置
+    isDragging.value = false   // 先开启 transition，再设目标值，避免松手瞬间卡帧
     dragOffset.value = -screenWidth
 
     setTimeout(() => {
@@ -225,7 +226,7 @@ export function useInfiniteScroll(state, views) {
    */
   function goPrev() {
     isAnimating.value = true
-    // 先动画到 prev 视图位置
+    isDragging.value = false   // 先开启 transition，再设目标值，避免松手瞬间卡帧
     dragOffset.value = screenWidth
 
     setTimeout(() => {
