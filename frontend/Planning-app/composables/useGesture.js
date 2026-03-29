@@ -90,6 +90,9 @@ export function useGesture(state, scrollMethods) {
    * @param {TouchEvent} e
    */
   function handleTouchMove(e) {
+    // 【日志A】每次 touchMove 进入时立即打印，节流前，用于检测 touchEnd 后是否有残留 move
+    console.log(`[Gesture:MOVE入口] t=${Date.now()} isTracking=${gesture.value.isTracking}`)
+
     if (!gesture.value.isTracking) return
 
     // 节流：约60fps
@@ -160,7 +163,8 @@ export function useGesture(state, scrollMethods) {
     if (!gesture.value.isTracking) return
 
     const dir = gesture.value.direction
-    console.log('[useGesture] touchEnd - 方向:', dir)
+    // 【日志B】touchEnd 触发时记录时间戳，对比日志A 判断是否有 move 残留
+    console.log(`[Gesture:END] t=${Date.now()} dir=${dir}`)
 
     if (dir === GESTURE_DIRECTION.HORIZONTAL) {
       endDrag()
@@ -169,6 +173,8 @@ export function useGesture(state, scrollMethods) {
     }
 
     gesture.value.isTracking = false
+    // 【日志C】isTracking 关闭时间点
+    console.log(`[Gesture:END] t=${Date.now()} isTracking已关闭`)
   }
 
   /**

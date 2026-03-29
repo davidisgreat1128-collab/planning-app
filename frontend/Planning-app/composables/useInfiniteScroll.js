@@ -138,7 +138,8 @@ export function useInfiniteScroll(state, views) {
     // dragOffset 累积手指位移（与手指方向一致）
     dragOffset.value += deltaX
 
-    console.log('[useInfiniteScroll] handleDrag - deltaX:', deltaX.toFixed(1), '累计 dragOffset:', dragOffset.value.toFixed(1))
+    // 【日志D】每帧拖拽增量和累计值，带时间戳
+    console.log(`[Scroll:DRAG] t=${Date.now()} delta=${deltaX.toFixed(1)} offset=${dragOffset.value.toFixed(1)}`)
   }
 
   /**
@@ -152,7 +153,8 @@ export function useInfiniteScroll(state, views) {
   function endDrag() {
     const offset = dragOffset.value
 
-    console.log('[useInfiniteScroll] endDrag - dragOffset:', offset.toFixed(1), '阈值:', SWIPE_THRESHOLD.toFixed(1))
+    // 【日志E】endDrag 触发时间戳，对比日志B 确认调用顺序
+    console.log(`[Scroll:END] t=${Date.now()} offset=${offset.toFixed(1)} 阈值=${SWIPE_THRESHOLD.toFixed(1)} isAnimating=${isAnimating.value}`)
 
     // 动画进行中时直接吸附，防止 setTimeout 堆积
     if (isAnimating.value) {
@@ -195,29 +197,39 @@ export function useInfiniteScroll(state, views) {
    * 4. 重置 dragOffset = 0（视图数据已更新，重置后仍显示"中间"视图）
    */
   function goNext() {
+    // 【日志F】goNext 开始，记录此时 dragOffset
+    console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=start offset=${dragOffset.value.toFixed(1)}`)
     isAnimating.value = true
-    isDragging.value = false   // 先开启 transition，再设目标值，避免松手瞬间卡帧
+    isDragging.value = false
+    // 【日志G】isDragging 关闭后，dragOffset 赋值前
+    console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=isDragging→false offset=${dragOffset.value.toFixed(1)}`)
     dragOffset.value = -screenWidth
+    // 【日志H】dragOffset 赋值后
+    console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=dragOffset→${dragOffset.value}`)
 
     setTimeout(() => {
+      // 【日志I】300ms 后回调触发，检查 dragOffset 是否被意外修改
+      console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=300ms回调 offset=${dragOffset.value.toFixed(1)}`)
+
       // 更新基准日期（触发 views 重算）
       if (state.viewMode === VIEW_MODE.WEEK) {
         state.baseDate = addDate(state.baseDate, 1, 'week')
       } else {
         state.baseDate = addDate(state.baseDate, 1, 'month')
       }
+      console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=baseDate更新完成 新值=${state.baseDate.toISOString().slice(0, 10)}`)
 
       // 无动画地重置（因为 baseDate 变了，views 重算，current 视图变成新内容）
       isDragging.value = true   // 先禁用 transition
       dragOffset.value = 0
+      console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=dragOffset归零`)
 
       // 下一帧再开启 transition，同时解除动画锁
       setTimeout(() => {
         isDragging.value = false
         isAnimating.value = false
+        console.log(`[Scroll:NEXT] t=${Date.now()} 步骤=动画解锁完成`)
       }, 16)
-
-      console.log('[useInfiniteScroll] goNext 完成，新 baseDate:', state.baseDate.toISOString().slice(0, 10))
     }, 300)
   }
 
@@ -225,28 +237,35 @@ export function useInfiniteScroll(state, views) {
    * 切换到上一个视图（手指向右滑）
    */
   function goPrev() {
+    // 【日志J】goPrev 开始，记录此时 dragOffset
+    console.log(`[Scroll:PREV] t=${Date.now()} 步骤=start offset=${dragOffset.value.toFixed(1)}`)
     isAnimating.value = true
-    isDragging.value = false   // 先开启 transition，再设目标值，避免松手瞬间卡帧
+    isDragging.value = false
+    console.log(`[Scroll:PREV] t=${Date.now()} 步骤=isDragging→false offset=${dragOffset.value.toFixed(1)}`)
     dragOffset.value = screenWidth
+    console.log(`[Scroll:PREV] t=${Date.now()} 步骤=dragOffset→${dragOffset.value}`)
 
     setTimeout(() => {
+      console.log(`[Scroll:PREV] t=${Date.now()} 步骤=300ms回调 offset=${dragOffset.value.toFixed(1)}`)
+
       // 更新基准日期
       if (state.viewMode === VIEW_MODE.WEEK) {
         state.baseDate = addDate(state.baseDate, -1, 'week')
       } else {
         state.baseDate = addDate(state.baseDate, -1, 'month')
       }
+      console.log(`[Scroll:PREV] t=${Date.now()} 步骤=baseDate更新完成 新值=${state.baseDate.toISOString().slice(0, 10)}`)
 
       isDragging.value = true
       dragOffset.value = 0
+      console.log(`[Scroll:PREV] t=${Date.now()} 步骤=dragOffset归零`)
 
       // 下一帧再开启 transition，同时解除动画锁
       setTimeout(() => {
         isDragging.value = false
         isAnimating.value = false
+        console.log(`[Scroll:PREV] t=${Date.now()} 步骤=动画解锁完成`)
       }, 16)
-
-      console.log('[useInfiniteScroll] goPrev 完成，新 baseDate:', state.baseDate.toISOString().slice(0, 10))
     }, 300)
   }
 
