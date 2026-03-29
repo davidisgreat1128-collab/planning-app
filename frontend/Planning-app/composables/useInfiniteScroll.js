@@ -105,7 +105,6 @@ export function useInfiniteScroll(state, views) {
   function handleDrag(deltaX) {
     isDragging.value = true
     translateX.value += deltaX
-    console.log(`[Scroll:DRAG] t=${Date.now()} delta=${deltaX.toFixed(1)} translateX=${translateX.value.toFixed(1)}`)
   }
 
   /**
@@ -118,10 +117,8 @@ export function useInfiniteScroll(state, views) {
    */
   function endDrag() {
     const current = translateX.value
-    console.log(`[Scroll:END] t=${Date.now()} translateX=${current.toFixed(1)} 阈值=${SWIPE_THRESHOLD.toFixed(1)}`)
 
     if (isAnimating.value) {
-      console.log('[Scroll:END] 动画中，吸附回原位')
       isDragging.value = false
       translateX.value = 0
       return
@@ -129,39 +126,30 @@ export function useInfiniteScroll(state, views) {
 
     if (current <= -SWIPE_THRESHOLD) {
       // 左滑超阈值 → 去下一页
-      console.log('[Scroll:END] 触发下一页')
       isAnimating.value = true
-      // 先更新数据
       if (state.viewMode === VIEW_MODE.WEEK) {
         state.baseDate = addDate(state.baseDate, 1, 'week')
       } else {
         state.baseDate = addDate(state.baseDate, 1, 'month')
       }
-      console.log(`[Scroll:NEXT] 新 baseDate=${state.baseDate.toISOString().slice(0, 10)} translateX=${current.toFixed(1)}`)
-      // 再开启 transition，translateX 从当前负值归 0（新内容从偏左吸附到居中）
       isDragging.value = false
       translateX.value = 0
       setTimeout(() => { isAnimating.value = false }, 350)
 
     } else if (current >= SWIPE_THRESHOLD) {
       // 右滑超阈值 → 去上一页
-      console.log('[Scroll:END] 触发上一页')
       isAnimating.value = true
-      // 先更新数据
       if (state.viewMode === VIEW_MODE.WEEK) {
         state.baseDate = addDate(state.baseDate, -1, 'week')
       } else {
         state.baseDate = addDate(state.baseDate, -1, 'month')
       }
-      console.log(`[Scroll:PREV] 新 baseDate=${state.baseDate.toISOString().slice(0, 10)} translateX=${current.toFixed(1)}`)
-      // 开启 transition，translateX 从当前正值归 0
       isDragging.value = false
       translateX.value = 0
       setTimeout(() => { isAnimating.value = false }, 350)
 
     } else {
       // 未超阈值 → 吸附回当前页
-      console.log('[Scroll:END] 未超阈值，吸附回原位')
       isDragging.value = false
       translateX.value = 0
     }

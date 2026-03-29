@@ -44,17 +44,14 @@ export function useGesture(state, scrollMethods) {
   // 1. 手势内部状态
   // ============================================================
 
-  /**
-   * 触摸追踪状态
-   */
   const gesture = ref({
-    startX: 0,           // 触摸起始 X
-    startY: 0,           // 触摸起始 Y
-    prevX: 0,            // 上一帧的 X（用于计算增量）
-    prevY: 0,            // 上一帧的 Y
-    direction: GESTURE_DIRECTION.NONE,  // 锁定的方向
-    isTracking: false,   // 是否正在追踪
-    lastMoveTime: 0      // 上次 move 时间（节流用）
+    startX: 0,
+    startY: 0,
+    prevX: 0,
+    prevY: 0,
+    direction: GESTURE_DIRECTION.NONE,
+    isTracking: false,
+    lastMoveTime: 0
   })
 
   // ============================================================
@@ -62,7 +59,7 @@ export function useGesture(state, scrollMethods) {
   // ============================================================
 
   /**
-   * 触摸开始 - 记录起始点
+   * 触摸开始
    *
    * @param {TouchEvent} e
    */
@@ -80,8 +77,6 @@ export function useGesture(state, scrollMethods) {
       isTracking: true,
       lastMoveTime: Date.now()
     }
-
-    console.log('[useGesture] touchStart - x:', x.toFixed(1), 'y:', y.toFixed(1))
   }
 
   /**
@@ -90,9 +85,6 @@ export function useGesture(state, scrollMethods) {
    * @param {TouchEvent} e
    */
   function handleTouchMove(e) {
-    // 【日志A】每次 touchMove 进入时立即打印，节流前，用于检测 touchEnd 后是否有残留 move
-    console.log(`[Gesture:MOVE入口] t=${Date.now()} isTracking=${gesture.value.isTracking}`)
-
     if (!gesture.value.isTracking) return
 
     // 节流：约60fps
@@ -106,56 +98,37 @@ export function useGesture(state, scrollMethods) {
     const x = touch.clientX
     const y = touch.clientY
 
-    // 与起始点的累计位移（用于首次方向判断）
     const totalDeltaX = x - gesture.value.startX
     const totalDeltaY = y - gesture.value.startY
-
-    // 与上一帧的增量（用于实时驱动）
     const frameDeltaX = x - gesture.value.prevX
     const frameDeltaY = y - gesture.value.prevY
 
-    // 1. 首次移动超过阈值时，锁定方向
+    // 首次移动超过阈值时锁定方向
     if (gesture.value.direction === GESTURE_DIRECTION.NONE) {
       const absX = Math.abs(totalDeltaX)
       const absY = Math.abs(totalDeltaY)
 
       if (absX > GESTURE_THRESHOLD.DIRECTION || absY > GESTURE_THRESHOLD.DIRECTION) {
-        if (absX >= absY) {
-          gesture.value.direction = GESTURE_DIRECTION.HORIZONTAL
-          console.log('[useGesture] 锁定方向 → 横向（totalDeltaX:', totalDeltaX.toFixed(1), '）')
-        } else {
-          gesture.value.direction = GESTURE_DIRECTION.VERTICAL
-          console.log('[useGesture] 锁定方向 → 纵向（totalDeltaY:', totalDeltaY.toFixed(1), '）')
-        }
+        gesture.value.direction = absX >= absY
+          ? GESTURE_DIRECTION.HORIZONTAL
+          : GESTURE_DIRECTION.VERTICAL
       }
     }
 
-    // 2. 根据锁定方向处理
     if (gesture.value.direction === GESTURE_DIRECTION.HORIZONTAL) {
-      // 阻止页面滚动
       preventDefaultCompat(e)
-
-      // 传递增量（正=右，负=左），useInfiniteScroll 负责累积
       handleDrag(frameDeltaX)
-
-      console.log('[useGesture] 横向移动 - 帧增量:', frameDeltaX.toFixed(1))
-
     } else if (gesture.value.direction === GESTURE_DIRECTION.VERTICAL) {
       preventDefaultCompat(e)
-
-      // 传递帧增量给纵向处理
       handleVerticalDrag(frameDeltaY)
-
-      console.log('[useGesture] 纵向移动 - 帧增量:', frameDeltaY.toFixed(1), 'progress:', state.transitionProgress.toFixed(3))
     }
 
-    // 更新上一帧坐标
     gesture.value.prevX = x
     gesture.value.prevY = y
   }
 
   /**
-   * 触摸结束 - 根据方向决定最终状态
+   * 触摸结束
    *
    * @param {TouchEvent} e
    */
@@ -163,8 +136,6 @@ export function useGesture(state, scrollMethods) {
     if (!gesture.value.isTracking) return
 
     const dir = gesture.value.direction
-    // 【日志B】touchEnd 触发时记录时间戳，对比日志A 判断是否有 move 残留
-    console.log(`[Gesture:END] t=${Date.now()} dir=${dir}`)
 
     if (dir === GESTURE_DIRECTION.HORIZONTAL) {
       endDrag()
@@ -173,15 +144,12 @@ export function useGesture(state, scrollMethods) {
     }
 
     gesture.value.isTracking = false
-    // 【日志C】isTracking 关闭时间点
-    console.log(`[Gesture:END] t=${Date.now()} isTracking已关闭`)
   }
 
   /**
    * 触摸取消（系统中断）
    */
   function handleTouchCancel(e) {
-    console.log('[useGesture] touchCancel')
     handleTouchEnd(e)
   }
 
@@ -192,40 +160,24 @@ export function useGesture(state, scrollMethods) {
   /**
    * 处理纵向拖拽（增量模式）
    *
-   * 物理模型（与用户期望对齐）：
-   * - 周视图（progress=0）下，向下拖（frameDeltaY > 0）→ progress 增大 → 展开成月视图
-   * - 月视图（progress=1）下，向上拖（frameDeltaY < 0）→ progress 减小 → 收起成周视图
-   *
-   * 即：progress 与手指向下的位移正相关
-   * delta = +frameDeltaY / SENSITIVITY
-   *
-   * 灵敏度：每拖动 150px 完成 0→1 或 1→0 的完整过渡
+   * - 向下拖（frameDeltaY > 0）→ progress 增大 → 展开月视图
+   * - 向上拖（frameDeltaY < 0）→ progress 减小 → 收起周视图
    *
    * @param {number} frameDeltaY - 本帧纵向增量（正=向下，负=向上）
    */
   function handleVerticalDrag(frameDeltaY) {
-    const SENSITIVITY = 150  // 完整过渡所需的像素距离
-
-    // 向下拖（frameDeltaY > 0）→ progress 增大 → 展开月视图（周→月）
-    // 向上拖（frameDeltaY < 0）→ progress 减小 → 收起月视图（月→周）
+    const SENSITIVITY = 150
     const delta = frameDeltaY / SENSITIVITY
-
     const newProgress = Math.max(0, Math.min(1, state.transitionProgress + delta))
     state.transitionProgress = newProgress
   }
 
   /**
    * 松手后吸附到最近的视图模式
-   *
-   * - progress < 0.5 → 吸附到周视图（0）
-   * - progress >= 0.5 → 吸附到月视图（1）
    */
   function snapToViewMode() {
     const targetProgress = state.transitionProgress < 0.5 ? 0 : 1
     const targetMode = targetProgress === 0 ? 'week' : 'month'
-
-    console.log('[useGesture] snapToViewMode - 当前 progress:', state.transitionProgress.toFixed(3), '目标:', targetMode)
-
     animateProgress(state.transitionProgress, targetProgress, () => {
       state.viewMode = targetMode
     })
@@ -236,8 +188,7 @@ export function useGesture(state, scrollMethods) {
   // ============================================================
 
   /**
-   * 缓动动画（easeOutCubic）
-   * 三端兼容：H5 用 requestAnimationFrame，APP 用 setTimeout
+   * 缓动动画（easeOutCubic），三端兼容
    *
    * @param {number} from - 起始值
    * @param {number} to - 目标值
@@ -251,7 +202,6 @@ export function useGesture(state, scrollMethods) {
     function step() {
       const elapsed = Date.now() - startTime
       const t = Math.min(1, elapsed / duration)
-      // easeOutCubic
       const eased = 1 - Math.pow(1 - t, 3)
       state.transitionProgress = from + (to - from) * eased
 
@@ -263,7 +213,7 @@ export function useGesture(state, scrollMethods) {
         setTimeout(step, RAF_THROTTLE)
         // #endif
       } else {
-        state.transitionProgress = to  // 确保精确落点
+        state.transitionProgress = to
         if (callback) callback()
       }
     }
