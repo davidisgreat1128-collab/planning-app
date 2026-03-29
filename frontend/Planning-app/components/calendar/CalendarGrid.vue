@@ -31,6 +31,9 @@ import { computed } from 'vue'
 import CalendarCell from './CalendarCell.vue'
 import { VIEW_MODE, GRID_CONFIG } from '@/utils/calendarConstants'
 
+// 模块级缓存屏幕宽度，避免在每帧重复调用同步阻塞 API
+const _screenWidth = uni.getSystemInfoSync().windowWidth
+
 // ============================================================
 // Props
 // ============================================================
@@ -80,8 +83,7 @@ const emit = defineEmits(['select'])
  * 动态网格样式（实现周/月平滑过渡）
  */
 const gridStyle = computed(() => {
-  const systemInfo = uni.getSystemInfoSync()
-  const screenWidth = systemInfo.windowWidth
+  const screenWidth = _screenWidth  // 使用模块级缓存，不再每帧调用同步 API
   const cellWidth = screenWidth / GRID_CONFIG.WEEK_DAYS // 单个单元格宽度
 
   // 高度插值：week(1行) → month(6行)
@@ -118,7 +120,7 @@ function handleCellClick(date) {
 
 <style scoped lang="scss">
 .calendar-grid {
-  transition: height 0.3s ease; /* 高度动画 */
+  /* 高度由 JS gridStyle 逐帧驱动，不需要 CSS transition，避免双重动画干扰 */
   background-color: #FFFFFF;
 }
 </style>

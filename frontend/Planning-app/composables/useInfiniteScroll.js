@@ -74,6 +74,11 @@ export function useInfiniteScroll(state, views) {
    */
   const isDragging = ref(false)
 
+  /**
+   * 翻页动画是否正在进行（防止快速连续滑动时 setTimeout 堆积）
+   */
+  const isAnimating = ref(false)
+
   // ============================================================
   // 3. 样式计算
   // ============================================================
@@ -150,6 +155,13 @@ export function useInfiniteScroll(state, views) {
 
     console.log('[useInfiniteScroll] endDrag - dragOffset:', offset.toFixed(1), '阈值:', SWIPE_THRESHOLD.toFixed(1))
 
+    // 动画进行中时直接吸附，防止 setTimeout 堆积
+    if (isAnimating.value) {
+      console.log('[useInfiniteScroll] 动画进行中，吸附回原位')
+      snapToCurrent()
+      return
+    }
+
     if (offset < -SWIPE_THRESHOLD) {
       // 向左超过阈值 → 下一页
       console.log('[useInfiniteScroll] 触发 → 下一页')
@@ -182,6 +194,7 @@ export function useInfiniteScroll(state, views) {
    * 4. 重置 dragOffset = 0（视图数据已更新，重置后仍显示"中间"视图）
    */
   function goNext() {
+    isAnimating.value = true
     // 先动画到 next 视图位置
     dragOffset.value = -screenWidth
 
@@ -197,9 +210,10 @@ export function useInfiniteScroll(state, views) {
       isDragging.value = true   // 先禁用 transition
       dragOffset.value = 0
 
-      // 下一帧再开启 transition
+      // 下一帧再开启 transition，同时解除动画锁
       setTimeout(() => {
         isDragging.value = false
+        isAnimating.value = false
       }, 16)
 
       console.log('[useInfiniteScroll] goNext 完成，新 baseDate:', state.baseDate.toISOString().slice(0, 10))
@@ -210,6 +224,7 @@ export function useInfiniteScroll(state, views) {
    * 切换到上一个视图（手指向右滑）
    */
   function goPrev() {
+    isAnimating.value = true
     // 先动画到 prev 视图位置
     dragOffset.value = screenWidth
 
@@ -224,8 +239,10 @@ export function useInfiniteScroll(state, views) {
       isDragging.value = true
       dragOffset.value = 0
 
+      // 下一帧再开启 transition，同时解除动画锁
       setTimeout(() => {
         isDragging.value = false
+        isAnimating.value = false
       }, 16)
 
       console.log('[useInfiniteScroll] goPrev 完成，新 baseDate:', state.baseDate.toISOString().slice(0, 10))
