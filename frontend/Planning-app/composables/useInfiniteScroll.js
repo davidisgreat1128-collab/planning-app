@@ -6,15 +6,15 @@
  * - 处理横向拖拽和重置逻辑
  * - 管理滚动位置和动画
  *
- * 坐标系约定（标准写法）：
- * - translateX = 0        → 当前视图居中显示
- * - translateX = -width   → 内容左移一页（显示下一页/下一月）
- * - translateX = +width   → 内容右移一页（显示上一页/上一月）
+ * 坐标系约定：
+ * - translateX = 0       → 当前视图居中
+ * - translateX < 0       → 内容左移（手指向左滑，看下一页）
+ * - translateX > 0       → 内容右移（手指向右滑，看上一页）
  *
- * 动画流程（以向左滑去下一月为例）：
- * 1. 手指滑动：translateX 实时跟随手指（负值）
- * 2. 松手超过阈值：translateX 动画到 -width（CSS transition）
- * 3. 动画结束（transitionend）：更新 baseDate，瞬间重置 translateX=0（无动画）
+ * 动画流程（单段吸附，无重置跳变）：
+ * 1. 手指滑动：translateX 实时跟随手指
+ * 2. 松手超过阈值：立即更新 baseDate，translateX 从当前位置动画归 0
+ * 3. 视觉效果：新内容从偏移位置平滑吸附到正中央
  *
  * 架构层级：Composable 层
  *
@@ -50,20 +50,17 @@ export function useInfiniteScroll(state, views) {
   // ============================================================
 
   /**
-   * 当前内容的横向位移
-   * - 0       → 当前视图居中
-   * - 负值    → 内容左移（手指向左滑，看下一页）
-   * - 正值    → 内容右移（手指向右滑，看上一页）
+   * 横向位移：手指拖拽时实时更新，松手后动画归 0
    */
   const translateX = ref(0)
 
   /**
-   * 是否正在拖拽（true = 禁用 CSS transition，手指跟随无动画）
+   * 拖拽中禁用 CSS transition，松手后开启
    */
   const isDragging = ref(false)
 
   /**
-   * 翻页动画是否进行中（防止连续快速滑动时堆叠）
+   * 防止动画期间重复触发翻页
    */
   const isAnimating = ref(false)
 
@@ -71,9 +68,6 @@ export function useInfiniteScroll(state, views) {
   // 3. 样式计算
   // ============================================================
 
-  /**
-   * 容器样式
-   */
   const containerStyle = computed(() => ({
     width: '100%',
     height: '100%',
@@ -82,16 +76,9 @@ export function useInfiniteScroll(state, views) {
   }))
 
   /**
-   * 滚动内容样式
-   *
-   * 3个视图水平排列，总宽度 = 3 * screenWidth
-   * 初始偏移 -screenWidth，显示中间视图（current）
-   * 再叠加 translateX，跟随手指或执行吸附动画
-   *
-   * 最终 transform = -(screenWidth - translateX) = -(screenWidth) + translateX
-   * - translateX=0    → -screenWidth（居中）
-   * - translateX=-100 → -screenWidth-100（内容左移，看右边）
-   * - translateX=+100 → -screenWidth+100（内容右移，看左边）
+   * 内容样式
+   * 3视图水平排列，初始显示中间视图（offset = screenWidth）
+   * translateX 在此基础上叠加手指位移
    */
   const contentStyle = computed(() => {
     const offset = screenWidth - translateX.value
@@ -122,132 +109,75 @@ export function useInfiniteScroll(state, views) {
   }
 
   /**
-   * 结束拖拽，判断吸附目标
+   * 结束拖拽
    *
-   * 标准逻辑：
-   * - translateX <= -阈值 → 左滑超过阈值 → 去下一页（target = -width）
-   * - translateX >= +阈值 → 右滑超过阈值 → 去上一页（target = +width）
-   * - 否则              → 回当前页（target = 0）
+   * 核心思路（单段吸附，无重置跳变）：
+   * - 超过阈值：先更新 baseDate（数据切换），再开启 transition 让 translateX 归 0
+   * - 视觉效果：新月份内容从当前偏移位置平滑吸附到正中央
+   * - 没有"滑到底→跳回0"的两段式，彻底消除跳变闪烁
    */
   function endDrag() {
     const current = translateX.value
-    console.log(`[Scroll:END] t=${Date.now()} translateX=${current.toFixed(1)} 阈值=${SWIPE_THRESHOLD.toFixed(1)} isAnimating=${isAnimating.value}`)
+    console.log(`[Scroll:END] t=${Date.now()} translateX=${current.toFixed(1)} 阈值=${SWIPE_THRESHOLD.toFixed(1)}`)
 
-    // 动画进行中，忽略本次松手（防止堆叠）
     if (isAnimating.value) {
-      console.log('[Scroll:END] 动画进行中，吸附回原位')
+      console.log('[Scroll:END] 动画中，吸附回原位')
       isDragging.value = false
-      snapTo(0)
+      translateX.value = 0
       return
     }
 
-    let target = 0
     if (current <= -SWIPE_THRESHOLD) {
-      target = -screenWidth   // 左滑超阈值 → 去下一页
+      // 左滑超阈值 → 去下一页
+      console.log('[Scroll:END] 触发下一页')
+      isAnimating.value = true
+      // 先更新数据
+      if (state.viewMode === VIEW_MODE.WEEK) {
+        state.baseDate = addDate(state.baseDate, 1, 'week')
+      } else {
+        state.baseDate = addDate(state.baseDate, 1, 'month')
+      }
+      console.log(`[Scroll:NEXT] 新 baseDate=${state.baseDate.toISOString().slice(0, 10)} translateX=${current.toFixed(1)}`)
+      // 再开启 transition，translateX 从当前负值归 0（新内容从偏左吸附到居中）
+      isDragging.value = false
+      translateX.value = 0
+      setTimeout(() => { isAnimating.value = false }, 350)
+
     } else if (current >= SWIPE_THRESHOLD) {
-      target = screenWidth    // 右滑超阈值 → 去上一页
-    }
+      // 右滑超阈值 → 去上一页
+      console.log('[Scroll:END] 触发上一页')
+      isAnimating.value = true
+      // 先更新数据
+      if (state.viewMode === VIEW_MODE.WEEK) {
+        state.baseDate = addDate(state.baseDate, -1, 'week')
+      } else {
+        state.baseDate = addDate(state.baseDate, -1, 'month')
+      }
+      console.log(`[Scroll:PREV] 新 baseDate=${state.baseDate.toISOString().slice(0, 10)} translateX=${current.toFixed(1)}`)
+      // 开启 transition，translateX 从当前正值归 0
+      isDragging.value = false
+      translateX.value = 0
+      setTimeout(() => { isAnimating.value = false }, 350)
 
-    console.log(`[Scroll:END] target=${target}`)
-
-    // 开启 transition，设置目标位置
-    isDragging.value = false
-    snapTo(target)
-
-    if (target === -screenWidth) {
-      waitForAnimation(() => goNext())
-    } else if (target === screenWidth) {
-      waitForAnimation(() => goPrev())
-    }
-  }
-
-  /**
-   * 吸附到指定位置（开启 transition 后设置目标值）
-   *
-   * @param {number} target - 目标 translateX 值
-   */
-  function snapTo(target) {
-    translateX.value = target
-  }
-
-  /**
-   * 等待 CSS transition 动画结束后执行回调
-   * 使用 setTimeout(300) 对齐 CSS transition 时长
-   *
-   * 动画结束后：
-   * 1. 先禁用 transition（isDragging=true）
-   * 2. 瞬间重置 translateX=0
-   * 3. 更新 baseDate（数据切换）
-   * 4. 下一帧开启 transition
-   *
-   * @param {Function} updateFn - 更新 baseDate 的函数
-   */
-  function waitForAnimation(updateFn) {
-    isAnimating.value = true
-
-    setTimeout(() => {
-      console.log(`[Scroll:ANIM] t=${Date.now()} 动画结束，准备重置`)
-
-      // 关键：先禁用 transition，再同步执行重置+数据更新
-      // 这样 translateX=0 和 baseDate 变化在同一帧内完成，GPU 看到的是已更新内容居中
-      isDragging.value = true    // 关闭 transition
-      translateX.value = 0       // 瞬间归零（无动画）
-      updateFn()                 // 更新 baseDate（views 重算）
-
-      console.log(`[Scroll:ANIM] t=${Date.now()} 重置完成，translateX=0`)
-
-      // 下一帧开启 transition
-      // #ifdef H5
-      requestAnimationFrame(() => {
-        isDragging.value = false
-        isAnimating.value = false
-        console.log(`[Scroll:ANIM] t=${Date.now()} transition 已恢复`)
-      })
-      // #endif
-      // #ifndef H5
-      setTimeout(() => {
-        isDragging.value = false
-        isAnimating.value = false
-        console.log(`[Scroll:ANIM] t=${Date.now()} transition 已恢复`)
-      }, 16)
-      // #endif
-    }, 305)  // 略大于 CSS transition 的 300ms，确保动画已完成
-  }
-
-  /**
-   * 切换到下一个视图（手指向左滑）
-   */
-  function goNext() {
-    console.log(`[Scroll:NEXT] t=${Date.now()} baseDate 更新前`)
-    if (state.viewMode === VIEW_MODE.WEEK) {
-      state.baseDate = addDate(state.baseDate, 1, 'week')
     } else {
-      state.baseDate = addDate(state.baseDate, 1, 'month')
+      // 未超阈值 → 吸附回当前页
+      console.log('[Scroll:END] 未超阈值，吸附回原位')
+      isDragging.value = false
+      translateX.value = 0
     }
-    console.log(`[Scroll:NEXT] t=${Date.now()} 新 baseDate=${state.baseDate.toISOString().slice(0, 10)}`)
-  }
-
-  /**
-   * 切换到上一个视图（手指向右滑）
-   */
-  function goPrev() {
-    console.log(`[Scroll:PREV] t=${Date.now()} baseDate 更新前`)
-    if (state.viewMode === VIEW_MODE.WEEK) {
-      state.baseDate = addDate(state.baseDate, -1, 'week')
-    } else {
-      state.baseDate = addDate(state.baseDate, -1, 'month')
-    }
-    console.log(`[Scroll:PREV] t=${Date.now()} 新 baseDate=${state.baseDate.toISOString().slice(0, 10)}`)
   }
 
   // ============================================================
-  // 5. 兼容旧接口（供外部直接调用）
+  // 5. 兼容旧接口
   // ============================================================
 
   function snapToCurrent() {
     isDragging.value = false
     translateX.value = 0
   }
+
+  // dragOffset 别名（供 InfiniteCalendar.vue 的 watch 使用）
+  const dragOffset = translateX
 
   // ============================================================
   // 6. 监听视图模式切换（重置滚动状态）
@@ -271,9 +201,6 @@ export function useInfiniteScroll(state, views) {
   // 7. 返回公开接口
   // ============================================================
 
-  // dragOffset 兼容旧代码（InfiniteCalendar.vue 里有 watch(dragOffset)）
-  const dragOffset = translateX
-
   return {
     dragOffset,
     translateX,
@@ -284,8 +211,8 @@ export function useInfiniteScroll(state, views) {
     handleDrag,
     endDrag,
     snapToCurrent,
-    goNext,
-    goPrev,
+    goNext: () => {},
+    goPrev: () => {},
     screenWidth,
     SWIPE_THRESHOLD
   }
