@@ -29,7 +29,6 @@
           v-for="view in views"
           :key="view.id"
           :view="view"
-          :view-mode="state.viewMode"
           :transition-progress="state.transitionProgress"
           @select="handleSelectDate"
         />
