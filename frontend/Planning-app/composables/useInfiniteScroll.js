@@ -23,7 +23,7 @@
  * @date 2026-03-29
  */
 
-import { ref, computed, watch } from 'vue'
+import { ref, computed, watch, nextTick } from 'vue'
 import { addDate } from '@/utils/dateCalculator'
 import { VIEW_MODE, GESTURE_THRESHOLD } from '@/utils/calendarConstants'
 
@@ -118,24 +118,31 @@ export function useInfiniteScroll(state, views) {
    * - 视觉效果：新月份内容从当前偏移位置平滑吸附到正中央
    * - 没有"滑到底→跳回0"的两段式，彻底消除跳变闪烁
    */
-  function endDrag() {
+  async function endDrag() {
     const current = translateX.value
 
     if (isAnimating.value) {
-      isDragging.value = false
+      // 动画中：直接无动画归零
+      isDragging.value = true
       translateX.value = 0
+      await nextTick()
+      isDragging.value = false
       return
     }
 
     if (current <= -SWIPE_THRESHOLD) {
       // 左滑超阈值 → 去下一页
       isAnimating.value = true
+      // 先更新数据
       if (state.viewMode === VIEW_MODE.WEEK) {
         state.baseDate = addDate(state.baseDate, 1, 'week')
       } else {
         state.baseDate = addDate(state.baseDate, 1, 'month')
       }
+      // 第1帧：开启 transition（translateX 还在当前负值位置）
       isDragging.value = false
+      // 第2帧：设置目标值，CSS transition 检测到变化，执行平滑动画
+      await nextTick()
       translateX.value = 0
       setTimeout(() => { isAnimating.value = false }, 350)
 
@@ -148,12 +155,14 @@ export function useInfiniteScroll(state, views) {
         state.baseDate = addDate(state.baseDate, -1, 'month')
       }
       isDragging.value = false
+      await nextTick()
       translateX.value = 0
       setTimeout(() => { isAnimating.value = false }, 350)
 
     } else {
-      // 未超阈值 → 吸附回当前页
+      // 未超阈值 → 吸附回当前页（同样需要两帧）
       isDragging.value = false
+      await nextTick()
       translateX.value = 0
     }
   }
@@ -162,8 +171,9 @@ export function useInfiniteScroll(state, views) {
   // 5. 兼容旧接口
   // ============================================================
 
-  function snapToCurrent() {
+  async function snapToCurrent() {
     isDragging.value = false
+    await nextTick()
     translateX.value = 0
   }
 
