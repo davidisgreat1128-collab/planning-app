@@ -83,6 +83,9 @@ export function useInfiniteScroll(state, views) {
   const contentStyle = computed(() => {
     const offset = screenWidth - translateX.value
 
+    // 渲染层日志：每次 contentStyle 重算时记录，反映 DOM 实际收到的 transform 值
+    console.log(`[RENDER] t=${Date.now()} translateX=${translateX.value.toFixed(1)} offset=${offset.toFixed(1)} isDragging=${isDragging.value}`)
+
     return {
       width: `${screenWidth * 3}px`,
       height: '100%',
