@@ -11,10 +11,11 @@
  * - translateX < 0       → 内容左移（手指向左滑，看下一页）
  * - translateX > 0       → 内容右移（手指向右滑，看上一页）
  *
- * 动画流程（单段吸附，无重置跳变）：
+ * 动画流程（JS逐帧驱动，无CSS transition依赖）：
  * 1. 手指滑动：translateX 实时跟随手指
- * 2. 松手超过阈值：立即更新 baseDate，translateX 从当前位置动画归 0
- * 3. 视觉效果：新内容从偏移位置平滑吸附到正中央
+ * 2. 松手超过阈值：立即更新 baseDate，JS动画从当前位置归 0
+ * 3. 松手未超阈值：JS动画直接弹回 0
+ * 4. 全程不依赖 CSS transition，消除 Vue 响应式时序竞争
  *
  * 架构层级：Composable 层
  *
@@ -23,7 +24,7 @@
  * @date 2026-03-29
  */
 
-import { ref, computed, watch, nextTick } from 'vue'
+import { ref, computed, watch } from 'vue'
 import { addDate } from '@/utils/dateCalculator'
 import { VIEW_MODE, GESTURE_THRESHOLD } from '@/utils/calendarConstants'
 
@@ -43,29 +44,27 @@ export function useInfiniteScroll(state, views) {
   const screenWidth = systemInfo.windowWidth
   const SWIPE_THRESHOLD = screenWidth * GESTURE_THRESHOLD.SWIPE
 
-  console.log('[useInfiniteScroll] 初始化，屏幕宽度:', screenWidth, '切换阈值:', SWIPE_THRESHOLD)
-
   // ============================================================
   // 2. 状态
   // ============================================================
 
   /**
-   * 横向位移：手指拖拽时实时更新，松手后动画归 0
+   * 横向位移：手指拖拽时实时更新，松手后JS动画归 0
    */
   const translateX = ref(0)
-
-  /**
-   * 拖拽中禁用 CSS transition，松手后开启
-   */
-  const isDragging = ref(false)
 
   /**
    * 防止动画期间重复触发翻页
    */
   const isAnimating = ref(false)
 
+  /**
+   * 当前动画帧的 timer ID，用于取消动画
+   */
+  let animTimer = null
+
   // ============================================================
-  // 3. 样式计算
+  // 3. 样式计算（纯静态 transition，不再动态切换）
   // ============================================================
 
   const containerStyle = computed(() => ({
@@ -77,27 +76,86 @@ export function useInfiniteScroll(state, views) {
 
   /**
    * 内容样式
-   * 3视图水平排列，初始显示中间视图（offset = screenWidth）
-   * translateX 在此基础上叠加手指位移
+   * transition 固定为 none，完全由 JS 动画驱动位移
    */
   const contentStyle = computed(() => {
     const offset = screenWidth - translateX.value
-
-    // 渲染层日志：每次 contentStyle 重算时记录，反映 DOM 实际收到的 transform 值
-    console.log(`[RENDER] t=${Date.now()} translateX=${translateX.value.toFixed(1)} offset=${offset.toFixed(1)} isDragging=${isDragging.value}`)
-
     return {
       width: `${screenWidth * 3}px`,
       height: '100%',
       display: 'flex',
       transform: `translateX(-${offset}px)`,
-      transition: isDragging.value ? 'none' : 'transform 0.3s cubic-bezier(0.25, 0.46, 0.45, 0.94)',
+      transition: 'none',
       willChange: 'transform'
     }
   })
 
   // ============================================================
-  // 4. 核心方法
+  // 4. JS 逐帧动画（easeOutCubic）
+  // ============================================================
+
+  /**
+   * 取消正在进行的动画
+   */
+  function cancelAnimation() {
+    if (animTimer !== null) {
+      // #ifdef H5
+      cancelAnimationFrame(animTimer)
+      // #endif
+      // #ifndef H5
+      clearTimeout(animTimer)
+      // #endif
+      animTimer = null
+    }
+  }
+
+  /**
+   * JS 驱动的弹性归位动画
+   *
+   * 从 from 动画到 to，easeOutCubic 缓动，约 300ms
+   * 全程修改 translateX.value，不依赖 CSS transition
+   *
+   * @param {number} from - 起始位移值
+   * @param {number} to - 目标位移值（通常为 0）
+   * @param {Function} [onComplete] - 动画完成回调
+   */
+  function animateSnap(from, to, onComplete) {
+    cancelAnimation()
+
+    const duration = 300
+    const startTime = Date.now()
+
+    function step() {
+      const elapsed = Date.now() - startTime
+      const t = Math.min(1, elapsed / duration)
+      // easeOutCubic
+      const eased = 1 - Math.pow(1 - t, 3)
+      translateX.value = from + (to - from) * eased
+
+      if (t < 1) {
+        // #ifdef H5
+        animTimer = requestAnimationFrame(step)
+        // #endif
+        // #ifndef H5
+        animTimer = setTimeout(step, 16)
+        // #endif
+      } else {
+        translateX.value = to
+        animTimer = null
+        if (onComplete) onComplete()
+      }
+    }
+
+    // #ifdef H5
+    animTimer = requestAnimationFrame(step)
+    // #endif
+    // #ifndef H5
+    animTimer = setTimeout(step, 16)
+    // #endif
+  }
+
+  // ============================================================
+  // 5. 核心方法
   // ============================================================
 
   /**
@@ -106,45 +164,42 @@ export function useInfiniteScroll(state, views) {
    * @param {number} deltaX - 本帧位移（正=右，负=左）
    */
   function handleDrag(deltaX) {
-    isDragging.value = true
+    // 拖拽期间取消任何进行中的回弹动画
+    cancelAnimation()
     translateX.value += deltaX
   }
 
   /**
    * 结束拖拽
    *
-   * 核心思路（单段吸附，无重置跳变）：
-   * - 超过阈值：先更新 baseDate（数据切换），再开启 transition 让 translateX 归 0
-   * - 视觉效果：新月份内容从当前偏移位置平滑吸附到正中央
-   * - 没有"滑到底→跳回0"的两段式，彻底消除跳变闪烁
+   * 核心思路（JS逐帧动画，无CSS transition依赖）：
+   * - 超过阈值：先更新 baseDate，再用 JS 动画从当前位置归 0
+   * - 未超阈值：JS 动画直接从当前位置弹回 0
+   * - 全程不依赖 CSS transition，消除 Vue 响应式时序竞争
    */
-  async function endDrag() {
-    const current = translateX.value
-
+  function endDrag() {
     if (isAnimating.value) {
-      // 动画中：直接无动画归零
-      isDragging.value = true
+      // 动画中：直接硬归零（避免动画堆叠）
+      cancelAnimation()
       translateX.value = 0
-      await nextTick()
-      isDragging.value = false
       return
     }
+
+    const current = translateX.value
 
     if (current <= -SWIPE_THRESHOLD) {
       // 左滑超阈值 → 去下一页
       isAnimating.value = true
-      // 先更新数据
+      // 立即更新数据（视图切换）
       if (state.viewMode === VIEW_MODE.WEEK) {
         state.baseDate = addDate(state.baseDate, 1, 'week')
       } else {
         state.baseDate = addDate(state.baseDate, 1, 'month')
       }
-      // 第1帧：开启 transition（translateX 还在当前负值位置）
-      isDragging.value = false
-      // 第2帧：设置目标值，CSS transition 检测到变化，执行平滑动画
-      await nextTick()
-      translateX.value = 0
-      setTimeout(() => { isAnimating.value = false }, 350)
+      // JS 动画从当前负值位置归 0
+      animateSnap(current, 0, () => {
+        isAnimating.value = false
+      })
 
     } else if (current >= SWIPE_THRESHOLD) {
       // 右滑超阈值 → 去上一页
@@ -154,52 +209,46 @@ export function useInfiniteScroll(state, views) {
       } else {
         state.baseDate = addDate(state.baseDate, -1, 'month')
       }
-      isDragging.value = false
-      await nextTick()
-      translateX.value = 0
-      setTimeout(() => { isAnimating.value = false }, 350)
+      // JS 动画从当前正值位置归 0
+      animateSnap(current, 0, () => {
+        isAnimating.value = false
+      })
 
     } else {
-      // 未超阈值 → 吸附回当前页（同样需要两帧）
-      isDragging.value = false
-      await nextTick()
-      translateX.value = 0
+      // 未超阈值 → JS 动画弹回 0
+      animateSnap(current, 0)
     }
   }
 
   // ============================================================
-  // 5. 兼容旧接口
+  // 6. 兼容旧接口
   // ============================================================
 
-  async function snapToCurrent() {
-    isDragging.value = false
-    await nextTick()
+  function snapToCurrent() {
+    cancelAnimation()
     translateX.value = 0
   }
 
-  // dragOffset 别名（供 InfiniteCalendar.vue 的 watch 使用）
+  // dragOffset 别名（供外部使用）
   const dragOffset = translateX
 
+  // isDragging 兼容（JS动画模式下始终为 false，保留字段不破坏接口）
+  const isDragging = ref(false)
+
   // ============================================================
-  // 6. 监听视图模式切换（重置滚动状态）
+  // 7. 监听视图模式切换（重置滚动状态）
   // ============================================================
 
   watch(
     () => state.viewMode,
     () => {
-      isDragging.value = true
+      cancelAnimation()
       translateX.value = 0
-      // #ifdef H5
-      requestAnimationFrame(() => { isDragging.value = false })
-      // #endif
-      // #ifndef H5
-      setTimeout(() => { isDragging.value = false }, 16)
-      // #endif
     }
   )
 
   // ============================================================
-  // 7. 返回公开接口
+  // 8. 返回公开接口
   // ============================================================
 
   return {

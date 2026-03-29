@@ -91,9 +91,6 @@ export function useGesture(state, scrollMethods) {
     const x = touch.clientX
     const y = touch.clientY
 
-    // 每帧都打印原始 X 坐标，不受节流影响，观察是否连续平滑
-    console.log(`[RAW] t=${Date.now()} x=${x.toFixed(1)} prevX=${gesture.value.prevX.toFixed(1)} delta=${(x - gesture.value.prevX).toFixed(1)}`)
-
     // 节流：约60fps
     const now = Date.now()
     if (now - gesture.value.lastMoveTime < ANIMATION_CONFIG.RAF_THROTTLE) {
@@ -135,7 +132,7 @@ export function useGesture(state, scrollMethods) {
    *
    * @param {TouchEvent} e
    */
-  function handleTouchEnd(e) {
+  function handleTouchEnd(_e) {
     if (!gesture.value.isTracking) return
 
     const dir = gesture.value.direction
